@@ -242,3 +242,5 @@ ARCHITECTURE.md
 
 # index.html
 index.html
+.vercel
+.env*.local
