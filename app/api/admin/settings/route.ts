@@ -5,13 +5,7 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
 // Helper function to verify JWT token
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
 
 // GET - Fetch system settings
 export async function GET(request: NextRequest) {
@@ -27,8 +21,8 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -95,8 +89,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

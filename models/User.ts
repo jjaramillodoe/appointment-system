@@ -46,6 +46,8 @@ export interface IUser extends mongoose.Document {
     distanceText: string;
   };
   isAdmin?: boolean;
+  isSuperAdmin?: boolean;
+  assignedHub?: mongoose.Types.ObjectId; // Hub ID for hub-based admins
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -244,6 +246,15 @@ const userSchema = new mongoose.Schema<IUser>({
   isAdmin: {
     type: Boolean,
     default: false,
+  },
+  isSuperAdmin: {
+    type: Boolean,
+    default: false,
+  },
+  assignedHub: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hub',
+    required: false,
   },
 }, {
   timestamps: true,

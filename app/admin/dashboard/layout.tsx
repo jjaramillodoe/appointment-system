@@ -15,7 +15,7 @@ export default function AdminDashboardLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, logout, isAdmin, loading } = useAuth();
+  const { user, logout, isAdmin, isSuperAdmin, assignedHub, loading } = useAuth();
 
   const handleLogout = () => {
     logout();
@@ -43,7 +43,21 @@ export default function AdminDashboardLayout({
           <div className="flex justify-between items-center py-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600">Manage your appointment system</p>
+              <p className="text-gray-600">
+                {isSuperAdmin ? (
+                  <span className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm font-semibold">Super Admin</span>
+                    <span>Manage all hubs and system-wide settings</span>
+                  </span>
+                ) : assignedHub ? (
+                  <span className="flex items-center gap-2">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-semibold">Hub Admin</span>
+                    <span>Managing: {assignedHub}</span>
+                  </span>
+                ) : (
+                  'Manage your appointment system'
+                )}
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <button 

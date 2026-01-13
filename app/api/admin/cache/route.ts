@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Helper function to verify JWT token
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
 
 // POST - Clear system cache
 export async function POST(request: NextRequest) {
@@ -27,13 +16,16 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
       );
     }
+
+    // adminUser is guaranteed to be non-null after isAdmin check
+    const adminEmail = adminUser?.email || 'unknown';
 
     // In a real production environment, you would:
     // 1. Clear Redis cache if using Redis
@@ -42,14 +34,14 @@ export async function POST(request: NextRequest) {
     // 4. Clear browser caches (via headers)
     
     // For now, we'll simulate cache clearing
-    console.log(`Cache clear initiated by admin ${decoded.email} at ${new Date().toISOString()}`);
+    console.log(`Cache clear initiated by admin ${adminEmail} at ${new Date().toISOString()}`);
     
     // Simulate cache clearing process time
     await new Promise(resolve => setTimeout(resolve, 1000));
     
     const cacheInfo = {
       timestamp: new Date().toISOString(),
-      initiatedBy: decoded.email,
+      initiatedBy: adminEmail,
       status: 'completed',
       clearedCaches: ['Memory Cache', 'Database Query Cache', 'Static Asset Cache'],
       message: 'System cache cleared successfully'

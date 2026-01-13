@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
 
 // Import models
 import '@/models/User';
@@ -14,16 +14,6 @@ const AppointmentOptimized = mongoose.models.AppointmentOptimized;
 const AppointmentSlot = mongoose.models.AppointmentSlot;
 const Hub = mongoose.models.Hub;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
-
 // GET - Get all appointments with filtering and pagination
 export async function GET(request: NextRequest) {
   try {
@@ -35,9 +25,15 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    // Apply hub filter for regular admins (super admins see everything)
+    const hubFilter = getHubFilter(adminUser);
+    if (hubFilter === null) {
+      return NextResponse.json({ error: 'No hub access' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -51,8 +47,8 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'appointmentDate';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build search filter
-    const searchFilter: any = {};
+    // Build search filter - start with hub filter
+    const searchFilter: any = { ...hubFilter };
     
     if (search) {
       // Since we're using hubId reference, we need to find hub by name first
@@ -208,8 +204,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -266,8 +262,8 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

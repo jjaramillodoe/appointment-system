@@ -27,6 +27,8 @@ interface User {
   closestHub: any;
   createdAt: string;
   isAdmin: boolean;
+  isSuperAdmin?: boolean;
+  assignedHub?: string | null;
 }
 
 interface AuthContextType {
@@ -38,6 +40,8 @@ interface AuthContextType {
   checkAuth: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isSuperAdmin: boolean;
+  assignedHub: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -158,6 +162,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user: user?.email,
       isAuthenticated: !!user && !!token,
       isAdmin: user?.isAdmin || false,
+      isSuperAdmin: user?.isSuperAdmin || false,
+      assignedHub: user?.assignedHub || null,
       loading,
       hasToken: !!token
     });
@@ -172,6 +178,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth,
     isAuthenticated: !!user && !!token,
     isAdmin: user?.isAdmin || false,
+    isSuperAdmin: user?.isSuperAdmin || false,
+    assignedHub: user?.assignedHub || null,
   };
 
   return (

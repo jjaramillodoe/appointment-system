@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
 
 // Import models
 import '@/models/User';
@@ -16,16 +16,6 @@ const AppointmentSlot = mongoose.models.AppointmentSlot;
 const HubConfig = mongoose.models.HubConfig;
 const Hub = mongoose.models.Hub;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
-
 // GET - Get comprehensive analytics data
 export async function GET(request: NextRequest) {
   try {
@@ -38,11 +28,15 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    
-    const decoded = verifyToken(token);
-    
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    // Apply hub filter for regular admins
+    const adminHubFilter = getHubFilter(adminUser);
+    if (adminHubFilter === null) {
+      return NextResponse.json({ error: 'No hub access' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -59,19 +53,23 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Build hub filter - AppointmentOptimized uses hubId, not hubName
-    // First we need to get hub IDs if hubName is specified
-    let hubFilter: any = {};
+    // Build hub filter - combine admin's hub filter with optional hubName filter
+    let appointmentHubFilter: any = { ...adminHubFilter };
     if (hubName && hubName !== 'all') {
       const hub = await Hub.findOne({ name: hubName });
       if (hub) {
-        hubFilter.hubId = hub._id;
+        // For super admins, allow filtering by any hub
+        // For regular admins, ensure they can only filter by their own hub
+        if (adminHubFilter.hubId && adminHubFilter.hubId.toString() !== hub._id.toString()) {
+          return NextResponse.json({ error: 'Access denied to this hub' }, { status: 403 });
+        }
+        appointmentHubFilter.hubId = hub._id;
       }
     }
 
     // Get appointment statistics
     const appointmentStats = await AppointmentOptimized.aggregate([
-      { $match: { ...dateFilter, ...hubFilter } },
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $group: {
           _id: '$status',
@@ -81,11 +79,11 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get total appointments
-    const totalAppointments = await AppointmentOptimized.countDocuments({ ...dateFilter, ...hubFilter });
+    const totalAppointments = await AppointmentOptimized.countDocuments({ ...dateFilter, ...appointmentHubFilter });
 
     // Get appointments by hub (populate hub name from hubId)
     const appointmentsByHub = await AppointmentOptimized.aggregate([
-      { $match: dateFilter },
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $lookup: {
           from: 'hubs',
@@ -109,7 +107,7 @@ export async function GET(request: NextRequest) {
 
     // Get appointments by time slot
     const appointmentsByTime = await AppointmentOptimized.aggregate([
-      { $match: { ...dateFilter, ...hubFilter } },
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $group: {
           _id: '$time',
@@ -121,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     // Get weekly trends (last 8 weeks) - convert date string to Date object
     const weeklyTrends = await AppointmentOptimized.aggregate([
-      { $match: dateFilter },
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $addFields: {
           dateObj: { $dateFromString: { dateString: '$date' } }
@@ -187,8 +185,18 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get capacity utilization
+    // Note: AppointmentSlot uses hubName (string), not hubId (ObjectId)
+    // So we need to get the hub name from the filter
+    let slotHubFilter: any = {};
+    if (appointmentHubFilter.hubId) {
+      const hub = await Hub.findById(appointmentHubFilter.hubId);
+      if (hub) {
+        slotHubFilter.hubName = hub.name;
+      }
+    }
+    
     const capacityUtilization = await AppointmentSlot.aggregate([
-      { $match: hubFilter },
+      { $match: slotHubFilter },
       {
         $group: {
           _id: '$hubName',
@@ -208,7 +216,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get recent activity (last 10 appointments)
-    const recentAppointments = await AppointmentOptimized.find({ ...dateFilter, ...hubFilter })
+    const recentAppointments = await AppointmentOptimized.find({ ...dateFilter, ...appointmentHubFilter })
       .populate('userId', 'firstName lastName email')
       .populate('hubId', 'name')
       .sort({ createdAt: -1 })
@@ -220,7 +228,7 @@ export async function GET(request: NextRequest) {
 
     const todaysAppointments = await AppointmentOptimized.find({
       date: todayStr,
-      ...hubFilter
+      ...appointmentHubFilter
     })
       .populate('userId', 'firstName lastName email')
       .populate('hubId', 'name');
@@ -245,7 +253,7 @@ export async function GET(request: NextRequest) {
       weeklyTrends: weeklyTrends.slice(0, 3), // Log first 3 for debugging
       totalAppointments,
       dateFilter,
-      hubFilter
+      appointmentHubFilter
     });
 
     return NextResponse.json({

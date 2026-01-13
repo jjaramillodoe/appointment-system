@@ -43,9 +43,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate JWT token
+    // Generate JWT token with admin and hub information
     const token = jwt.sign(
-      { userId: user._id, email: user.email, isAdmin: user.isAdmin || false },
+      { 
+        userId: user._id, 
+        email: user.email, 
+        isAdmin: user.isAdmin || false,
+        isSuperAdmin: user.isSuperAdmin || false,
+        assignedHub: user.assignedHub?.toString() || null,
+      },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -70,6 +76,8 @@ export async function POST(request: NextRequest) {
       closestHub: user.closestHub || null,
       createdAt: user.createdAt,
       isAdmin: user.isAdmin || false,
+      isSuperAdmin: user.isSuperAdmin || false,
+      assignedHub: user.assignedHub || null,
     };
 
 

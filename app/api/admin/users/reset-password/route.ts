@@ -1,19 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
 import mongoose from 'mongoose';
 import '@/models/User';
 
 const User = mongoose.models.User;
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
 
 // POST - Reset user password
 export async function POST(request: NextRequest) {
@@ -26,8 +17,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 

@@ -1,24 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken, isAdmin, isSuperAdmin } from '@/lib/adminPermissions';
 
 // Import models
 import '@/models/User';
 import '@/models/Appointment';
+import '@/models/Hub';
 
 import mongoose from 'mongoose';
 const User = mongoose.models.User;
 const Appointment = mongoose.models.Appointment;
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
+const Hub = mongoose.models.Hub;
 
 // GET - Get all users with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -31,8 +23,13 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    // TypeScript guard: adminUser is guaranteed to be non-null after isAdmin check
+    if (!adminUser) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -57,8 +54,18 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Build hub filter
-    if (hubName) {
+    // Apply hub filter for regular admins (super admins see all users)
+    if (!isSuperAdmin(adminUser) && adminUser.assignedHub) {
+      // Get the hub name for the assigned hub
+      const assignedHub = await Hub.findById(adminUser.assignedHub);
+      if (assignedHub) {
+        searchFilter['closestHub.name'] = assignedHub.name;
+      } else {
+        // Admin has invalid hub assignment - no access
+        return NextResponse.json({ error: 'Invalid hub assignment' }, { status: 403 });
+      }
+    } else if (hubName) {
+      // Super admin can filter by hub name if provided
       searchFilter['closestHub.name'] = hubName;
     }
 
@@ -176,8 +183,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -235,8 +242,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -301,8 +308,13 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || decoded.isAdmin !== true) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    // TypeScript guard: adminUser is guaranteed to be non-null after isAdmin check
+    if (!adminUser) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -314,7 +326,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Prevent deleting yourself
-    if (userId === decoded.userId) {
+    if (userId === adminUser.userId) {
       return NextResponse.json(
         { error: 'You cannot delete your own account' },
         { status: 400 }
