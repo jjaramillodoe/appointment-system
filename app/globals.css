@@ -1,0 +1,272 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+
+  html {
+    font-family: system-ui, sans-serif;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Google Translate Widget Custom Styles */
+#google_translate_element {
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  height: 40px;
+  background: #e6f0ff;
+  border-radius: 0.75rem;
+  padding: 0.25rem 1rem;
+  box-shadow: 0 2px 8px 0 rgba(0,102,204,0.08);
+  margin-right: 0.5rem;
+  border: 1.5px solid #0066cc;
+  transition: box-shadow 0.2s;
+}
+
+#google_translate_element:focus-within, #google_translate_element:hover {
+  box-shadow: 0 4px 16px 0 rgba(0,102,204,0.16);
+  border-color: #0052a3;
+}
+
+.goog-te-gadget {
+  font-family: inherit !important;
+  font-size: 1rem !important;
+  color: #1e293b !important;
+}
+
+.goog-te-combo {
+  border-radius: 0.5rem;
+  padding: 0.25rem 1.5rem 0.25rem 0.75rem;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  color: #1e293b;
+  font-size: 1rem;
+  font-family: inherit;
+  outline: none;
+  transition: border 0.2s;
+  margin-left: 0.5rem;
+  box-shadow: 0 1px 4px 0 rgba(0,102,204,0.06);
+}
+
+.goog-te-combo:focus {
+  border: 1.5px solid #0066cc;
+}
+
+.goog-logo-link,
+.goog-te-gadget span {
+  display: none !important;
+}
+
+.goog-te-banner-frame.skiptranslate {
+  display: none !important;
+}
+
+body {
+  top: 0px !important;
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .btn-secondary {
+    @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-colors duration-200;
+  }
+  
+  .input-field {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+  
+  .card {
+    @apply bg-white rounded-lg shadow-md p-6;
+  }
+} 
+
+/* --- Custom Calendar Styles (Tailwind-based) --- */
+.react-calendar {
+  @apply w-full bg-white rounded-lg shadow-sm border border-gray-200 p-4 text-gray-900;
+}
+.react-calendar__navigation {
+  @apply flex mb-2;
+}
+.react-calendar__navigation button {
+  @apply flex-1 py-1 text-base font-semibold text-primary-700 rounded hover:bg-primary-50 transition-colors;
+}
+.react-calendar__month-view__weekdays {
+  @apply flex text-xs text-gray-500 font-bold mb-1;
+}
+.react-calendar__month-view__weekdays__weekday {
+  @apply flex-1 text-center;
+}
+.react-calendar__month-view__days {
+  @apply grid grid-cols-7 gap-1;
+}
+.react-calendar__tile {
+  @apply aspect-square flex items-center justify-center rounded-lg text-sm font-medium transition-colors duration-150 cursor-pointer;
+}
+.react-calendar__tile:enabled:hover,
+.react-calendar__tile:enabled:focus {
+  @apply bg-primary-100 text-primary-800;
+}
+.react-calendar__tile--now {
+  @apply bg-primary-600 text-white font-bold;
+}
+.react-calendar__tile--active {
+  @apply bg-green-600 text-white font-bold;
+}
+.react-calendar__tile--now:enabled:hover,
+.react-calendar__tile--now:enabled:focus {
+  @apply bg-primary-700 text-white;
+}
+.react-calendar__tile--active:enabled:hover,
+.react-calendar__tile--active:enabled:focus {
+  @apply bg-green-700 text-white;
+}
+.react-calendar__tile:disabled {
+  @apply bg-gray-100 text-gray-400 cursor-not-allowed;
+}
+.react-calendar__month-view__days__day--weekend {
+  @apply text-red-400;
+}
+/* Hide neighbor months */
+.react-calendar__month-view__days__day--neighboringMonth {
+  @apply text-gray-300;
+}
+/* Remove border from calendar tiles */
+.react-calendar__tile {
+  border: none;
+}
+/* Remove default focus outline */
+.react-calendar__tile:focus {
+  outline: none;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors disabled:opacity-50;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+}
+
+/* Input field styles */
+.input-field {
+  @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+}
+
+/* Suppress browser default validation styling */
+.input-field:invalid {
+  box-shadow: none;
+}
+
+.input-field:required {
+  box-shadow: none;
+}
+
+/* Custom validation styling */
+.input-field.border-red-500 {
+  border-color: #ef4444;
+}
+
+.input-field.border-red-500:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+/* Card styles */
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+}
+
+/* Custom Animations */
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes gradient {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient 3s ease infinite;
+} 

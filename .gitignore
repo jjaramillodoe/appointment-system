@@ -1,0 +1,244 @@
+# ============================================
+# NYC DOE District 79 Appointment System
+# Git Ignore Configuration
+# ============================================
+# This file ensures sensitive files are NOT committed to GitHub
+# Key exclusions: .env files, database backups, secrets, credentials
+# ============================================
+
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Production
+/build
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Grunt intermediate storage (https://gruntjs.com/creating-plugins#storing-task-files)
+.grunt
+
+# Bower dependency directory (https://bower.io/)
+bower_components
+
+# node-waf configuration
+.lock-wscript
+
+# Compiled binary addons (https://nodejs.org/api/addons.html)
+build/Release
+
+# Dependency directories
+jspm_packages/
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variable files - ALL VARIATIONS
+.env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+*.env
+*.env.local
+*.env.production
+# Allow template/example files
+!.env.production.example
+!.env.production.template
+!.env.example
+!.env.template
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+# Note: public/ directory should be committed (contains static assets)
+# Only ignore sensitive files within public if needed
+
+# Vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# yarn v2
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+.pnp.*
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+logs
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+tmp/
+temp/
+
+# Reports
+reports/
+*.report
+
+# MongoDB data (if using local MongoDB)
+data/
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration files
+config.local.js
+config.local.json
+
+# Test files
+test-results/
+playwright-report/
+test-results.xml
+
+# Storybook build outputs
+storybook-static
+
+# Temporary files
+.tmp/
+.temp/
+
+# Database backups
+database-backups/
+*.tar.gz
+*.sql
+*.dump
+
+# Sensitive configuration files
+config/secrets.json
+secrets/
+*.secret
+*.secrets
+
+# API keys and tokens
+**/api-keys.json
+**/tokens.json
+**/credentials.json
+
+# Local development files
+.local/
+local/
+*.local.js
+*.local.json
+*.local.ts
+
+# Vercel deployment files (contains sensitive tokens)
+.vercel/
+
+# Deployment artifacts
+deploy/
+deployment/
+*.deploy
+
+# Sensitive script outputs (scripts themselves are safe to commit)
+scripts/*.log
+scripts/*.tmp
+scripts/output/
+scripts/*.secret
+
+# Architecture files
+ARCHITECTURE.md
+
+# index.html
+index.html
