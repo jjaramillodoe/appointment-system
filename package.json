@@ -18,7 +18,8 @@
     "admin:create": "ts-node --project scripts/tsconfig.json scripts/createAdminUser.ts",
     "admin:verify": "ts-node --project scripts/tsconfig.json scripts/verifyAdminUser.ts",
     "db:test": "ts-node --project scripts/tsconfig.json scripts/testMongoConnection.ts",
-    "git:check": "ts-node --project scripts/tsconfig.json scripts/checkGitIgnore.ts"
+    "git:check": "ts-node --project scripts/tsconfig.json scripts/checkGitIgnore.ts",
+    "test:setup": "ts-node --project scripts/tsconfig.json scripts/setupTestData.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

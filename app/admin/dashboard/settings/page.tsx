@@ -1,19 +1,27 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import SettingsTab from '@/components/admin/SettingsTab';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function SettingsPage() {
-  const { token, isAdmin } = useAuth();
+  const router = useRouter();
+  const { token, isAdmin, isSuperAdmin } = useAuth();
   const [settings, setSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Redirect hub admins away from settings page
+    if (!isSuperAdmin) {
+      router.push('/admin/dashboard');
+      return;
+    }
+    
     if (token && isAdmin) {
       loadSettings();
     }
-  }, [token, isAdmin]);
+  }, [token, isAdmin, isSuperAdmin, router]);
 
   const loadSettings = async () => {
     if (!token) return;
@@ -61,6 +69,16 @@ export default function SettingsPage() {
       return false;
     }
   };
+
+  // Show access denied for hub admins
+  if (!isSuperAdmin) {
+    return (
+      <div className="text-center py-12">
+        <h3 className="text-lg font-medium text-gray-900 mb-2">Access Denied</h3>
+        <p className="text-gray-500">Settings are only available to super admins.</p>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

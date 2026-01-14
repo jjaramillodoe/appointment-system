@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { BarChart, Users, Settings, RefreshCw, AlertCircle, Building2, Calendar, Clock } from 'lucide-react';
-import { useHubs } from '../../hooks/useHubs';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -32,20 +31,12 @@ export default function CapacityTab({
   setEditCapacities,
   loadSlotCapacities
 }: CapacityTabProps) {
-  const { hubs, loading: hubsLoading } = useHubs();
-  const [selectedHub, setSelectedHub] = useState<string>('');
+  const { selectedHub } = useHubFilter();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [optimizedData, setOptimizedData] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  // Set default hub when hubs are loaded
-  useEffect(() => {
-    if (hubs.length > 0 && !selectedHub) {
-      setSelectedHub(hubs[0]);
-    }
-  }, [hubs, selectedHub]);
 
   // Set default date to today
   useEffect(() => {
@@ -150,16 +141,7 @@ export default function CapacityTab({
     return 'text-green-600 bg-green-100';
   };
 
-  if (hubsLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading hubs...</p>
-        </div>
-      </div>
-    );
-  }
+  // Hub filter is managed by HubFilterContext, no need to check loading state
 
   return (
     <div className="space-y-6">
@@ -200,21 +182,9 @@ export default function CapacityTab({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="hub-select">Hub</Label>
-              <Select
-                value={selectedHub || 'all'}
-                onValueChange={(value) => setSelectedHub(value === 'all' ? '' : value)}
-                disabled={hubsLoading}
-              >
-                <SelectTrigger id="hub-select" className="mt-2">
-                  <SelectValue placeholder="Select a hub..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Select a hub...</SelectItem>
-                  {hubs.map((hub) => (
-                    <SelectItem key={hub} value={hub}>{hub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="mt-2 px-3 py-2 border border-input rounded-md bg-muted text-foreground">
+                {selectedHub === 'all' || !selectedHub ? 'All Hubs (select from top filter)' : selectedHub}
+              </div>
             </div>
             <div>
               <Label htmlFor="date-select">Date</Label>
@@ -229,7 +199,7 @@ export default function CapacityTab({
             <div className="flex items-end">
               <Button
                 onClick={loadOptimizedAvailability}
-                disabled={loading || !selectedHub || !selectedDate}
+                disabled={loading || !selectedHub || selectedHub === 'all' || !selectedDate}
                 className="w-full"
               >
                 {loading ? (
@@ -337,6 +307,7 @@ export default function CapacityTab({
                           <TableCell>
                             <Button
                               onClick={() => {
+                                if (!selectedHub) return; // Guard clause: ensure hub is selected
                                 setCapacityModal({
                                   hubName: selectedHub,
                                   date: selectedDate,
@@ -352,7 +323,7 @@ export default function CapacityTab({
                               }}
                               variant="ghost"
                               size="sm"
-                              disabled={isUpdating}
+                              disabled={isUpdating || !selectedHub}
                             >
                               <Settings className="h-4 w-4 mr-1" />
                               Edit

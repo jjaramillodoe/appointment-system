@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Users, Search, Filter, Eye, Mail, Phone, MapPin, Calendar, GraduationCap, Briefcase, Edit, Trash2, Key, X } from 'lucide-react';
-import { useHubs } from '@/hooks/useHubs';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ interface UsersTabProps {
 }
 
 export default function UsersTab({ users, stats, pagination, filters, setFilters, onRefresh, onPageChange }: UsersTabProps) {
-  const { hubs, loading: hubsLoading } = useHubs();
+  const { selectedHub } = useHubFilter();
   const { toasts, showSuccess, showError } = useToast();
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [showUserModal, setShowUserModal] = useState(false);
@@ -165,6 +165,10 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
   };
 
   const handleFilterChange = (key: string, value: string) => {
+    // Hub filter is managed by HubFilterContext, so ignore hubName changes
+    if (key === 'hubName') {
+      return; // Hub filter is managed globally
+    }
     setFilters({ ...filters, [key]: value, page: 1 });
   };
 
@@ -245,21 +249,9 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Hub</label>
-            <select
-              value={filters?.hubName || ''}
-              onChange={(e) => handleFilterChange('hubName', e.target.value)}
-              disabled={hubsLoading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              <option value="">All Hubs</option>
-              {hubsLoading ? (
-                <option>Loading hubs...</option>
-              ) : (
-                hubs.map(hub => (
-                  <option key={hub} value={hub}>{hub}</option>
-                ))
-              )}
-            </select>
+            <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+              {selectedHub === 'all' || !selectedHub ? 'All Hubs (select from top filter)' : selectedHub}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Education Level</label>

@@ -2,20 +2,26 @@
 
 import { useState, useEffect } from 'react';
 import UsersTab from '@/components/admin/UsersTab';
+import { useAuth } from '@/contexts/AuthContext';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 
 export default function UsersPage() {
-  const [token, setToken] = useState<string>('');
+  const { token } = useAuth();
+  const { selectedHub } = useHubFilter();
   const [users, setUsers] = useState<any[]>([]);
   const [userStats, setUserStats] = useState<any>(null);
   const [userPagination, setUserPagination] = useState({ page: 1, total: 0, pages: 0 });
+  
+  // Initialize filters
   const [userFilters, setUserFilters] = useState({ search: '', hubName: '', educationLevel: '', programInterest: '' });
 
+  // Sync hub filter from context to local filters
   useEffect(() => {
-    const tokenStr = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (tokenStr) {
-      setToken(tokenStr);
-    }
-  }, []);
+    setUserFilters(prev => ({
+      ...prev,
+      hubName: selectedHub === 'all' || !selectedHub ? '' : selectedHub
+    }));
+  }, [selectedHub]);
 
   useEffect(() => {
     if (token) {

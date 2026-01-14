@@ -13,9 +13,9 @@ export async function GET(request: NextRequest) {
     // Build query
     const query = activeOnly ? { isActive: true } : {};
     
-    // Fetch hubs with basic info
+    // Fetch hubs with basic info (include _id for matching)
     const hubs = await Hub.find(query)
-      .select('name location defaultSlots timezone isActive')
+      .select('_id name location defaultSlots timezone isActive')
       .sort({ name: 1 })
       .lean();
     

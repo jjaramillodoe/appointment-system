@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { User, Mail, Phone, Calendar as CalendarIcon, MapPin, GraduationCap, Briefcase, School, BookOpen, Lock, Info, CheckCircle, AlertCircle, MapPin as MapPinIcon, Loader2, Home } from 'lucide-react';
 import Tooltip from './Tooltip';
+import LanguageAutocomplete from './ui/LanguageAutocomplete';
+import { languages } from '@/constants/languages';
 import { validateEmail, getEmailSuggestions } from '@/utils/emailValidation';
 import { validateDateOfBirth, formatAge, getMinimumBirthDate } from '@/utils/dateValidation';
 import { findClosestHubForAddress, HubMatch } from '@/utils/hubMatching';
@@ -57,22 +59,35 @@ const steps = [
 ];
 
 const educationLevels = [
-  'High School',
-  'Some College',
-  'Associate Degree',
-  'Bachelor Degree',
-  'Graduate Degree',
-  'Other',
+  'No formal schooling',
+  'Some middle school or junior high',
+  'Some high school, no diploma',
+  'Previously enrolled in GED or adult education program',
+  'Completed GED',
+  'Completed high school diploma (traditional)',
+  'Vocational/technical certificate',
+  'Other / Prefer not to say',
 ];
+
 const employmentStatuses = [
   'Employed',
+  'Self-employed',
   'Unemployed',
-  'Student',
+  'Unemployed and looking for work',
+  'Unemployed and not looking for work',
+  'Student (full-time)',
+  'Student (part-time)',
+  'Student (not applicable)',
   'Retired',
-  'Other',
+  'Disabled',
+  'Homemaker',
+  'In the military',
+  'In prison',
+  'In a correctional facility',
+  'Other / Prefer not to say',
 ];
 const schools = [
-  'School 1', 'School 2', 'School 3', 'School 4', 'School 5', 'School 6', 'School 7', 'School 8',
+  'School 1', 'School 2', 'School 3', 'School 4', 'School 5', 'School 6', 'School 8',
 ];
 const programs = [
   'Adult Basic Education',
@@ -119,6 +134,20 @@ const initialForm: RegistrationForm = {
   },
 };
 
+const heardFromOptions = [
+  { code: 'Google', name: 'Google' },
+  { code: 'Facebook', name: 'Facebook' },
+  { code: 'Friend', name: 'Friend' },
+  { code: 'Community Center', name: 'Community Center' },
+  { code: 'School', name: 'School' },
+  { code: 'Advertisement', name: 'Advertisement' },
+  { code: "Magazine", name: "Magazine" },
+  { code: "Newspaper", name: "Newspaper" },
+  { code: "Radio", name: "Radio" },
+  { code: "TV", name: "TV" },
+  { code: "Other", name: "Other" }
+];
+  
 function validate(form: RegistrationForm, step: number): RegistrationErrors {
   const errors: RegistrationErrors = {};
   if (step === 0) {
@@ -522,13 +551,19 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
             <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center">
               <BookOpen className="h-4 w-4 mr-1" /> Preferred Language
             </label>
-            <select name="preferredLanguage" value={form.preferredLanguage} onChange={handleChange} className="input-field" required aria-required="true">
-              <option value="">Select preferred language</option>
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="Other">Other</option>
-            </select>
+            <LanguageAutocomplete
+              options={[...languages, { code: 'Other', name: 'Other' }]}
+              value={form.preferredLanguage}
+              onChange={(value) => {
+                const syntheticEvent = {
+                  target: { name: 'preferredLanguage', value }
+                } as React.ChangeEvent<HTMLInputElement>;
+                handleChange(syntheticEvent);
+              }}
+              placeholder="Select or type to search language..."
+              required
+              className="input-field"
+            />
             {touched.preferredLanguage && errors.preferredLanguage && <div className="text-red-600 text-xs mt-1">{errors.preferredLanguage}</div>}
           </div>
           <div>
@@ -537,10 +572,9 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
             </label>
             <select name="heardFrom" value={form.heardFrom} onChange={handleChange} className="input-field" required aria-required="true">
               <option value="">Select how you heard about us</option>
-              <option value="Google">Google</option>
-              <option value="Facebook">Facebook</option>
-              <option value="Friend">Friend</option>
-              <option value="Other">Other</option>
+              {heardFromOptions.sort((a, b) => a.name.localeCompare(b.name)).map((option) => (
+                <option key={option.code} value={option.code}>{option.name}</option>
+              ))}
             </select>
             {touched.heardFrom && errors.heardFrom && <div className="text-red-600 text-xs mt-1">{errors.heardFrom}</div>}
           </div>
@@ -875,7 +909,8 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
             </label>
             <select name="educationLevel" value={form.educationLevel} onChange={handleChange} className="input-field" required aria-required="true">
               <option value="">Select education level</option>
-              {educationLevels.map((level) => (
+              {/* sort by name */}
+              {educationLevels.sort((a, b) => a.localeCompare(b)).map((level) => (
                 <option key={level} value={level}>{level}</option>
               ))}
             </select>
@@ -887,7 +922,8 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
             </label>
             <select name="employmentStatus" value={form.employmentStatus} onChange={handleChange} className="input-field" required aria-required="true">
               <option value="">Select employment status</option>
-              {employmentStatuses.map((status) => (
+              {/* sort by name */}
+              {employmentStatuses.sort((a, b) => a.localeCompare(b)).map((status) => (
                 <option key={status} value={status}>{status}</option>
               ))}
             </select>

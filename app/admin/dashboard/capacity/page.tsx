@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import CapacityTab from '@/components/admin/CapacityTab';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -64,7 +64,7 @@ export default function CapacityPage() {
       setCapacityModal={setCapacityModal} 
       editCapacities={editCapacities} 
       setEditCapacities={setEditCapacities} 
-      loadSlotCapacities={loadSlotCapacities} 
+      loadSlotCapacities={loadSlotCapacities}
     />
   );
 } 

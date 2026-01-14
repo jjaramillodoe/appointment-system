@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { FileText, Download, Calendar, Users, BarChart3, Filter, Clock, TrendingUp, CheckCircle, XCircle, RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
-import { useHubs } from '@/hooks/useHubs';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 
 interface ReportsTabProps {
   reports: any[];
@@ -19,12 +21,11 @@ interface ReportsTabProps {
 }
 
 export default function ReportsTab({ reports, filters, setFilters, onRefresh, stats }: ReportsTabProps) {
-  const { hubs, loading: hubsLoading } = useHubs();
+  const { selectedHub } = useHubFilter();
   const { toasts, showSuccess, showError, showInfo } = useToast();
   const [generatingReport, setGeneratingReport] = useState(false);
   const [selectedReportType, setSelectedReportType] = useState('');
   const [dateRange, setDateRange] = useState({ startDate: '', endDate: '' });
-  const [selectedHub, setSelectedHub] = useState('');
   const [isFiltered, setIsFiltered] = useState(false);
 
   const reportTypes = [
@@ -76,7 +77,7 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
       const parameters: any = {};
       if (dateRange.startDate) parameters.startDate = dateRange.startDate;
       if (dateRange.endDate) parameters.endDate = dateRange.endDate;
-      if (selectedHub) parameters.hubName = selectedHub;
+      if (selectedHub && selectedHub !== 'all') parameters.hubName = selectedHub;
 
       const response = await fetch('/api/admin/reports', {
         method: 'POST',
@@ -96,7 +97,6 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
         // Reset form
         setSelectedReportType('');
         setDateRange({ startDate: '', endDate: '' });
-        setSelectedHub('');
         // Refresh reports list after a short delay
         setTimeout(() => {
           if (onRefresh) {
@@ -146,6 +146,7 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
   };
 
   const handleFilterChange = (newFilters: any) => {
+    // Hub filter is managed centrally by HubFilterContext, so we don't need to check it here
     setFilters(newFilters);
     setIsFiltered(!!(newFilters.type || newFilters.dateRange || newFilters.hubName));
     if (onRefresh) {
@@ -329,17 +330,9 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Hub (Optional)</label>
-                <select
-                  value={selectedHub}
-                  onChange={(e) => setSelectedHub(e.target.value)}
-                  className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 bg-white"
-                  disabled={hubsLoading}
-                >
-                  <option value="">All Hubs</option>
-                  {hubs.map(hub => (
-                    <option key={hub} value={hub}>{hub}</option>
-                  ))}
-                </select>
+                <div className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+                  {selectedHub === 'all' || !selectedHub ? 'All Hubs (select from top filter)' : selectedHub}
+                </div>
               </div>
               <div className="flex items-end">
                 <Button
@@ -419,21 +412,9 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Hub</label>
-            <select
-              value={filters.hubName}
-              onChange={(e) => handleFilterChange({ ...filters, hubName: e.target.value })}
-              disabled={hubsLoading}
-              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-300 bg-white disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <option value="">All Hubs</option>
-              {hubsLoading ? (
-                <option>Loading hubs...</option>
-              ) : (
-                hubs.map(hub => (
-                  <option key={hub} value={hub}>{hub}</option>
-                ))
-              )}
-            </select>
+            <div className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg bg-gray-50 text-gray-700">
+              {selectedHub === 'all' || !selectedHub ? 'All Hubs (select from top filter)' : selectedHub}
+            </div>
           </div>
         </div>
       </div>

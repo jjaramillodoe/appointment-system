@@ -1,18 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { verifyAdminToken, isAdmin, isSuperAdmin, getHubFilter } from '@/lib/adminPermissions';
 import Notification from '@/models/Notification';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Helper function to verify JWT token
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
+import Hub from '@/models/Hub';
 
 // GET - Fetch notifications with pagination and filters
 export async function GET(request: NextRequest) {
@@ -28,8 +18,8 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -46,8 +36,21 @@ export async function GET(request: NextRequest) {
     // Build filter object
     const filter: any = {};
     if (type) filter.type = type;
-    if (hubName) filter.hubName = hubName;
     if (read !== '') filter.read = read === 'true';
+
+    // Apply hub filter for regular admins (super admins see all notifications)
+    if (!isSuperAdmin(adminUser) && adminUser && adminUser.assignedHub) {
+      const assignedHub = await Hub.findById(adminUser.assignedHub);
+      if (assignedHub) {
+        filter.hubName = assignedHub.name;
+      } else {
+        // Admin has invalid hub assignment - no access
+        return NextResponse.json({ error: 'Invalid hub assignment' }, { status: 403 });
+      }
+    } else if (hubName && isSuperAdmin(adminUser)) {
+      // Super admin can filter by hub name if provided
+      filter.hubName = hubName;
+    }
 
     // Calculate skip value for pagination
     const skip = (page - 1) * limit;
@@ -109,8 +112,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -180,8 +183,8 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const adminUser = verifyAdminToken(token);
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

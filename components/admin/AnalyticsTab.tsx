@@ -12,13 +12,23 @@ interface AnalyticsTabProps {
   loading: boolean;
   dateRange: { startDate: string; endDate: string };
   setDateRange: (range: { startDate: string; endDate: string }) => void;
-  selectedHub: string;
+  selectedHub: string | null;
   setSelectedHub: (hub: string) => void;
   onRefresh: () => void;
+  isSuperAdmin?: boolean;
+  assignedHubName?: string | null;
 }
 
-export default function AnalyticsTab({ data, loading, dateRange, setDateRange, selectedHub, setSelectedHub, onRefresh }: AnalyticsTabProps) {
+export default function AnalyticsTab({ data, loading, dateRange, setDateRange, selectedHub, setSelectedHub, onRefresh, isSuperAdmin = false, assignedHubName = null }: AnalyticsTabProps) {
   const { hubs, loading: hubsLoading } = useHubs();
+  
+  const handleHubChange = (value: string) => {
+    // Prevent hub admins from changing the hub filter
+    if (!isSuperAdmin && assignedHubName) {
+      return; // Don't allow hub admins to change their assigned hub
+    }
+    setSelectedHub(value);
+  };
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -72,24 +82,7 @@ export default function AnalyticsTab({ data, loading, dateRange, setDateRange, s
                 className="w-full px-3 py-2 border border-input rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Hub</label>
-              <Select
-                value={selectedHub}
-                onValueChange={setSelectedHub}
-                disabled={hubsLoading}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder={hubsLoading ? "Loading..." : "Select hub"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Hubs</SelectItem>
-                  {hubs.map(hub => (
-                    <SelectItem key={hub} value={hub}>{hub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Hub filter removed - now handled by HubFilterBar at top */}
             <div className="flex items-end">
               <Button
                 onClick={onRefresh}

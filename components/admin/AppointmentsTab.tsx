@@ -36,9 +36,8 @@ export default function AppointmentsTab({
   selectedAppointments, 
   setSelectedAppointments, 
   onRefresh, 
-  token 
+  token
 }: AppointmentsTabProps) {
-  const { hubs, loading: hubsLoading } = useHubs();
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAction, setBulkAction] = useState('');
   const [bulkNotes, setBulkNotes] = useState('');
@@ -50,6 +49,10 @@ export default function AppointmentsTab({
   };
 
   const handleFilterChange = (key: string, value: string) => {
+    // Hub filter is managed by HubFilterContext, so ignore hubName changes
+    if (key === 'hubName') {
+      return; // Hub filter is managed globally
+    }
     // Convert "all" to empty string for API compatibility
     const filterValue = value === 'all' ? '' : value;
     setFilters({ ...filters, [key]: filterValue, page: 1 });
@@ -232,24 +235,7 @@ export default function AppointmentsTab({
                 />
               </div>
             </div>
-            <div>
-              <Label htmlFor="hub">Hub</Label>
-              <Select
-                value={filters?.hubName || 'all'}
-                onValueChange={(value) => handleFilterChange('hubName', value)}
-                disabled={hubsLoading}
-              >
-                <SelectTrigger id="hub" className="mt-2">
-                  <SelectValue placeholder={hubsLoading ? "Loading..." : "All Hubs"} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Hubs</SelectItem>
-                  {hubs.map(hub => (
-                    <SelectItem key={hub} value={hub}>{hub}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Hub filter removed - now handled by HubFilterBar at top */}
             <div>
               <Label htmlFor="status">Status</Label>
               <Select

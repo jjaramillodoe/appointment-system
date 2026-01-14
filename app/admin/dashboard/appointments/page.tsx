@@ -3,15 +3,25 @@
 import { useState, useEffect } from 'react';
 import AppointmentsTab from '@/components/admin/AppointmentsTab';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 
 export default function AppointmentsPage() {
   const { token, isAdmin } = useAuth();
+  const { selectedHub } = useHubFilter();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [appointmentStats, setAppointmentStats] = useState<any>(null);
   const [appointmentPagination, setAppointmentPagination] = useState({ page: 1, total: 0, pages: 0 });
-  const [appointmentFilters, setAppointmentFilters] = useState({ search: '', hubName: '', status: '', startDate: '', endDate: '' });
+  const [appointmentFilters, setAppointmentFilters] = useState({ search: '', status: '', startDate: '', endDate: '' });
   const [selectedAppointments, setSelectedAppointments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Sync hub filter from context to local filters
+  useEffect(() => {
+    setAppointmentFilters(prev => ({
+      ...prev,
+      hubName: selectedHub === 'all' || !selectedHub ? '' : selectedHub
+    }));
+  }, [selectedHub]);
 
   useEffect(() => {
     if (token && isAdmin) {
@@ -85,7 +95,7 @@ export default function AppointmentsPage() {
       selectedAppointments={selectedAppointments} 
       setSelectedAppointments={setSelectedAppointments} 
       onRefresh={loadAppointments} 
-      token={token} 
+      token={token}
     />
   );
 } 

@@ -154,8 +154,30 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Get user demographics
+    // Build user filter based on hub selection
+    // Only filter users if a specific hub is selected (not "All Hubs")
+    let userFilter: any = {};
+    
+    // Check if we're filtering by a specific hub
+    const isFilteringBySpecificHub = hubName && hubName !== 'all' && appointmentHubFilter.hubId;
+    const isHubAdminViewingTheirHub = adminHubFilter && adminHubFilter.hubId && (!hubName || hubName === 'all');
+    
+    if (isFilteringBySpecificHub || isHubAdminViewingTheirHub) {
+      // Get user IDs from appointments in the filtered hub(s)
+      // This ensures we only show demographics for users who have appointments in that hub
+      const appointmentUserIds = await AppointmentOptimized.distinct('userId', { ...dateFilter, ...appointmentHubFilter });
+      if (appointmentUserIds.length > 0) {
+        userFilter._id = { $in: appointmentUserIds };
+      } else {
+        // No appointments found, so no users to show
+        userFilter._id = { $in: [] }; // Empty array means no matches
+      }
+    }
+    // If no hub filter (super admin viewing "All Hubs"), userFilter remains empty {} to show all users
+
+    // Get user demographics - filtered by users with appointments in selected hub
     const userDemographics = await User.aggregate([
+      { $match: userFilter },
       {
         $group: {
           _id: '$educationLevel',
@@ -165,6 +187,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const programInterests = await User.aggregate([
+      { $match: userFilter },
       { $unwind: '$programInterests' },
       {
         $group: {
@@ -175,6 +198,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     const barriersToLearning = await User.aggregate([
+      { $match: userFilter },
       { $unwind: '$barriersToLearning' },
       {
         $group: {

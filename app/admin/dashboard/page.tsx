@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHubFilter } from '@/contexts/HubFilterContext';
 import AnalyticsTab from '@/components/admin/AnalyticsTab';
 import ChartsTab from '@/components/admin/ChartsTab';
 import TrendsTab from '@/components/admin/TrendsTab';
@@ -12,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function AdminDashboard() {
-  const { token, isAdmin } = useAuth();
+  const { token, isAdmin, isSuperAdmin } = useAuth();
+  const { selectedHub } = useHubFilter();
   const [activeTab, setActiveTab] = useState('overview');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,7 +22,6 @@ export default function AdminDashboard() {
     startDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
     endDate: new Date().toISOString().split('T')[0]
   });
-  const [selectedHub, setSelectedHub] = useState('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function AdminDashboard() {
       const params = new URLSearchParams({
         startDate: dateRange.startDate,
         endDate: dateRange.endDate,
-        hubId: selectedHub === 'all' ? '' : selectedHub
+        hubName: selectedHub === 'all' || !selectedHub ? '' : selectedHub
       });
 
       const response = await fetch(`/api/admin/analytics?${params}`, {
@@ -133,8 +134,10 @@ export default function AdminDashboard() {
                   loading={loading} 
                   dateRange={dateRange} 
                   setDateRange={setDateRange}
-                  selectedHub={selectedHub} 
-                  setSelectedHub={setSelectedHub}
+                  selectedHub={selectedHub || 'all'} 
+                  setSelectedHub={() => {}} // Filter is managed by HubFilterContext
+                  isSuperAdmin={isSuperAdmin}
+                  assignedHubName={null} // Not needed, handled by context
                   onRefresh={handleRefresh}
                 />
               </TabsContent>
@@ -143,7 +146,7 @@ export default function AdminDashboard() {
                 <ChartsTab 
                   data={data} 
                   loading={loading}
-                  selectedHub={selectedHub}
+                  selectedHub={selectedHub || 'all'}
                 />
               </TabsContent>
               
@@ -152,7 +155,7 @@ export default function AdminDashboard() {
                   data={data} 
                   loading={loading}
                   dateRange={dateRange}
-                  selectedHub={selectedHub}
+                  selectedHub={selectedHub || 'all'}
                 />
               </TabsContent>
               
@@ -160,7 +163,7 @@ export default function AdminDashboard() {
                 <InsightsTab 
                   data={data} 
                   loading={loading}
-                  selectedHub={selectedHub}
+                  selectedHub={selectedHub || 'all'}
                 />
               </TabsContent>
             </div>

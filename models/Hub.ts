@@ -43,7 +43,8 @@ const hubSchema = new mongoose.Schema<IHub>({
 });
 
 // Indexes
-hubSchema.index({ name: 1 });
+// Note: name field already has unique: true which creates an index automatically
+// Only add index for isActive
 hubSchema.index({ isActive: 1 });
 
 if (mongoose.models.Hub) {
