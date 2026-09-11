@@ -5,34 +5,34 @@ export interface IUser extends mongoose.Document {
   email: string;
   password: string;
   firstName: string;
-  middleName: string;
+  middleName?: string;
   lastName: string;
   phone: string;
-  dateOfBirth: Date;
-  sex: string;
+  dateOfBirth?: Date;
+  sex?: string;
   preferredLanguage: string;
-  additionalLanguages: string[];
-  heardFrom: string;
-  barriersToLearning: string[];
-  homeAddress: {
+  additionalLanguages?: string[];
+  heardFrom?: string;
+  barriersToLearning?: string[];
+  homeAddress?: {
     street: string;
     city: string;
     state: string;
     zipCode: string;
   };
-  address: {
+  address?: {
     street: string;
     city: string;
     state: string;
     zipCode: string;
   };
-  educationLevel: string;
-  employmentStatus: string;
-  employerName: string;
-  jobTitle: string;
-  schoolInterest: string;
-  programInterests: string[];
-  emergencyContact: {
+  educationLevel?: string;
+  employmentStatus?: string;
+  employerName?: string;
+  jobTitle?: string;
+  schoolInterest?: string;
+  programInterests?: string[];
+  emergencyContact?: {
     name: string;
     relationship: string;
     phone: string;
@@ -47,7 +47,9 @@ export interface IUser extends mongoose.Document {
   };
   isAdmin?: boolean;
   isSuperAdmin?: boolean;
-  assignedHub?: mongoose.Types.ObjectId; // Hub ID for hub-based admins
+  assignedHub?: mongoose.Types.ObjectId;
+  profileCompleted: boolean;
+  registrationSource: 'quick' | 'full';
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -88,11 +90,11 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   dateOfBirth: {
     type: Date,
-    required: [true, 'Date of birth is required'],
+    required: false,
   },
   sex: {
     type: String,
-    required: [true, 'Sex is required'],
+    required: false,
     enum: ['Male', 'Female', 'Other'],
   },
   preferredLanguage: {
@@ -108,66 +110,60 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   heardFrom: {
     type: String,
-    required: [true, 'Heard from is required'],
-    enum: ['Google', 'Facebook', 'Friend', 'Other'],
+    required: false,
+    enum: ['Google', 'Facebook', 'Friend', 'Community Center', 'School', 'Advertisement', 'Magazine', 'Newspaper', 'Radio', 'TV', 'Other'],
   },
   barriersToLearning: {
     type: [String],
-    required: [true, 'Barriers to learning are required'],
+    required: false,
     enum: ['Language', 'Literacy', 'Technology', 'Transportation', 'Other'],
-    validate: {
-      validator: function(v: string[]) {
-        return v.length > 0;
-      },
-      message: 'At least one barrier to learning is required'
-    },
     default: [],
   },
   homeAddress: {
     street: {
       type: String,
-      required: [true, 'Home street address is required'],
+      required: false,
     },
     city: {
       type: String,
-      required: [true, 'Home city is required'],
+      required: false,
     },
     state: {
       type: String,
-      required: [true, 'Home state is required'],
+      required: false,
     },
     zipCode: {
       type: String,
-      required: [true, 'Home ZIP code is required'],
+      required: false,
     },
   },
   address: {
     street: {
       type: String,
-      required: [true, 'Street address is required'],
+      required: false,
     },
     city: {
       type: String,
-      required: [true, 'City is required'],
+      required: false,
     },
     state: {
       type: String,
-      required: [true, 'State is required'],
+      required: false,
     },
     zipCode: {
       type: String,
-      required: [true, 'ZIP code is required'],
+      required: false,
     },
   },
   educationLevel: {
     type: String,
-    required: [true, 'Education level is required'],
-    enum: ['High School', 'Some College', 'Associate Degree', 'Bachelor Degree', 'Graduate Degree', 'Other'],
+    required: false,
+    enum: ['No formal schooling', 'Some middle school or junior high', 'Some high school, no diploma', 'Previously enrolled in GED or adult education program', 'Completed GED', 'Completed high school diploma (traditional)', 'Vocational/technical certificate', 'Other / Prefer not to say'],
   },
   employmentStatus: {
     type: String,
-    required: [true, 'Employment status is required'],
-    enum: ['Employed', 'Unemployed', 'Student', 'Retired', 'Other'],
+    required: false,
+    enum: ['Employed', 'Self-employed', 'Unemployed', 'Unemployed and looking for work', 'Unemployed and not looking for work', 'Student (full-time)', 'Student (part-time)', 'Student (not applicable)', 'Retired', 'Disabled', 'Homemaker', 'In the military', 'In prison', 'In a correctional facility', 'Other / Prefer not to say'],
   },
   employerName: {
     type: String,
@@ -181,39 +177,32 @@ const userSchema = new mongoose.Schema<IUser>({
   },
   schoolInterest: {
     type: String,
-    required: [true, 'School interest is required'],
+    required: false,
     enum: ['School 1', 'School 2', 'School 3', 'School 4', 'School 5', 'School 6', 'School 7', 'School 8'],
-    default: '',
   },
   programInterests: {
     type: [String],
-    required: [true, 'Program interests are required'],
+    required: false,
     enum: {
       values: ['Adult Basic Education', 'ESL', 'CTE'],
       message: 'Program interests must be Adult Basic Education, ESL, or CTE'
-    },
-    validate: {
-      validator: function(v: string[]) {
-        return v.length > 0;
-      },
-      message: 'At least one program interest is required'
     },
     default: [],
   },
   emergencyContact: {
     name: {
       type: String,
-      required: [true, 'Emergency contact name is required'],
+      required: false,
       trim: true,
     },
     relationship: {
       type: String,
-      required: [true, 'Emergency contact relationship is required'],
+      required: false,
       trim: true,
     },
     phone: {
       type: String,
-      required: [true, 'Emergency contact phone is required'],
+      required: false,
       trim: true,
     },
   },
@@ -255,6 +244,15 @@ const userSchema = new mongoose.Schema<IUser>({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Hub',
     required: false,
+  },
+  profileCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  registrationSource: {
+    type: String,
+    enum: ['quick', 'full'],
+    default: 'quick',
   },
 }, {
   timestamps: true,

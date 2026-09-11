@@ -1,49 +1,39 @@
 'use client';
 
-import RegistrationStepper from '@/components/RegistrationStepper';
+import { useState } from 'react';
+import QuickRegistrationForm from '@/components/QuickRegistrationForm';
+import AppointmentSelectionForm from '@/components/AppointmentSelectionForm';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GraduationCap, ArrowLeft } from 'lucide-react';
+import { GraduationCap, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [step, setStep] = useState<'quick-form' | 'appointments' | 'success'>('quick-form');
+  const [userId, setUserId] = useState<string>('');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
-  const handleRegistration = async (formData: any) => {
-    // Flatten closestHub if present
-    let flatHub = formData.closestHub;
-    if (flatHub && flatHub.hub) {
-      flatHub = {
-        name: flatHub.hub.name,
-        address: flatHub.hub.address,
-        latitude: flatHub.hub.latitude,
-        longitude: flatHub.hub.longitude,
-        distance: flatHub.distance,
-        distanceText: flatHub.distanceText,
-      };
-    }
-    // Prepare the payload for the API
-    const response = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        ...formData,
-        dateOfBirth: new Date(formData.dateOfBirth),
-        closestHub: flatHub,
-      }),
-    });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || 'Registration failed');
-    }
-    // Store token in localStorage
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data.user));
-    // Redirect to dashboard
-    router.push('/dashboard');
+  const handleQuickRegistrationSuccess = (userData: any) => {
+    setUserId(userData._id);
+    setErrorMessage('');
+    setStep('appointments');
+  };
+
+  const handleQuickRegistrationError = (error: string) => {
+    setErrorMessage(error);
+  };
+
+  const handleAppointmentSuccess = (appointment: any) => {
+    setStep('success');
+    setTimeout(() => {
+      router.push('/dashboard');
+    }, 2500);
+  };
+
+  const handleAppointmentError = (error: string) => {
+    setErrorMessage(error);
   };
 
   return (
@@ -54,7 +44,7 @@ export default function RegisterPage() {
       />
       <Header />
       <main className="flex-1 py-10 sm:py-12">
-        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
             <Link
               href="/"
@@ -64,7 +54,7 @@ export default function RegisterPage() {
               Back to Home
             </Link>
 
-            <div className="mx-auto max-w-2xl rounded-3xl border border-primary-200/70 bg-white/80 px-6 py-8 shadow-d79-hero backdrop-blur-md sm:px-10">
+            <div className="rounded-3xl border border-primary-200/70 bg-white/80 px-6 py-8 shadow-d79-hero backdrop-blur-md sm:px-10">
               <p className="mb-4 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-primary-200/80 bg-primary-50/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-800">
                 <span className="text-yellow-700">District 79</span>
                 <span className="text-primary-400" aria-hidden>
@@ -72,43 +62,96 @@ export default function RegisterPage() {
                 </span>
                 <span>Adult Education</span>
               </p>
-              <div className="mb-4 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+              <div className="mb-6 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <div className="relative">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary-400/25 to-yellow-400/30 blur-xl" />
                   <GraduationCap className="relative h-12 w-12 text-primary-700 transition-transform hover:scale-105" />
                 </div>
                 <h1 className="text-3xl font-bold text-primary-900 sm:text-4xl">
                   <span className="bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
-                    Student Registration
+                    {step === 'success' ? 'All Set!' : 'Quick Registration'}
                   </span>
                 </h1>
               </div>
               <p className="text-lg text-primary-900/80">
-                Create your account to schedule your adult education intake appointment.
+                {step === 'quick-form' && 'Create your account in just 2 minutes'}
+                {step === 'appointments' && 'Select your appointment time'}
+                {step === 'success' && 'Your appointment is confirmed!'}
               </p>
-              <div className="mt-6 rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50/90 to-yellow-50/70 p-4 text-left shadow-d79-card border-l-4 border-l-yellow-500">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 font-bold text-primary-700">
-                    !
+
+              {/* Age Requirement Alert */}
+              {step !== 'success' && (
+                <div className="mt-6 rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50/90 to-yellow-50/70 p-4 text-left shadow-d79-card border-l-4 border-l-yellow-500">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 font-bold text-primary-700">
+                      !
+                    </div>
+                    <p className="text-sm font-medium text-primary-900">
+                      <strong className="text-primary-900">Age requirement:</strong> You must be at least 21 years old to register.
+                    </p>
                   </div>
-                  <p className="text-sm font-medium text-primary-900">
-                    <strong className="text-primary-900">Age requirement:</strong> You must be at least 21 years old to
-                    register for adult education services.
-                  </p>
                 </div>
+              )}
+
+              {/* Form Content */}
+              <div className="mt-8">
+                {step === 'quick-form' && (
+                  <>
+                    <QuickRegistrationForm
+                      onSuccess={handleQuickRegistrationSuccess}
+                      onError={handleQuickRegistrationError}
+                    />
+                    <p className="mt-6 text-center text-sm text-primary-900/75">
+                      Already have an account?{' '}
+                      <Link
+                        href="/login"
+                        className="font-semibold text-primary-700 underline decoration-yellow-500/80 underline-offset-2 transition hover:text-primary-600 hover:decoration-yellow-500"
+                      >
+                        Sign in here
+                      </Link>
+                    </p>
+                  </>
+                )}
+
+                {step === 'appointments' && userId && (
+                  <AppointmentSelectionForm
+                    userId={userId}
+                    onSuccess={handleAppointmentSuccess}
+                    onError={handleAppointmentError}
+                  />
+                )}
+
+                {step === 'success' && (
+                  <div className="space-y-6 py-12">
+                    <div className="flex justify-center">
+                      <div className="rounded-full bg-green-100 p-6">
+                        <CheckCircle2 className="h-16 w-16 text-green-600" />
+                      </div>
+                    </div>
+                    <div className="text-center space-y-3">
+                      <h2 className="text-2xl font-bold text-green-700">Appointment Confirmed!</h2>
+                      <p className="text-primary-600">
+                        Check your email for confirmation details and next steps.
+                      </p>
+                      <p className="text-sm text-primary-500">
+                        Redirecting to your dashboard...
+                      </p>
+                    </div>
+                    <div className="flex justify-center">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
+                    </div>
+                  </div>
+                )}
               </div>
-              <p className="mt-6 text-sm text-primary-900/75">
-                Already have an account?{' '}
-                <Link
-                  href="/login"
-                  className="font-semibold text-primary-700 underline decoration-yellow-500/80 underline-offset-2 transition hover:text-primary-600 hover:decoration-yellow-500"
-                >
-                  Sign in here
-                </Link>
-              </p>
+
+              {/* Error Message */}
+              {errorMessage && (
+                <div className="mt-6 rounded-lg border border-red-300 bg-red-50 p-4">
+                  <p className="text-sm text-red-700">{errorMessage}</p>
+                </div>
+              )}
             </div>
           </div>
-          <RegistrationStepper onSubmit={handleRegistration} />
         </div>
       </main>
       <Footer />
