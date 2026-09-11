@@ -105,7 +105,7 @@ const userSchema = new mongoose.Schema<IUser>({
   additionalLanguages: {
     type: [String],
     required: false,
-    enum: ['English', 'Spanish', 'French', 'Other'],
+    enum: ['English', 'Spanish', 'French', 'Arabic', 'Chinese', 'Other'],
     default: [],
   },
   heardFrom: {
@@ -116,7 +116,6 @@ const userSchema = new mongoose.Schema<IUser>({
   barriersToLearning: {
     type: [String],
     required: false,
-    enum: ['Language', 'Literacy', 'Technology', 'Transportation', 'Other'],
     default: [],
   },
   homeAddress: {
@@ -178,15 +177,10 @@ const userSchema = new mongoose.Schema<IUser>({
   schoolInterest: {
     type: String,
     required: false,
-    enum: ['School 1', 'School 2', 'School 3', 'School 4', 'School 5', 'School 6', 'School 7', 'School 8'],
   },
   programInterests: {
     type: [String],
     required: false,
-    enum: {
-      values: ['Adult Basic Education', 'ESL', 'CTE'],
-      message: 'Program interests must be Adult Basic Education, ESL, or CTE'
-    },
     default: [],
   },
   emergencyContact: {
