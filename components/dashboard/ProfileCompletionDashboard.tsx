@@ -45,15 +45,22 @@ export default function ProfileCompletionDashboard({ user, onEditSection }: Prof
     'Personal Details': [
       { key: 'dateOfBirth', label: 'Date of Birth', value: user.dateOfBirth },
       { key: 'sex', label: 'Gender', value: user.sex },
+      { key: 'heardFrom', label: 'How did you hear about us?', value: user.heardFrom },
+      { key: 'additionalLanguages', label: 'Additional Languages', value: user.additionalLanguages?.length ? user.additionalLanguages : null },
     ],
     'Education & Employment': [
       { key: 'educationLevel', label: 'Education Level', value: user.educationLevel },
       { key: 'employmentStatus', label: 'Employment Status', value: user.employmentStatus },
+      { key: 'employerName', label: 'Employer Name', value: user.employerName },
+      { key: 'jobTitle', label: 'Job Title', value: user.jobTitle },
       { key: 'schoolInterest', label: 'School Interest', value: user.schoolInterest },
       { key: 'programInterests', label: 'Program Interests', value: user.programInterests?.length ? user.programInterests : null },
+      { key: 'barriersToLearning', label: 'Barriers to Learning', value: user.barriersToLearning?.length ? user.barriersToLearning : null },
     ],
     'Emergency Contact': [
-      { key: 'emergencyContact', label: 'Emergency Contact', value: user.emergencyContact?.name },
+      { key: 'emergencyContactName', label: 'Emergency Contact Name', value: user.emergencyContact?.name },
+      { key: 'emergencyContactRelationship', label: 'Relationship', value: user.emergencyContact?.relationship },
+      { key: 'emergencyContactPhone', label: 'Contact Phone', value: user.emergencyContact?.phone },
     ],
     'Address Information': [
       { key: 'address', label: 'Current Address', value: user.address?.street },

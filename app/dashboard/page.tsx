@@ -795,17 +795,28 @@ export default function DashboardPage() {
                 user.preferredLanguage,
               ];
               const optionalFields = [
+                // Personal Details
                 user.dateOfBirth,
                 user.sex,
+                user.heardFrom,
+                user.additionalLanguages?.length ? user.additionalLanguages : null,
+                // Education & Employment
                 user.educationLevel,
                 user.employmentStatus,
+                user.employerName,
+                user.jobTitle,
                 user.schoolInterest,
                 user.programInterests?.length ? user.programInterests : null,
+                user.barriersToLearning?.length ? user.barriersToLearning : null,
+                // Emergency Contact
                 user.emergencyContact?.name,
+                user.emergencyContact?.relationship,
+                user.emergencyContact?.phone,
+                // Address Information
                 user.address?.street,
                 user.homeAddress?.street,
               ];
-              const totalFields = 5 + 9; // 5 required + 9 optional
+              const totalFields = 5 + 16; // 5 required + 16 optional
               const completedFields = requiredFields.filter(f => f).length + optionalFields.filter(f => f).length;
               const completionPercentage = Math.round((completedFields / totalFields) * 100);
 
