@@ -92,23 +92,32 @@ export async function GET(request: NextRequest) {
       .lean();
 
     // Format appointments to match component expectations
-    const formattedAppointments = appointments.map((apt: any) => ({
-      _id: apt._id,
-      userId: {
-        _id: apt.userId?._id,
-        firstName: apt.userId?.firstName || '',
-        lastName: apt.userId?.lastName || '',
-        email: apt.userId?.email || 'unknown@example.com',
-      },
-      date: apt.appointmentDate, // Component expects 'date' not 'appointmentDate'
-      time: apt.appointmentTime, // Component expects 'time' not 'appointmentTime'
-      hubId: {
-        name: apt.hubName || 'Unknown Hub',
-      },
-      status: apt.status,
-      notes: apt.notes || '',
-      createdAt: apt.createdAt,
-    }));
+    const formattedAppointments = appointments.map((apt: any) => {
+      // Format date as YYYY-MM-DD string for the component
+      let dateStr = '';
+      if (apt.appointmentDate) {
+        const d = new Date(apt.appointmentDate);
+        dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD format
+      }
+
+      return {
+        _id: apt._id,
+        userId: {
+          _id: apt.userId?._id,
+          firstName: apt.userId?.firstName || '',
+          lastName: apt.userId?.lastName || '',
+          email: apt.userId?.email || 'unknown@example.com',
+        },
+        date: dateStr, // Component expects 'date' as YYYY-MM-DD string
+        time: apt.appointmentTime, // Component expects 'time' not 'appointmentTime'
+        hubId: {
+          name: apt.hubName || 'Unknown Hub',
+        },
+        status: apt.status,
+        notes: apt.notes || '',
+        createdAt: apt.createdAt,
+      };
+    });
 
     // Get total count for pagination
     const totalAppointments = await Appointment.countDocuments(searchFilter);
