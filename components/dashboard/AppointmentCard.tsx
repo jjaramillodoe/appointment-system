@@ -82,6 +82,7 @@ export default function AppointmentCard({
 }: AppointmentCardProps) {
   const [hubName, setHubName] = useState<string>('');
   const [hubLocation, setHubLocation] = useState<any>(null);
+  const [publicTransitDirections, setPublicTransitDirections] = useState<string>('');
   const [mapInitialized, setMapInitialized] = useState(false);
 
   // Initialize map when appointment changes
@@ -94,6 +95,7 @@ export default function AppointmentCard({
     if (hub) {
       setHubName(hub.name);
       setHubLocation(hub);
+      setPublicTransitDirections(hub.publicTransitDirections || '');
 
       // Initialize Mapbox map
       const mapContainer = document.getElementById('appointment-map');
@@ -314,6 +316,19 @@ export default function AppointmentCard({
                       <span className="text-xs text-gray-500 mt-1">Scan this QR code for your appointment details.</span>
                     </div>
                   )}
+                </div>
+              )}
+
+              {/* Public Transit Directions */}
+              {appointment && publicTransitDirections && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center mb-3">
+                    <MapPin className="h-5 w-5 text-green-600 mr-2" />
+                    <h4 className="text-lg font-medium text-gray-900">Public Transit Directions</h4>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <p className="text-gray-800 whitespace-pre-wrap">{publicTransitDirections}</p>
+                  </div>
                 </div>
               )}
 

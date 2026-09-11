@@ -3,6 +3,7 @@ export interface Hub {
   address: string;
   latitude: number;
   longitude: number;
+  publicTransitDirections?: string;
 }
 
 export interface HubMatch {

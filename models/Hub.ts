@@ -6,6 +6,7 @@ export interface IHub extends mongoose.Document {
   defaultSlots: string[];
   timezone: string;
   location: string;
+  publicTransitDirections?: string;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -32,6 +33,12 @@ const hubSchema = new mongoose.Schema<IHub>({
     type: String,
     required: [true, 'Location is required'],
     trim: true,
+  },
+  publicTransitDirections: {
+    type: String,
+    required: false,
+    trim: true,
+    default: '',
   },
   isActive: {
     type: Boolean,
