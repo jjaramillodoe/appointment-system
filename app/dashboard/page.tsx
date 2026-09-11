@@ -660,36 +660,9 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveProfile = async () => {
-    setIsUpdatingProfile(true);
-    const token = localStorage.getItem('token');
-
-    try {
-      const response = await fetch('/api/auth/update-profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(profileForm),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setIsEditingProfile(false);
-        showSuccess('Profile updated successfully!');
-      } else {
-        const errorData = await response.json();
-        showError(errorData.error || 'Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Profile update error:', error);
-      showError('Failed to update profile');
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+  const handleSaveProfile = (updatedUser: any) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const handleCancelProfileEdit = () => {
