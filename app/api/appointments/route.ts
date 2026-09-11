@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import dbConnect from '../../../lib/mongodb';
-import AppointmentOptimized from '../../../models/AppointmentOptimized';
+import Appointment from '../../../models/Appointment';
 import Hub from '../../../models/Hub';
 import { AvailabilityService } from '../../../lib/availabilityService';
 
@@ -30,9 +30,9 @@ export async function GET(request: NextRequest) {
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
     // Find user's most recent appointment
-    const appointment = await AppointmentOptimized.findOne({ 
-      userId: decoded.userId 
-    }).sort({ date: -1, time: -1 });
+    const appointment = await Appointment.findOne({
+      userId: decoded.userId
+    }).sort({ appointmentDate: -1, createdAt: -1 });
 
     if (!appointment) {
       return NextResponse.json({
@@ -86,7 +86,7 @@ export async function DELETE(request: NextRequest) {
     console.log('🗑️ Student cancellation request for user:', decoded.userId);
 
     // Find user's active appointment
-    const appointment = await AppointmentOptimized.findOne(
+    const appointment = await Appointment.findOne(
       { 
         userId: decoded.userId,
         status: { $ne: 'cancelled' }
@@ -125,7 +125,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Now completely delete the appointment from the database
-    await AppointmentOptimized.findByIdAndDelete(appointment._id);
+    await Appointment.findByIdAndDelete(appointment._id);
 
     console.log('✅ Appointment successfully cancelled and deleted');
 
