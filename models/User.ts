@@ -95,7 +95,7 @@ const userSchema = new mongoose.Schema<IUser>({
   sex: {
     type: String,
     required: false,
-    enum: ['Male', 'Female', 'Other'],
+    enum: ['Male', 'Female', 'Non-binary', 'Prefer not to say'],
   },
   preferredLanguage: {
     type: String,
@@ -111,7 +111,7 @@ const userSchema = new mongoose.Schema<IUser>({
   heardFrom: {
     type: String,
     required: false,
-    enum: ['Google', 'Facebook', 'Friend', 'Community Center', 'School', 'Advertisement', 'Magazine', 'Newspaper', 'Radio', 'TV', 'Other'],
+    enum: ['Google', 'Facebook', 'Friend/Family', 'Community Center', 'School', 'Advertisement', 'Other'],
   },
   barriersToLearning: {
     type: [String],
@@ -158,12 +158,12 @@ const userSchema = new mongoose.Schema<IUser>({
   educationLevel: {
     type: String,
     required: false,
-    enum: ['No formal schooling', 'Some middle school or junior high', 'Some high school, no diploma', 'Previously enrolled in GED or adult education program', 'Completed GED', 'Completed high school diploma (traditional)', 'Vocational/technical certificate', 'Other / Prefer not to say'],
+    enum: ['no-hs', 'some-hs', 'ged', 'hs-diploma', 'some-college', 'college-degree'],
   },
   employmentStatus: {
     type: String,
     required: false,
-    enum: ['Employed', 'Self-employed', 'Unemployed', 'Unemployed and looking for work', 'Unemployed and not looking for work', 'Student (full-time)', 'Student (part-time)', 'Student (not applicable)', 'Retired', 'Disabled', 'Homemaker', 'In the military', 'In prison', 'In a correctional facility', 'Other / Prefer not to say'],
+    enum: ['employed', 'unemployed', 'self-employed', 'retired', 'student'],
   },
   employerName: {
     type: String,
