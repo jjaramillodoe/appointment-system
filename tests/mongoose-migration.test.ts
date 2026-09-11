@@ -10,10 +10,18 @@
  * - Timestamps, population, lean queries
  */
 
-import mongoose, { Document, Model } from 'mongoose';
+import mongoose, { Model } from 'mongoose';
 import * as dotenv from 'dotenv';
 
 dotenv.config({ path: '.env.local' });
+
+// Load models dynamically after connection
+async function loadModels() {
+  await import('../models/User').catch(() => {});
+  await import('../models/Appointment').catch(() => {});
+  await import('../models/Hub').catch(() => {});
+  await import('../models/HubSchedule').catch(() => {});
+}
 
 // ============================================================================
 // TEST CONFIGURATION
@@ -103,7 +111,12 @@ async function runTests() {
     console.log('🔗 Connecting to MongoDB...');
     await mongoose.connect(MONGODB_URI);
     connection = mongoose.connection;
-    console.log('✅ Connected to MongoDB\n');
+    console.log('✅ Connected to MongoDB');
+
+    // Load models
+    console.log('📦 Loading models...');
+    await loadModels();
+    console.log('✅ Models loaded\n');
 
     // ========================================================================
     // TEST 1: User Model - Create with Subdocuments
