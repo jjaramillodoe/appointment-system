@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { UserCircle, Edit, XCircle, Save } from 'lucide-react';
 import { format } from 'date-fns';
+import ProfileCompletionDashboard from './ProfileCompletionDashboard';
 
 interface User {
   firstName: string;
@@ -204,18 +205,30 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
     }
   };
 
+  const handleEditSection = (section: string) => {
+    setIsEditingProfile(true);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-              <UserCircle className="h-6 w-6 text-white" />
+    <div className="space-y-6">
+      {/* Profile Completion Dashboard */}
+      <ProfileCompletionDashboard
+        user={user}
+        onEditSection={handleEditSection}
+      />
+
+      {/* Profile Form Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
+                <UserCircle className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-xl font-semibold text-white">
+                Profile Information
+              </h2>
             </div>
-            <h2 className="text-xl font-semibold text-white">
-              Profile Information
-            </h2>
-          </div>
           <button
             onClick={() => isEditingProfile ? handleCancelProfileEdit() : setIsEditingProfile(true)}
             className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
@@ -724,6 +737,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 } 
