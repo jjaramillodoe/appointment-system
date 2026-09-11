@@ -27,12 +27,20 @@ export async function POST(request: NextRequest) {
 
     // Create appointment
     const confirmationToken = crypto.randomBytes(32).toString('hex');
+    const appointmentDateTime = new Date(preferredSlot);
+
+    // Extract time in HH:MM format
+    const hours = String(appointmentDateTime.getHours()).padStart(2, '0');
+    const minutes = String(appointmentDateTime.getMinutes()).padStart(2, '0');
+    const appointmentTime = `${hours}:${minutes}`;
+
     const appointment = new Appointment({
       userId,
       hubId,
       slotId,
-      appointmentDate: new Date(preferredSlot),
-      status: 'pending',
+      appointmentDate: appointmentDateTime,
+      appointmentTime,
+      status: 'confirmed',
       preferredLanguage: '', // Will be filled from user profile
       notes: `${classInterest} - ${timePreference}`,
       confirmationToken,
