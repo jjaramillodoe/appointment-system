@@ -20,16 +20,25 @@ export async function GET(request: NextRequest) {
     const hubConfig = await HubConfig.findOne({ hubName });
     
     // Get appointments for the specified hub and date to calculate booked counts
+    const startDate = new Date(date);
+    const endDate = new Date(date);
+    endDate.setDate(endDate.getDate() + 1);
+
     const appointments = await Appointment.find({
       hubName,
-      date: new Date(date)
+      appointmentDate: {
+        $gte: startDate,
+        $lt: endDate
+      }
     });
 
     // Calculate booked counts for each time slot
     const bookedCounts: { [time: string]: number } = {};
-    appointments.forEach(appointment => {
-      const time = appointment.time;
-      bookedCounts[time] = (bookedCounts[time] || 0) + 1;
+    appointments.forEach((appointment: any) => {
+      const time = appointment.appointmentTime;
+      if (time) {
+        bookedCounts[time] = (bookedCounts[time] || 0) + 1;
+      }
     });
 
     // Get slot capacities from hub config
