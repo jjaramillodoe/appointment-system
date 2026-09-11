@@ -1,4 +1,4 @@
-import emailValidator from 'email-validator';
+import { z } from 'zod';
 
 export interface EmailValidationResult {
   isValid: boolean;
@@ -17,9 +17,12 @@ export function validateEmail(email: string): EmailValidationResult {
 
   // Trim whitespace
   const trimmedEmail = email.trim();
-  
-  // Check if email is valid using email-validator
-  if (!emailValidator.validate(trimmedEmail)) {
+
+  // Check if email is valid using Zod
+  const emailSchema = z.string().email();
+  const validationResult = emailSchema.safeParse(trimmedEmail);
+
+  if (!validationResult.success) {
     // Provide helpful suggestions
     const suggestions: string[] = [];
     
