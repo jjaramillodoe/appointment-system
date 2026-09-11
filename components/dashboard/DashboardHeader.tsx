@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { GraduationCap, Bell, LogOut } from 'lucide-react';
+import LanguageSelector from '../LanguageSelector';
 
 interface User {
   firstName: string;
@@ -46,6 +47,8 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
               <Bell className="h-5 w-5" />
               <span className="text-sm font-medium">Notifications</span>
             </button>
+
+            <LanguageSelector />
 
             {user?.isAdmin && (
               <button

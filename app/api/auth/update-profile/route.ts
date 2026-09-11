@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import dbConnect from '../../../../lib/mongodb';
 import User from '../../../../models/User';
+import { normalizeProfileFields } from '../../../../lib/textNormalization';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 
@@ -26,7 +27,7 @@ export async function PUT(request: NextRequest) {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
 
-    const profileData = await request.json();
+    let profileData = await request.json();
 
     // Validate required fields
     if (!profileData.firstName || !profileData.lastName || !profileData.email) {
@@ -35,6 +36,9 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // Normalize text fields to remove special characters and accents
+    profileData = normalizeProfileFields(profileData);
 
     // Update user profile
     const updatedUser = await User.findByIdAndUpdate(

@@ -21,6 +21,7 @@ import {
   AppointmentCard,
   ScheduleAppointmentModal,
   AddressEditModal,
+  ProfileCompletionBanner,
   type TabType,
   type User,
   type Appointment,
@@ -783,11 +784,34 @@ export default function DashboardPage() {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
+            {/* Profile Completion Banner */}
+            {user && (() => {
+              const requiredFields = [user.firstName, user.lastName, user.email, user.phone, user.preferredLanguage];
+              const optionalFields = [
+                user.dateOfBirth,
+                user.sex,
+                user.educationLevel,
+                user.employmentStatus,
+                user.address?.street,
+                user.emergencyContact?.name,
+              ];
+              const totalFields = 5 + 6; // 5 required + 6 optional
+              const completedFields = requiredFields.filter(f => f).length + optionalFields.filter(f => f).length;
+              const completionPercentage = Math.round((completedFields / totalFields) * 100);
+
+              return (
+                <ProfileCompletionBanner
+                  completionPercentage={completionPercentage}
+                  onNavigateToProfile={() => setActiveTab('profile')}
+                />
+              );
+            })()}
+
             {/* Stats Cards */}
-            <StatsCards 
-              user={user} 
-              appointment={appointment} 
-              parseToLocalDate={parseToLocalDate} 
+            <StatsCards
+              user={user}
+              appointment={appointment}
+              parseToLocalDate={parseToLocalDate}
             />
 
             {/* Main Dashboard Content */}
