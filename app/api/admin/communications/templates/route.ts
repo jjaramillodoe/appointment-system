@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
 import CommunicationTemplate from '@/models/CommunicationTemplate';
+import User from '@/models/User';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
 import { AdminUser } from '@/lib/adminPermissions';
 
 export async function GET(request: NextRequest) {
@@ -79,6 +81,21 @@ export async function POST(request: NextRequest) {
       description,
       isActive: true,
       createdBy: adminUser.userId,
+    });
+
+    // Log audit event
+    const admin = await User.findById(adminUser.userId).select('firstName lastName email');
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: admin?.email || '',
+      adminName: admin ? `${admin.firstName} ${admin.lastName}` : '',
+      action: 'create',
+      resourceType: 'template',
+      resourceId: template._id.toString(),
+      resourceName: name,
+      description: `Created communication template: ${name}`,
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
     });
 
     return NextResponse.json({

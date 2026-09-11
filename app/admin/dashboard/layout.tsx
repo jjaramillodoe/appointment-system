@@ -4,7 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   BarChart3, Users, Calendar, CalendarDays, Activity,
-  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail
+  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { HubFilterProvider } from '@/contexts/HubFilterContext';
@@ -77,8 +77,11 @@ export default function AdminDashboardLayout({
     ] : []),
     { name: 'Notifications', href: '/admin/dashboard/notifications', icon: Clock, current: pathname === '/admin/dashboard/notifications' },
     { name: 'Reports', href: '/admin/dashboard/reports', icon: FileText, current: pathname === '/admin/dashboard/reports' },
-    // Only show Settings for super admins
-    ...(isSuperAdmin ? [{ name: 'Settings', href: '/admin/dashboard/settings', icon: Settings, current: pathname === '/admin/dashboard/settings' }] : []),
+    // Only show Audit Logs & Settings for super admins
+    ...(isSuperAdmin ? [
+      { name: 'Audit Logs', href: '/admin/dashboard/audit-logs', icon: History, current: pathname === '/admin/dashboard/audit-logs' },
+      { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings, current: pathname === '/admin/dashboard/settings' },
+    ] : []),
   ];
 
   return (

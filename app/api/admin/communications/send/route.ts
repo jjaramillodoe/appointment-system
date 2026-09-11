@@ -6,6 +6,7 @@ import Appointment from '@/models/Appointment';
 import CommunicationTemplate from '@/models/CommunicationTemplate';
 import SentCommunication from '@/models/SentCommunication';
 import { sendBulkCommunicationEmail } from '@/lib/emailService';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
 import { AdminUser } from '@/lib/adminPermissions';
 
 export async function POST(request: NextRequest) {
@@ -146,6 +147,27 @@ export async function POST(request: NextRequest) {
     if (sentRecords.length > 0) {
       await SentCommunication.insertMany(sentRecords);
     }
+
+    // Log audit event
+    const admin = await User.findById(adminUser.userId).select('firstName lastName email');
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: admin?.email || '',
+      adminName: admin ? `${admin.firstName} ${admin.lastName}` : '',
+      action: 'send',
+      resourceType: 'communication',
+      resourceName: subject,
+      description: `Sent bulk communication to ${users.length} users`,
+      status: emailsSent > 0 ? 'success' : 'failed',
+      metadata: {
+        emailsSent,
+        emailsFailed,
+        totalRecipients: users.length,
+        criteria,
+      },
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
+    });
 
     return NextResponse.json({
       success: true,
