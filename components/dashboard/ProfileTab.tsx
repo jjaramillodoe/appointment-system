@@ -490,6 +490,63 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               )}
             </div>
           </div>
+
+          {/* School and Program Information */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-md font-medium text-gray-800 mb-4">School and Program Interests</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">School Interest</label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileForm.schoolInterest}
+                    onChange={(e) => setProfileForm(prev => ({ ...prev, schoolInterest: e.target.value }))}
+                    placeholder="Enter school name or preference"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                ) : (
+                  <p className="text-gray-900 py-2">{user.schoolInterest || 'N/A'}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Program Interests</label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileForm.programInterests.join(', ')}
+                    onChange={(e) => setProfileForm(prev => ({
+                      ...prev,
+                      programInterests: e.target.value.split(',').map(p => p.trim()).filter(p => p)
+                    }))}
+                    placeholder="e.g., Adult Basic Education, ESL"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                ) : (
+                  <p className="text-gray-900 py-2">{user.programInterests?.join(', ') || 'N/A'}</p>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Barriers to Learning</label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileForm.barriersToLearning.join(', ')}
+                    onChange={(e) => setProfileForm(prev => ({
+                      ...prev,
+                      barriersToLearning: e.target.value.split(',').map(b => b.trim()).filter(b => b)
+                    }))}
+                    placeholder="e.g., Language, Transportation, Technology"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                ) : (
+                  <p className="text-gray-900 py-2">{user.barriersToLearning?.join(', ') || 'None'}</p>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Address Information */}
