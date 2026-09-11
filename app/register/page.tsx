@@ -27,9 +27,11 @@ export default function RegisterPage() {
 
   const handleAppointmentSuccess = (appointment: any) => {
     setStep('success');
+    // Reload the page to refresh AuthContext, then redirect to dashboard
     setTimeout(() => {
-      router.push('/dashboard');
-    }, 2500);
+      // Force window reload to refresh AuthContext with new user data
+      window.location.href = '/dashboard';
+    }, 1500);
   };
 
   const handleAppointmentError = (error: string) => {

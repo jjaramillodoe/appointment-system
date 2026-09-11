@@ -22,66 +22,56 @@ interface StatsCardsProps {
 }
 
 export default function StatsCards({ user, appointment, parseToLocalDate }: StatsCardsProps) {
+  const StatCard = ({ icon: Icon, bgColor, textColor, label, value }: any) => (
+    <div className={`${bgColor} rounded-2xl shadow-lg p-6 border border-white/20 backdrop-blur-sm hover:shadow-xl transition-all`}>
+      <div className="flex items-center">
+        <div className={`${textColor} rounded-xl p-3 mr-4`}>
+          <Icon className="h-6 w-6" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white/80">{label}</p>
+          <p className="text-3xl font-bold text-white mt-1">{value}</p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-center">
-          <div className="bg-blue-100 rounded-lg p-2 mr-4">
-            <CalendarDays className="h-6 w-6 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Next Appointment</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {(() => { 
-                const d = appointment && appointment.appointmentDate ? parseToLocalDate(appointment.appointmentDate) : null; 
-                return d ? format(d, 'MMM dd') : 'None'; 
-              })()}
-            </p>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        icon={CalendarDays}
+        bgColor="bg-gradient-to-br from-blue-500 to-blue-600"
+        textColor="bg-blue-400/30 text-blue-100"
+        label="Next Appointment"
+        value={(() => {
+          const d = appointment && appointment.appointmentDate ? parseToLocalDate(appointment.appointmentDate) : null;
+          return d ? format(d, 'MMM dd') : 'None';
+        })()}
+      />
 
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-center">
-          <div className="bg-green-100 rounded-lg p-2 mr-4">
-            <Award className="h-6 w-6 text-green-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Programs</p>
-            <p className="text-2xl font-bold text-gray-900">
-              {user.programInterests?.length || 0}
-            </p>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        icon={Award}
+        bgColor="bg-gradient-to-br from-green-500 to-green-600"
+        textColor="bg-green-400/30 text-green-100"
+        label="Programs"
+        value={user.programInterests?.length || 0}
+      />
 
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-center">
-          <div className="bg-purple-100 rounded-lg p-2 mr-4">
-            <MapPin className="h-6 w-6 text-purple-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Learning Center</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {user.closestHub?.name ? 'Assigned' : 'Pending'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        icon={MapPin}
+        bgColor="bg-gradient-to-br from-purple-500 to-purple-600"
+        textColor="bg-purple-400/30 text-purple-100"
+        label="Learning Center"
+        value={user.closestHub?.name ? 'Assigned' : 'Pending'}
+      />
 
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="flex items-center">
-          <div className="bg-orange-100 rounded-lg p-2 mr-4">
-            <TrendingUp className="h-6 w-6 text-orange-600" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-600">Status</p>
-            <p className="text-lg font-semibold text-gray-900">
-              {appointment?.status ? appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) : 'No Appointment'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <StatCard
+        icon={TrendingUp}
+        bgColor="bg-gradient-to-br from-yellow-500 to-yellow-600"
+        textColor="bg-yellow-400/30 text-yellow-100"
+        label="Status"
+        value={appointment?.status ? appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) : 'No Appointment'}
+      />
     </div>
   );
 } 
