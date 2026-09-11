@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { GraduationCap, Bell, LogOut } from 'lucide-react';
 import LanguageSelector from '../LanguageSelector';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface User {
   firstName: string;
@@ -15,11 +16,10 @@ interface DashboardHeaderProps {
 
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/');
+    logout();
   };
 
   const handleAdminDashboard = () => {
