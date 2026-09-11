@@ -72,14 +72,22 @@ export default function AppointmentSelectionForm({
   const fetchHubs = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(
-        `/api/hubs?classInterest=${classInterest}&timePreference=${timePreference}`
-      );
+      console.log('🔍 Fetching hubs with:', { classInterest, timePreference });
+      const url = `/api/hubs?classInterest=${classInterest}&timePreference=${timePreference}`;
+      console.log('📡 API URL:', url);
+
+      const response = await fetch(url);
+      console.log('📊 Response status:', response.status);
+
       const data = await response.json();
+      console.log('📦 Response data:', data);
+
       if (!response.ok) throw new Error(data.error);
       setHubs(data.hubs || []);
+      console.log('✅ Hubs loaded:', data.hubs?.length || 0);
       setError('');
     } catch (err: any) {
+      console.error('❌ Error fetching hubs:', err);
       setError(err.message || 'Failed to load hubs');
       onError(err.message);
     } finally {
@@ -91,13 +99,21 @@ export default function AppointmentSelectionForm({
     if (!selectedHub) return;
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/appointments/available-slots?hubId=${selectedHub._id}`);
+      console.log('🔍 Fetching slots for hub:', selectedHub._id);
+      const url = `/api/appointments/available-slots?hubId=${selectedHub._id}`;
+      const response = await fetch(url);
+      console.log('📊 Slots response status:', response.status);
+
       const data = await response.json();
+      console.log('📦 Slots data:', data);
+
       if (!response.ok) throw new Error(data.error);
       setSlots(data.slots || []);
+      console.log('✅ Slots loaded:', data.slots?.length || 0);
       setSelectedSlot(null);
       setError('');
     } catch (err: any) {
+      console.error('❌ Error fetching slots:', err);
       setError(err.message || 'Failed to load appointment slots');
       onError(err.message);
     } finally {
