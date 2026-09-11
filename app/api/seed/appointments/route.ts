@@ -9,8 +9,8 @@ export async function GET(request: NextRequest) {
   try {
     await dbConnect();
 
-    // Get all users
-    const users = await User.find({ isAdmin: false }).select('_id');
+    // Get all users with their names and emails
+    const users = await User.find({ isAdmin: false }).select('_id firstName lastName email');
     if (users.length === 0) {
       return NextResponse.json(
         { error: 'No users found. Please create users first.' },
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get all available slots
-    const slots = await AppointmentSlot.find({}).select('_id hubId date time capacity bookedCount');
+    // Get all available slots with hub info
+    const slots = await AppointmentSlot.find({}).select('_id hubName date time capacity bookedCount');
     if (slots.length === 0) {
       return NextResponse.json(
         { error: 'No appointment slots found. Please generate schedule first.' },
@@ -61,11 +61,14 @@ export async function GET(request: NextRequest) {
         const classInterest = classInterests[Math.floor(Math.random() * classInterests.length)];
         const timePreference = timePreferences[Math.floor(Math.random() * timePreferences.length)];
 
-        // Create appointment
+        // Create appointment with user and hub info
         const appointment = new Appointment({
           userId: randomUser._id,
+          userName: `${randomUser.firstName} ${randomUser.lastName}`,
+          userEmail: randomUser.email,
           appointmentDate: apptDate,
-          appointmentTime: timeStr, // Use the same format as slot
+          appointmentTime: timeStr,
+          hubName: availableSlot.hubName,
           status: ['confirmed', 'pending', 'confirmed'][Math.floor(Math.random() * 3)],
           notes: `${classInterest} - ${timePreference}`,
           confirmationToken: crypto.randomBytes(32).toString('hex'),
