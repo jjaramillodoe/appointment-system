@@ -70,15 +70,26 @@ export default function CapacityTab({
         return;
       }
 
-      const response = await fetch(`/api/availability?hubId=${hub._id}&date=${selectedDate}`);
+      const response = await fetch(`/api/admin/slot-capacities?hubName=${encodeURIComponent(selectedHub)}&date=${selectedDate}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setOptimizedData(data.data);
-          console.log('✅ Loaded optimized availability:', data.data);
-        }
+        const slotCapacities = await response.json();
+        // Transform the data to match table format
+        const slots = Object.entries(slotCapacities).map(([time, slot]: [string, any]) => ({
+          time,
+          capacity: slot.capacity,
+          booked: slot.bookedCount,
+          available: slot.capacity - slot.bookedCount,
+          isActive: slot.isActive
+        }));
+        const transformedData = {
+          hubName: selectedHub,
+          date: selectedDate,
+          slots
+        };
+        setOptimizedData(transformedData);
+        console.log('✅ Loaded capacity data:', transformedData);
       } else {
-        console.error('Failed to load optimized availability:', response.status);
+        console.error('Failed to load capacity data:', response.status);
       }
     } catch (error) {
       console.error('Error loading optimized availability:', error);
