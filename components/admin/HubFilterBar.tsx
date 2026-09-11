@@ -4,7 +4,6 @@ import { useHubFilter } from '@/contexts/HubFilterContext';
 import { useHubs } from '@/hooks/useHubs';
 import { Building2, Lock, Filter } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 
 export default function HubFilterBar() {
   const { selectedHub, setSelectedHub, hubName, isLocked } = useHubFilter();
@@ -30,7 +29,7 @@ export default function HubFilterBar() {
         onValueChange={(value) => setSelectedHub(value === 'all' ? null : value)}
         disabled={hubsLoading}
       >
-        <SelectTrigger className="w-[200px] h-9 border-gray-300 bg-white hover:bg-gray-50">
+        <SelectTrigger className="w-[300px] h-10 border-gray-300 bg-white hover:bg-gray-50">
           <div className="flex items-center gap-2">
             <Building2 className="h-4 w-4 text-gray-500" />
             <SelectValue placeholder={hubsLoading ? "Loading..." : "All Hubs"} />

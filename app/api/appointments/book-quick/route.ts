@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Appointment from '@/models/Appointment';
+import AppointmentSlot from '@/models/AppointmentSlot';
+import Hub from '@/models/Hub';
 import dbConnect from '@/lib/mongodb';
 import crypto from 'crypto';
 
@@ -25,8 +27,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create appointment
-    const confirmationToken = crypto.randomBytes(32).toString('hex');
+    // Parse appointment date and time
     const appointmentDateTime = new Date(preferredSlot);
 
     // Convert to 12-hour format with AM/PM (e.g., "10:00 AM")
@@ -34,9 +35,43 @@ export async function POST(request: NextRequest) {
     const minutes = appointmentDateTime.getMinutes();
     const ampm = hours >= 12 ? 'PM' : 'AM';
     hours = hours % 12;
-    hours = hours ? hours : 12; // 0 should be 12
+    hours = hours ? hours : 12;
     const appointmentTime = `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
 
+    // Get hub name for slot lookup
+    const hub = await Hub.findById(hubId);
+    if (!hub) {
+      return NextResponse.json(
+        { error: 'Hub not found' },
+        { status: 404 }
+      );
+    }
+
+    // Check if appointment slot exists and has capacity
+    // Query using hubName, date range, and time
+    const appointmentSlot = await AppointmentSlot.findOne({
+      hubName: hub.name,
+      date: { $gte: new Date(appointmentDateTime.getFullYear(), appointmentDateTime.getMonth(), appointmentDateTime.getDate()), $lt: new Date(appointmentDateTime.getFullYear(), appointmentDateTime.getMonth(), appointmentDateTime.getDate() + 1) },
+      time: appointmentTime,
+    });
+
+    if (!appointmentSlot) {
+      return NextResponse.json(
+        { error: 'Appointment slot not available for the selected date and time' },
+        { status: 404 }
+      );
+    }
+
+    // Check if slot has available capacity
+    if (appointmentSlot.bookedCount >= appointmentSlot.capacity) {
+      return NextResponse.json(
+        { error: 'No available slots for the selected date and time' },
+        { status: 409 }
+      );
+    }
+
+    // Create appointment
+    const confirmationToken = crypto.randomBytes(32).toString('hex');
     const appointment = new Appointment({
       userId,
       hubId,
@@ -44,7 +79,7 @@ export async function POST(request: NextRequest) {
       appointmentDate: appointmentDateTime,
       appointmentTime,
       status: 'confirmed',
-      preferredLanguage: '', // Will be filled from user profile
+      preferredLanguage: '',
       notes: `${classInterest} - ${timePreference}`,
       confirmationToken,
       classInterest,
@@ -53,6 +88,13 @@ export async function POST(request: NextRequest) {
 
     await appointment.save();
 
+    // Increment the booked count for the slot
+    await AppointmentSlot.findByIdAndUpdate(
+      appointmentSlot._id,
+      { $inc: { bookedCount: 1 } },
+      { new: true }
+    );
+
     return NextResponse.json(
       {
         appointment: {
@@ -60,6 +102,7 @@ export async function POST(request: NextRequest) {
           userId: appointment.userId,
           hubId: appointment.hubId,
           appointmentDate: appointment.appointmentDate,
+          appointmentTime: appointment.appointmentTime,
           status: appointment.status,
           confirmationToken: appointment.confirmationToken,
           classInterest: appointment.classInterest,
