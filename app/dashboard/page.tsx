@@ -786,16 +786,26 @@ export default function DashboardPage() {
           <div className="space-y-8">
             {/* Profile Completion Banner */}
             {user && (() => {
-              const requiredFields = [user.firstName, user.lastName, user.email, user.phone, user.preferredLanguage];
+              // Match the same field counting as ProfileCompletionDashboard
+              const requiredFields = [
+                user.firstName,
+                user.lastName,
+                user.email,
+                user.phone,
+                user.preferredLanguage,
+              ];
               const optionalFields = [
                 user.dateOfBirth,
                 user.sex,
                 user.educationLevel,
                 user.employmentStatus,
-                user.address?.street,
+                user.schoolInterest,
+                user.programInterests?.length ? user.programInterests : null,
                 user.emergencyContact?.name,
+                user.address?.street,
+                user.homeAddress?.street,
               ];
-              const totalFields = 5 + 6; // 5 required + 6 optional
+              const totalFields = 5 + 9; // 5 required + 9 optional
               const completedFields = requiredFields.filter(f => f).length + optionalFields.filter(f => f).length;
               const completionPercentage = Math.round((completedFields / totalFields) * 100);
 
