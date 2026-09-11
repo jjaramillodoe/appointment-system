@@ -314,56 +314,69 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
 
   if (success) {
     return (
-      <div className="text-center py-16">
-        <div className="inline-flex items-center justify-center bg-green-100 rounded-full p-4 mb-4">
-          <CheckCircle className="h-8 w-8 text-green-600" />
+      <div className="rounded-2xl border border-primary-200/70 bg-white/90 px-6 py-14 text-center shadow-d79-card backdrop-blur-sm">
+        <div className="mb-4 inline-flex items-center justify-center rounded-full bg-gradient-to-br from-primary-100 to-yellow-100 p-4 ring-2 ring-yellow-400/50">
+          <CheckCircle className="h-10 w-10 text-primary-700" />
         </div>
-        <h2 className="text-2xl font-bold mb-2">Registration Successful!</h2>
-        <p className="text-gray-700 mb-6">Your account has been created. You can now log in and schedule your appointment.</p>
+        <h2 className="mb-2 text-2xl font-bold text-primary-900">Registration successful</h2>
+        <p className="mx-auto max-w-md text-primary-900/80">
+          Your account has been created. You can now log in and schedule your appointment.
+        </p>
       </div>
     );
   }
 
   return (
-    <form className="max-w-4xl mx-auto card" onSubmit={handleSubmit} autoComplete="off">
+    <form
+      className="mx-auto max-w-4xl rounded-2xl border border-primary-200/70 bg-white/90 p-6 shadow-d79-card backdrop-blur-sm sm:p-8"
+      onSubmit={handleSubmit}
+      autoComplete="off"
+    >
       {/* Progress Indicator */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex items-center justify-between overflow-x-auto pb-2">
         {steps.map((s, i) => (
-          <div key={s.label} className="flex-1 flex flex-col items-center relative">
+          <div key={s.label} className="relative flex min-w-[4.5rem] flex-1 flex-col items-center">
             {/* Step Icon */}
-            <div className={`rounded-full p-2 z-10 relative transform transition-all duration-300 ${
-              i === step 
-                ? 'bg-gradient-to-br from-primary-600 to-primary-500 text-white shadow-lg scale-110' 
-                : i < step 
-                ? 'bg-gradient-to-br from-green-500 to-green-400 text-white shadow-md' 
-                : 'bg-gray-200 text-gray-500'
-            }`}>
+            <div
+              className={`relative z-10 transform rounded-full p-2 transition-all duration-300 ${
+                i === step
+                  ? 'scale-110 bg-gradient-to-br from-primary-700 to-primary-500 text-white shadow-lg ring-2 ring-yellow-400/90'
+                  : i < step
+                    ? 'bg-gradient-to-br from-primary-700 to-primary-600 text-white shadow-md ring-2 ring-yellow-400/70'
+                    : 'bg-gray-200 text-gray-500'
+              }`}
+            >
               <s.icon className="h-6 w-6" />
               {i < step && (
-                <div className="absolute -top-1 -right-1 bg-yellow-500 rounded-full w-5 h-5 flex items-center justify-center">
+                <div className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-yellow-500">
                   <CheckCircle className="h-3 w-3 text-white" />
                 </div>
               )}
             </div>
-            
+
             {/* Step Label */}
-            <span className={`text-xs mt-2 z-10 relative font-medium ${
-              i === step 
-                ? 'text-primary-700 font-bold' 
-                : i < step 
-                ? 'text-green-600 font-semibold' 
-                : 'text-gray-500'
-            }`}>
+            <span
+              className={`relative z-10 mt-2 max-w-[5.5rem] text-center text-[10px] font-medium leading-tight sm:text-xs ${
+                i === step
+                  ? 'font-bold text-primary-800'
+                  : i < step
+                    ? 'font-semibold text-primary-800'
+                    : 'text-gray-500'
+              }`}
+            >
               {s.label}
             </span>
-            
+
             {/* Connecting Line */}
             {i < steps.length - 1 && (
-              <div className={`absolute top-4 left-1/2 h-1 rounded-full transition-all duration-300 ${
-                i < step 
-                  ? 'bg-gradient-to-r from-green-500 via-yellow-400 to-green-500' 
-                  : 'bg-gray-200'
-              }`} style={{ width: 'calc(100% - 2rem)', left: 'calc(50% + 1rem)' }} />
+              <div
+                className={`absolute top-4 left-1/2 h-1 rounded-full transition-all duration-300 ${
+                  i < step
+                    ? 'bg-gradient-to-r from-primary-600 via-yellow-400 to-primary-600'
+                    : 'bg-gray-200'
+                }`}
+                style={{ width: 'calc(100% - 2rem)', left: 'calc(50% + 1rem)' }}
+              />
             )}
           </div>
         ))}
@@ -373,7 +386,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 0 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -454,7 +467,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
                     )}
                   </div>
                 ) : (
-                  <div className="text-green-600 text-xs mt-1 flex items-center">
+                  <div className="text-primary-700 text-xs mt-1 flex items-center">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Valid email address
                   </div>
@@ -504,7 +517,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
                     const dobValidation = validateDateOfBirth(form.dateOfBirth);
                     if (dobValidation.isValid && dobValidation.age) {
                       return (
-                        <div className="text-green-600 text-xs mt-1 flex items-center">
+                        <div className="text-primary-700 text-xs mt-1 flex items-center">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           {formatAge(dobValidation.age)} - Age requirement met
                         </div>
@@ -521,7 +534,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 1 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -698,7 +711,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 2 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -745,7 +758,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 3 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -760,7 +773,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
           </div>
 
           {/* Same as Home Address Checkbox */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-6">
+          <div className="mb-6 rounded-lg border border-primary-200/60 bg-primary-50/40 p-4">
             <label className="flex items-center space-x-3 cursor-pointer">
               <input
                 type="checkbox"
@@ -840,7 +853,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
                 }
               }}
               disabled={!form.address.street || !form.address.city || !form.address.state || !form.address.zipCode || findingHub}
-              className="btn-primary flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-2 rounded-lg bg-gradient-to-r from-primary-700 to-primary-600 px-5 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
             >
               <MapPinIcon className="h-4 w-4" />
               <span>{findingHub ? 'Finding...' : 'Find Closest Learning Center'}</span>
@@ -849,7 +862,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
           
           {/* Closest Hub Display */}
           {findingHub && (
-            <div className="bg-gradient-to-r from-primary-50 to-yellow-50 border-2 border-primary-200 rounded-xl p-4 shadow-sm">
+            <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/90 to-yellow-50/60 p-4 shadow-d79-card">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
                   <Loader2 className="h-5 w-5 animate-spin text-primary-600" />
@@ -860,22 +873,22 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
           )}
           
           {form.closestHub && !findingHub && (
-            <div className="bg-gradient-to-r from-green-50 via-yellow-50 to-green-50 border-2 border-green-300 rounded-xl p-4 shadow-md">
+            <div className="rounded-xl border border-primary-300/80 bg-gradient-to-br from-primary-50 via-yellow-50/70 to-primary-50/90 p-4 shadow-d79-card border-l-4 border-l-yellow-500">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                    <MapPinIcon className="h-5 w-5 text-green-600" />
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-100">
+                    <MapPinIcon className="h-5 w-5 text-primary-700" />
                   </div>
                 </div>
                 <div className="ml-3 flex-1">
-                  <h4 className="font-bold text-green-900 mb-2 flex items-center">
-                    Recommended Learning Center
-                    <CheckCircle className="h-4 w-4 ml-2 text-yellow-600" />
+                  <h4 className="mb-2 flex items-center font-bold text-primary-900">
+                    Recommended learning center
+                    <CheckCircle className="ml-2 h-4 w-4 text-yellow-600" />
                   </h4>
-                  <p className="text-green-800 font-semibold mb-1">{form.closestHub.hub.name}</p>
-                  <p className="text-green-700 text-sm mb-2">{form.closestHub.hub.address}</p>
-                  <p className="text-green-700 text-xs font-medium">
-                    <span className="inline-flex items-center px-2 py-1 rounded-full bg-yellow-100 text-yellow-800 mr-2">
+                  <p className="mb-1 font-semibold text-primary-900">{form.closestHub.hub.name}</p>
+                  <p className="mb-2 text-sm text-primary-800/90">{form.closestHub.hub.address}</p>
+                  <p className="text-xs font-medium text-primary-800">
+                    <span className="mr-2 inline-flex items-center rounded-full bg-yellow-100 px-2 py-1 text-yellow-900">
                       Distance
                     </span>
                     {form.closestHub.distanceText} from your address
@@ -889,7 +902,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 4 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -952,7 +965,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 5 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-yellow-100 flex items-center justify-center">
@@ -1027,7 +1040,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       {step === 6 && (
         <div className="space-y-4">
           {/* Step Description */}
-          <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
+          <div className="rounded-xl border border-primary-200/70 bg-gradient-to-br from-primary-50/95 via-white to-yellow-50/75 p-4 mb-6 shadow-d79-card border-l-4 border-l-yellow-500">
             <div className="flex items-start">
               <div className="flex-shrink-0">
                 <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
@@ -1083,19 +1096,31 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
       )}
 
       {/* Navigation Buttons */}
-      <div className="flex items-center justify-between pt-8">
+      <div className="flex items-center justify-between gap-4 border-t border-primary-100/80 pt-8">
         {step > 0 && (
-          <button type="button" onClick={handleBack} className="btn-secondary">
+          <button
+            type="button"
+            onClick={handleBack}
+            className="rounded-lg border-2 border-primary-300 bg-white px-6 py-2.5 font-semibold text-primary-800 shadow-md transition hover:border-yellow-500 hover:shadow-lg"
+          >
             Back
           </button>
         )}
         {step < steps.length - 1 && (
-          <button type="button" onClick={handleNext} className="btn-primary ml-auto">
+          <button
+            type="button"
+            onClick={handleNext}
+            className="ml-auto rounded-lg bg-gradient-to-r from-primary-700 to-primary-600 px-6 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl"
+          >
             Next
           </button>
         )}
         {step === steps.length - 1 && (
-          <button type="submit" disabled={submitting} className="btn-primary ml-auto">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="ml-auto rounded-lg bg-gradient-to-r from-primary-700 to-primary-600 px-6 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
             {submitting ? 'Creating Account...' : 'Create Account'}
           </button>
         )}

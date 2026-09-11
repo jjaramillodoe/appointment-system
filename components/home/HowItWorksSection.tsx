@@ -66,12 +66,17 @@ export default function HowItWorksSection({
 
   return (
     <div ref={sectionRef} className={`mb-20 ${className}`}>
-      <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
-        {title}
-      </h3>
+      <div className="mb-12 text-center">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary-700">
+          Your intake journey
+        </p>
+        <h3 className="inline-block border-b-4 border-yellow-500 pb-2 text-3xl font-bold text-primary-900">
+          {title}
+        </h3>
+      </div>
       <div className="relative">
         {/* Connecting line (hidden on mobile) */}
-        <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary-300 via-primary-400 to-primary-300 transform translate-y-8"></div>
+        <div className="hidden md:block absolute top-8 left-1/4 right-1/4 h-0.5 bg-gradient-to-r from-primary-400 via-yellow-400 to-primary-400 transform translate-y-8"></div>
         
         <div className="grid md:grid-cols-4 gap-8 relative">
           {steps.map((step, index) => {
@@ -88,7 +93,7 @@ export default function HowItWorksSection({
                 {/* Step number circle */}
                 <div className="relative mb-6 inline-block">
                   <div className="absolute inset-0 bg-primary-200 rounded-full blur-xl opacity-50 animate-pulse"></div>
-                  <div className="relative bg-gradient-to-br from-primary-600 to-primary-500 text-white rounded-full w-16 h-16 flex items-center justify-center mx-auto text-2xl font-bold shadow-xl transform hover:scale-110 transition-transform duration-300 group">
+                  <div className="relative bg-gradient-to-br from-primary-700 to-primary-500 text-white rounded-full w-16 h-16 flex items-center justify-center mx-auto text-2xl font-bold shadow-xl ring-2 ring-yellow-400/90 transform hover:scale-110 transition-transform duration-300 group">
                     {step.number}
                     {/* Checkmark overlay on hover */}
                     <CheckCircle className="absolute inset-0 m-auto h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

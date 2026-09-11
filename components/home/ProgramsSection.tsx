@@ -58,9 +58,14 @@ export default function ProgramsSection({
 }: ProgramsSectionProps) {
   return (
     <div className={`mb-20 ${className}`}>
-      <div className="text-center mb-12">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4">{title}</h2>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+      <div className="mb-12 text-center">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary-700">
+          District 79 · Pathways for adult learners
+        </p>
+        <h2 className="mb-4 inline-block border-b-4 border-yellow-500 pb-2 text-3xl font-bold text-primary-900">
+          {title}
+        </h2>
+        <p className="mx-auto max-w-2xl text-lg text-primary-900/75">
           {description}
         </p>
       </div>

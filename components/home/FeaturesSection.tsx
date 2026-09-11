@@ -37,15 +37,25 @@ export default function FeaturesSection({
   className = ""
 }: FeaturesSectionProps) {
   return (
-    <div className={`grid md:grid-cols-3 gap-8 mb-20 ${className}`}>
-      {features.map((feature, index) => (
-        <FeatureCard
-          key={index}
-          icon={feature.icon}
-          title={feature.title}
-          description={feature.description}
-        />
-      ))}
+    <div className={`mb-20 ${className}`}>
+      <div className="mb-10 text-center">
+        <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-primary-700">
+          Why register with us
+        </p>
+        <h2 className="inline-block border-b-4 border-yellow-500 pb-2 text-3xl font-bold text-primary-900">
+          Built for New Yorkers
+        </h2>
+      </div>
+      <div className="grid gap-8 md:grid-cols-3">
+        {features.map((feature, index) => (
+          <FeatureCard
+            key={index}
+            icon={feature.icon}
+            title={feature.title}
+            description={feature.description}
+          />
+        ))}
+      </div>
     </div>
   );
 }

@@ -47,47 +47,62 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-yellow-50 to-primary-100 flex flex-col">
+    <div className="relative flex min-h-screen flex-col bg-d79-mesh">
+      <div
+        className="h-1.5 w-full bg-gradient-to-r from-primary-900 via-yellow-500 to-primary-900"
+        aria-hidden
+      />
       <Header />
-      <main className="flex-1 py-12">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Header */}
-          <div className="text-center mb-8">
+      <main className="flex-1 py-10 sm:py-12">
+        <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center">
             <Link
               href="/"
-              className="inline-flex items-center text-primary-600 hover:text-primary-700 transition-colors duration-300 mb-4 group"
+              className="group mb-6 inline-flex items-center text-sm font-semibold text-primary-800 transition-colors hover:text-primary-600"
             >
-              <ArrowLeft className="h-4 w-4 mr-2 transform group-hover:-translate-x-1 transition-transform duration-300" />
+              <ArrowLeft className="mr-2 h-4 w-4 transform transition-transform group-hover:-translate-x-1" />
               Back to Home
             </Link>
-            <div className="flex justify-center items-center mb-4">
-              <div className="relative">
-                <div className="absolute inset-0 bg-primary-200 rounded-full blur-lg opacity-50"></div>
-                <GraduationCap className="relative h-10 w-10 text-primary-600 transform hover:scale-110 transition-transform duration-300" />
-              </div>
-              <h1 className="ml-3 text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary-700 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
-                Student Registration
-              </h1>
-            </div>
-            <p className="text-gray-600 mb-4 text-lg">
-              Create your account to schedule your adult education intake appointment
-            </p>
-            <div className="bg-gradient-to-r from-primary-50 via-yellow-50 to-primary-50 border-2 border-primary-200 rounded-xl p-4 mb-6 shadow-sm">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                    <span className="text-primary-600 font-bold text-sm">!</span>
-                  </div>
+
+            <div className="mx-auto max-w-2xl rounded-3xl border border-primary-200/70 bg-white/80 px-6 py-8 shadow-d79-hero backdrop-blur-md sm:px-10">
+              <p className="mb-4 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-primary-200/80 bg-primary-50/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-800">
+                <span className="text-yellow-700">District 79</span>
+                <span className="text-primary-400" aria-hidden>
+                  ·
+                </span>
+                <span>Adult Education</span>
+              </p>
+              <div className="mb-4 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary-400/25 to-yellow-400/30 blur-xl" />
+                  <GraduationCap className="relative h-12 w-12 text-primary-700 transition-transform hover:scale-105" />
                 </div>
-                <p className="ml-3 text-primary-800 text-sm font-medium">
-                  <strong className="text-primary-900">Age Requirement:</strong> You must be at least 21 years old to register for adult education services.
-                </p>
+                <h1 className="text-3xl font-bold text-primary-900 sm:text-4xl">
+                  <span className="bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
+                    Student Registration
+                  </span>
+                </h1>
               </div>
-            </div>
-            <div className="text-center">
-              <p className="text-gray-600 text-sm">
+              <p className="text-lg text-primary-900/80">
+                Create your account to schedule your adult education intake appointment.
+              </p>
+              <div className="mt-6 rounded-xl border border-primary-200/80 bg-gradient-to-br from-primary-50/90 to-yellow-50/70 p-4 text-left shadow-d79-card border-l-4 border-l-yellow-500">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary-100 font-bold text-primary-700">
+                    !
+                  </div>
+                  <p className="text-sm font-medium text-primary-900">
+                    <strong className="text-primary-900">Age requirement:</strong> You must be at least 21 years old to
+                    register for adult education services.
+                  </p>
+                </div>
+              </div>
+              <p className="mt-6 text-sm text-primary-900/75">
                 Already have an account?{' '}
-                <Link href="/login" className="text-primary-600 hover:text-primary-700 font-semibold transition-colors duration-300 underline decoration-yellow-400 hover:decoration-yellow-500">
+                <Link
+                  href="/login"
+                  className="font-semibold text-primary-700 underline decoration-yellow-500/80 underline-offset-2 transition hover:text-primary-600 hover:decoration-yellow-500"
+                >
                   Sign in here
                 </Link>
               </p>
