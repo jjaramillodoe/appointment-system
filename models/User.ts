@@ -100,7 +100,7 @@ const userSchema = new mongoose.Schema<IUser>({
   preferredLanguage: {
     type: String,
     required: [true, 'Preferred language is required'],
-    enum: ['English', 'Spanish', 'French', 'Other'],
+    enum: ['English', 'Spanish', 'French', 'Arabic', 'Chinese', 'Other'],
   },
   additionalLanguages: {
     type: [String],
