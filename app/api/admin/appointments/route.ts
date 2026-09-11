@@ -91,16 +91,22 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean();
 
-    // Format appointments with user info
+    // Format appointments to match component expectations
     const formattedAppointments = appointments.map((apt: any) => ({
       _id: apt._id,
-      userId: apt.userId?._id,
-      userName: apt.userId ? `${apt.userId.firstName} ${apt.userId.lastName}` : 'Unknown User',
-      userEmail: apt.userId?.email || 'unknown@example.com',
-      appointmentDate: apt.appointmentDate,
-      appointmentTime: apt.appointmentTime,
-      hubName: apt.hubName,
+      userId: {
+        _id: apt.userId?._id,
+        firstName: apt.userId?.firstName || '',
+        lastName: apt.userId?.lastName || '',
+        email: apt.userId?.email || 'unknown@example.com',
+      },
+      date: apt.appointmentDate, // Component expects 'date' not 'appointmentDate'
+      time: apt.appointmentTime, // Component expects 'time' not 'appointmentTime'
+      hubId: {
+        name: apt.hubName || 'Unknown Hub',
+      },
       status: apt.status,
+      notes: apt.notes || '',
       createdAt: apt.createdAt,
     }));
 
