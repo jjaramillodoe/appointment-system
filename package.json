@@ -21,7 +21,8 @@
     "git:check": "ts-node --project scripts/tsconfig.json scripts/checkGitIgnore.ts",
     "test:setup": "ts-node --project scripts/tsconfig.json scripts/setupTestData.ts",
     "test:mongoose-9": "ts-node tests/mongoose-migration.test.ts",
-    "test:baseline": "ts-node tests/mongoose-baseline.test.ts"
+    "test:baseline": "ts-node tests/mongoose-baseline.test.ts",
+    "test:models": "ts-node tests/mongoose-models.test.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
