@@ -833,6 +833,7 @@ export default function DashboardPage() {
               user={user}
               appointment={appointment}
               parseToLocalDate={parseToLocalDate}
+              appointmentHubName={appointment?.hubName}
             />
 
             {/* Main Dashboard Content */}

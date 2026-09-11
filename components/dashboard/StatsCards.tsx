@@ -19,9 +19,10 @@ interface StatsCardsProps {
   user: User;
   appointment: Appointment | null;
   parseToLocalDate: (dateValue: any) => Date | null;
+  appointmentHubName?: string;
 }
 
-export default function StatsCards({ user, appointment, parseToLocalDate }: StatsCardsProps) {
+export default function StatsCards({ user, appointment, parseToLocalDate, appointmentHubName }: StatsCardsProps) {
   const StatCard = ({ icon: Icon, bgColor, textColor, label, value }: any) => (
     <div className={`${bgColor} rounded-2xl shadow-lg p-6 border border-white/20 backdrop-blur-sm hover:shadow-xl transition-all`}>
       <div className="flex items-center">
@@ -62,7 +63,7 @@ export default function StatsCards({ user, appointment, parseToLocalDate }: Stat
         bgColor="bg-gradient-to-br from-purple-500 to-purple-600"
         textColor="bg-purple-400/30 text-purple-100"
         label="Learning Center"
-        value={user.closestHub?.name ? 'Assigned' : 'Pending'}
+        value={appointmentHubName || user.closestHub?.name || 'Pending'}
       />
 
       <StatCard
