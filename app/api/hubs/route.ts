@@ -17,9 +17,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For now, return all active hubs
-    // In production, this would filter based on available schedules
-    const hubs = await Hub.find({ active: true }).limit(10);
+    // Return all active hubs
+    const hubs = await Hub.find({ isActive: true }).limit(10);
 
     if (!hubs || hubs.length === 0) {
       return NextResponse.json(
@@ -33,10 +32,9 @@ export async function GET(request: NextRequest) {
         hubs: hubs.map((hub: any) => ({
           _id: hub._id,
           name: hub.name,
-          address: hub.address,
-          phone: hub.phone,
-          email: hub.email,
-          capacity: hub.capacity,
+          location: hub.location,
+          defaultSlots: hub.defaultSlots,
+          timezone: hub.timezone,
         })),
       },
       { status: 200 }

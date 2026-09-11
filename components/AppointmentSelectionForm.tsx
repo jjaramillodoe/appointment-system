@@ -6,10 +6,13 @@ import { BookOpen, Clock, MapPin, Calendar, ArrowRight, AlertCircle, Loader2, Ch
 interface Hub {
   _id: string;
   name: string;
-  address: string;
-  phone: string;
-  email: string;
-  capacity: number;
+  location?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  capacity?: number;
+  defaultSlots?: string[];
+  timezone?: string;
 }
 
 interface AppointmentSlot {
@@ -270,9 +273,9 @@ export default function AppointmentSelectionForm({
                 >
                   <h4 className="font-semibold text-primary-900">{hub.name}</h4>
                   <p className="text-sm text-primary-600 mt-1 flex items-center gap-1">
-                    📍 {hub.address}
+                    📍 {hub.location || hub.address}
                   </p>
-                  <p className="text-sm text-primary-600 mt-1">📞 {hub.phone}</p>
+                  {hub.phone && <p className="text-sm text-primary-600 mt-1">📞 {hub.phone}</p>}
                 </button>
               ))}
             </div>
