@@ -3,7 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
 import Appointment from '@/models/Appointment';
 import AppointmentSlot from '@/models/AppointmentSlot';
-import Hub from '@/models/Hub';
+import User from '@/models/User';
 
 // GET - Get all appointments with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -83,13 +83,26 @@ export async function GET(request: NextRequest) {
       sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // Get appointments with pagination
+    // Get appointments with pagination and populate user details
     const appointments = await Appointment.find(searchFilter)
-      .select('_id userId userName userEmail appointmentDate appointmentTime hubName status createdAt')
+      .populate('userId', 'firstName lastName email')
       .sort(sort)
       .skip(skip)
       .limit(limit)
       .lean();
+
+    // Format appointments with user info
+    const formattedAppointments = appointments.map((apt: any) => ({
+      _id: apt._id,
+      userId: apt.userId?._id,
+      userName: apt.userId ? `${apt.userId.firstName} ${apt.userId.lastName}` : 'Unknown User',
+      userEmail: apt.userId?.email || 'unknown@example.com',
+      appointmentDate: apt.appointmentDate,
+      appointmentTime: apt.appointmentTime,
+      hubName: apt.hubName,
+      status: apt.status,
+      createdAt: apt.createdAt,
+    }));
 
     // Get total count for pagination
     const totalAppointments = await Appointment.countDocuments(searchFilter);
@@ -141,7 +154,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      appointments,
+      appointments: formattedAppointments,
       pagination: {
         page,
         limit,
