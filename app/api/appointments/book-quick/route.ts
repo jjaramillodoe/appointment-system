@@ -29,10 +29,13 @@ export async function POST(request: NextRequest) {
     const confirmationToken = crypto.randomBytes(32).toString('hex');
     const appointmentDateTime = new Date(preferredSlot);
 
-    // Extract time in HH:MM format
-    const hours = String(appointmentDateTime.getHours()).padStart(2, '0');
-    const minutes = String(appointmentDateTime.getMinutes()).padStart(2, '0');
-    const appointmentTime = `${hours}:${minutes}`;
+    // Convert to 12-hour format with AM/PM (e.g., "10:00 AM")
+    let hours = appointmentDateTime.getHours();
+    const minutes = appointmentDateTime.getMinutes();
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 should be 12
+    const appointmentTime = `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
 
     const appointment = new Appointment({
       userId,
