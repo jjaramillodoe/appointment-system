@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Plus, 
-  CheckCircle, 
-  XCircle, 
-  Info, 
-  MapPin, 
-  Navigation 
+import { useState, useEffect } from 'react';
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Plus,
+  CheckCircle,
+  XCircle,
+  Info,
+  MapPin,
+  Navigation
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { HUBS } from '@/utils/hubMatching';
+import mapboxgl from 'mapbox-gl';
 
 interface Appointment {
   _id: string;
@@ -22,6 +23,7 @@ interface Appointment {
   notes: string;
   intakeType: string;
   hubName?: string;
+  hubId?: string;
 }
 
 interface User {
@@ -78,6 +80,48 @@ export default function AppointmentCard({
   map,
   scheduleForm
 }: AppointmentCardProps) {
+  const [hubName, setHubName] = useState<string>('');
+  const [hubLocation, setHubLocation] = useState<any>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
+
+  // Initialize map when appointment changes
+  useEffect(() => {
+    if (!appointment || (!appointment.hubId && !appointment.hubName)) return;
+
+    // Find hub from HUBS list by name
+    const hub = HUBS.find(h => h.name === (appointment.hubName || scheduleForm?.selectedHub));
+
+    if (hub) {
+      setHubName(hub.name);
+      setHubLocation(hub);
+
+      // Initialize Mapbox map
+      const mapContainer = document.getElementById('appointment-map');
+      if (mapContainer && !mapInitialized) {
+        try {
+          if (mapboxgl.accessToken) {
+            const mapInstance = new mapboxgl.Map({
+              container: mapContainer,
+              style: 'mapbox://styles/mapbox/streets-v12',
+              center: [hub.longitude, hub.latitude],
+              zoom: 13,
+            });
+
+            // Add marker for hub
+            new mapboxgl.Marker({ color: '#3B82F6' })
+              .setLngLat([hub.longitude, hub.latitude])
+              .setPopup(new mapboxgl.Popup().setHTML(`<strong>${hub.name}</strong><br/>${hub.address}`))
+              .addTo(mapInstance);
+
+            setMapInitialized(true);
+          }
+        } catch (err) {
+          console.warn('Map initialization error:', err);
+        }
+      }
+    }
+  }, [appointment, mapInitialized]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -283,7 +327,7 @@ export default function AppointmentCard({
                   <div className="bg-gray-100 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm text-gray-600">
-                        Your appointment is scheduled at: <strong>{scheduleForm.selectedHub || 'Selected Learning Center'}</strong>
+                        Your appointment is scheduled at: <strong>{hubName || user?.closestHub?.name || 'Selected Learning Center'}</strong>
                       </p>
                       {(() => {
                         // Use the user's closestHub or fall back to a default hub
