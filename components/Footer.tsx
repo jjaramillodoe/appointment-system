@@ -13,7 +13,7 @@ export default function Footer() {
         <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* About Section */}
           <div>
-            <h3 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.aboutTitle}</h3>
+            <h2 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.aboutTitle}</h2>
             <p className="text-gray-300 text-sm leading-relaxed">
               {t.footer.aboutText}
             </p>
@@ -21,7 +21,7 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.quickLinks}</h3>
+            <h2 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.quickLinks}</h2>
             <ul className="space-y-2">
               <li>
                 <Link 
@@ -62,7 +62,7 @@ export default function Footer() {
 
           {/* Contact Section */}
           <div>
-            <h3 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.contactUs}</h3>
+            <h2 className="text-lg font-bold mb-4 text-yellow-400">{t.footer.contactUs}</h2>
             <ul className="space-y-3">
               <li className="flex items-start">
                 <Phone className="h-4 w-4 mr-2 mt-1 text-primary-400 flex-shrink-0" />
