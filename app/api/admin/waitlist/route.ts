@@ -62,6 +62,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   entry.status = 'notified';
+  entry.notifiedAt = new Date();
   await entry.save();
   const { notifyWaitlistEntry } = await import('@/lib/waitlistService');
   await notifyWaitlistEntry(entry, entry.hubName);

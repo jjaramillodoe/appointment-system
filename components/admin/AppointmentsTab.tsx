@@ -3,7 +3,7 @@
 import { logger } from '@/lib/logger';
 
 import { useState } from 'react';
-import { Calendar, Search, Filter, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, AlertTriangle, Users, RefreshCw, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { Calendar, Search, Filter, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, AlertTriangle, Users, RefreshCw, ChevronLeft, ChevronRight, X, Download } from 'lucide-react';
 import { useHubs } from '@/hooks/useHubs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -43,6 +43,8 @@ export default function AppointmentsTab({
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAction, setBulkAction] = useState('');
   const [bulkNotes, setBulkNotes] = useState('');
+  const [bulkMessage, setBulkMessage] = useState<{ tone: 'success' | 'error'; text: string } | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<any>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -89,20 +91,68 @@ export default function AppointmentsTab({
         body: JSON.stringify({
           appointmentIds: selectedAppointments,
           status: bulkAction,
-          adminNotes: bulkNotes
+          // Only send notes when typed: an empty value would wipe existing admin notes
+          ...(bulkNotes.trim() ? { adminNotes: bulkNotes.trim() } : {}),
         })
       });
+      const data = await response.json().catch(() => ({}));
 
-      if (response.ok) {
-        setShowBulkModal(false);
-        setBulkAction('');
-        setBulkNotes('');
-        setSelectedAppointments([]);
-        onRefresh();
+      if (!response.ok) {
+        setBulkMessage({ tone: 'error', text: data.error || 'Bulk update failed' });
+        return;
       }
+      setBulkMessage({ tone: 'success', text: data.message || 'Appointments updated' });
+      setShowBulkModal(false);
+      setBulkAction('');
+      setBulkNotes('');
+      setSelectedAppointments([]);
+      onRefresh();
     } catch (error) {
       logger.error('Error performing bulk action:', error);
+      setBulkMessage({ tone: 'error', text: 'Bulk update failed' });
     }
+  };
+
+  const exportCsv = async () => {
+    setIsExporting(true);
+    setBulkMessage(null);
+    try {
+      const params = new URLSearchParams(
+        Object.entries(filters || {})
+          .filter(([key, value]) => key !== 'page' && value !== '' && value !== undefined && value !== null)
+          .map(([key, value]) => [key, String(value)])
+      );
+      // Bearer auth means a plain link can't be used; download via a blob instead
+      const response = await fetch(`/api/admin/appointments/export?${params}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        setBulkMessage({ tone: 'error', text: data.error || 'Export failed' });
+        return;
+      }
+      const blob = await response.blob();
+      const name = response.headers.get('Content-Disposition')?.match(/filename="([^"]+)"/)?.[1] || 'appointments.csv';
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      logger.error('Error exporting appointments:', error);
+      setBulkMessage({ tone: 'error', text: 'Export failed' });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const BULK_CONSEQUENCES: Record<string, string> = {
+    confirmed: 'Marks the appointments confirmed.',
+    arrived: 'Checks the students in and records the check-in time.',
+    completed: 'Marks the intake done.',
+    no_show: 'Releases each seat (the waitlist may be offered it) and notifies each student that they missed the appointment.',
+    cancelled: 'Releases each seat (the waitlist may be offered it). Students are not notified automatically.',
   };
 
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -122,13 +172,18 @@ export default function AppointmentsTab({
         })
       });
 
-      if (response.ok) {
-        setSelectedAppointments([]);
-        setShowDeleteDialog(false);
-        onRefresh();
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setBulkMessage({ tone: 'error', text: data.error || 'Delete failed' });
+        return;
       }
+      setBulkMessage({ tone: 'success', text: data.message || 'Appointments deleted' });
+      setSelectedAppointments([]);
+      setShowDeleteDialog(false);
+      onRefresh();
     } catch (error) {
       logger.error('Error deleting appointments:', error);
+      setBulkMessage({ tone: 'error', text: 'Delete failed' });
     }
   };
 
@@ -214,12 +269,18 @@ export default function AppointmentsTab({
 
       {/* Filters */}
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Filter className="h-5 w-5 mr-2" />
-            Search & Filters
-          </CardTitle>
-          <CardDescription>Filter appointments by search term, hub, status, or date range</CardDescription>
+        <CardHeader className="flex flex-row flex-wrap items-start justify-between gap-3 space-y-0">
+          <div>
+            <CardTitle className="flex items-center">
+              <Filter className="h-5 w-5 mr-2" aria-hidden />
+              Search & Filters
+            </CardTitle>
+            <CardDescription>Filter appointments by student, hub, status, or date range</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" onClick={exportCsv} disabled={isExporting}>
+            <Download className="h-4 w-4 mr-2" aria-hidden />
+            {isExporting ? 'Exporting…' : 'Export CSV'}
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
@@ -230,7 +291,7 @@ export default function AppointmentsTab({
                 <Input
                   id="search"
                   type="text"
-                  placeholder="Notes, hub name..."
+                  placeholder="Student name, email, phone, or hub"
                   value={filters?.search || ''}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="pl-10"
@@ -295,6 +356,20 @@ export default function AppointmentsTab({
           </div>
         </CardContent>
       </Card>
+
+      {bulkMessage && (
+        <div
+          role={bulkMessage.tone === 'error' ? 'alert' : 'status'}
+          className={`flex items-center justify-between rounded-lg border p-3 text-sm ${
+            bulkMessage.tone === 'error' ? 'border-red-200 bg-red-50 text-red-800' : 'border-green-200 bg-green-50 text-green-800'
+          }`}
+        >
+          <span>{bulkMessage.text}</span>
+          <button type="button" onClick={() => setBulkMessage(null)} aria-label="Dismiss message">
+            <X className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
 
       {/* Bulk Actions */}
       {selectedAppointments.length > 0 && (
@@ -507,15 +582,18 @@ export default function AppointmentsTab({
                   <SelectItem value="completed">Mark Complete</SelectItem>
                 </SelectContent>
               </Select>
+              {bulkAction && BULK_CONSEQUENCES[bulkAction] && (
+                <p className="mt-2 text-sm text-muted-foreground">{BULK_CONSEQUENCES[bulkAction]}</p>
+              )}
             </div>
             <div>
-              <Label htmlFor="bulk-notes">Admin Notes</Label>
+              <Label htmlFor="bulk-notes">Admin Notes (optional — replaces existing notes)</Label>
               <Textarea
                 id="bulk-notes"
                 value={bulkNotes}
                 onChange={(e) => setBulkNotes(e.target.value)}
                 rows={3}
-                placeholder="Optional notes..."
+                placeholder="Leave blank to keep existing notes"
                 className="mt-2"
               />
             </div>

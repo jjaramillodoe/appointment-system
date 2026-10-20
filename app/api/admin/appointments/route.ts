@@ -4,12 +4,11 @@ import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
 import { resolveRequestedHub } from '@/lib/adminUserAccess';
 import Appointment from '@/models/Appointment';
-import AppointmentSlot from '@/models/AppointmentSlot';
 import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
-import { APPOINTMENT_STATUS } from '@/lib/appointmentStatus';
-import { freeAppointmentSeat } from '@/lib/appointmentLifecycle';
+import { APPOINTMENT_STATUS, SEAT_HOLDING_STATUSES, isAppointmentStatus } from '@/lib/appointmentStatus';
+import { freeAppointmentSeat, retakeAppointmentSeat } from '@/lib/appointmentLifecycle';
 import { notifyStudent } from '@/lib/studentNotifications';
-import { utcDayBounds } from '@/lib/slotDateTime';
+import { buildAdminAppointmentQuery } from '@/lib/adminAppointmentFilters';
 
 // GET - Get all appointments with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -28,63 +27,16 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const search = searchParams.get('search') || '';
-    const hubName = searchParams.get('hubName') || '';
-    const status = searchParams.get('status') || '';
-    const startDate = searchParams.get('startDate') || '';
-    const endDate = searchParams.get('endDate') || '';
-    const sortBy = searchParams.get('sortBy') || 'appointmentDate';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20));
 
-    const hubScope = await resolveRequestedHub(adminUser, hubName);
-    if (hubScope.error) {
-      return NextResponse.json({ error: hubScope.error }, { status: 403 });
+    const query = await buildAdminAppointmentQuery(adminUser, searchParams);
+    if ('error' in query) {
+      return NextResponse.json({ error: query.error }, { status: 403 });
     }
-
-    const conditions: Record<string, unknown>[] = [];
-    if (Object.keys(hubScope.appointmentFilter).length > 0) {
-      conditions.push(hubScope.appointmentFilter);
-    }
-
-    if (search) {
-      conditions.push({
-        $or: [
-          { userName: { $regex: search, $options: 'i' } },
-          { userEmail: { $regex: search, $options: 'i' } },
-          { hubName: { $regex: search, $options: 'i' } },
-        ],
-      });
-    }
-
-    if (status) {
-      conditions.push({ status });
-    }
-
-    if (startDate || endDate) {
-      const appointmentDate: Record<string, Date> = {};
-      if (startDate) {
-        appointmentDate.$gte = utcDayBounds(startDate).start;
-      }
-      if (endDate) {
-        appointmentDate.$lt = utcDayBounds(endDate).end;
-      }
-      conditions.push({ appointmentDate });
-    }
-
-    const searchFilter = conditions.length ? { $and: conditions } : {};
-
-    // Calculate skip for pagination
+    const searchFilter = query.filter;
+    const sort = query.sort;
     const skip = (page - 1) * limit;
-
-    // Build sort object
-    const sort: any = {};
-    if (sortBy === 'appointmentDate') {
-      sort['appointmentDate'] = sortOrder === 'desc' ? -1 : 1;
-    } else {
-      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
-    }
 
     const appointments = await Appointment.find(searchFilter)
       .populate('userId', 'firstName lastName email phone profileCompleted programInterests')
@@ -224,11 +176,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'At least one field to update is required' }, { status: 400 });
     }
 
-    // Build update object
-    const updateData: any = {};
-    if (status) updateData.status = status;
-    if (notes !== undefined) updateData.notes = notes;
-    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    // updateMany skips schema validation, so check the status explicitly
+    if (status !== undefined && !isAppointmentStatus(status)) {
+      return NextResponse.json({ error: `Invalid status: ${status}` }, { status: 400 });
+    }
 
     const scope = await resolveRequestedHub(adminUser, null);
     if (scope.error) {
@@ -245,22 +196,50 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No matching appointments in your hub' }, { status: 403 });
     }
 
-    const result = await Appointment.updateMany(
-      { _id: { $in: current.map((apt) => apt._id) } },
-      { $set: updateData }
-    );
+    const now = new Date();
+    const holdsSeat = (value: string) => (SEAT_HOLDING_STATUSES as readonly string[]).includes(value);
 
-    if (status === APPOINTMENT_STATUS.NO_SHOW || status === APPOINTMENT_STATUS.CANCELLED) {
+    // Per-appointment updates so undo keeps the original check-in time
+    const result = await Appointment.bulkWrite(current.map((apt) => {
+      const set: Record<string, unknown> = {};
+      const unset: Record<string, ''> = {};
+      if (notes !== undefined) set.notes = notes;
+      if (adminNotes !== undefined) set.adminNotes = adminNotes;
+      if (status) {
+        set.status = status;
+        if (status === APPOINTMENT_STATUS.ARRIVED) {
+          set.checkedInAt = apt.checkedInAt || now;
+          unset.completedAt = '';
+        } else if (status === APPOINTMENT_STATUS.COMPLETED) {
+          set.checkedInAt = apt.checkedInAt || now;
+          set.completedAt = apt.completedAt || now;
+        } else {
+          unset.checkedInAt = '';
+          unset.completedAt = '';
+        }
+      }
+      return {
+        updateOne: {
+          filter: { _id: apt._id },
+          update: Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set },
+        },
+      };
+    }));
+
+    if (status) {
       for (const apt of current) {
-        if (apt.status !== status) {
+        // Only move seats when crossing between seat-holding and released states
+        if (holdsSeat(apt.status) && !holdsSeat(status)) {
           await freeAppointmentSeat(apt);
+        } else if (!holdsSeat(apt.status) && holdsSeat(status)) {
+          await retakeAppointmentSeat(apt);
         }
       }
     }
 
     if (status === APPOINTMENT_STATUS.NO_SHOW) {
       for (const apt of current) {
-        if (apt.userId) {
+        if (apt.userId && apt.status !== APPOINTMENT_STATUS.NO_SHOW) {
           await notifyStudent({
             userId: String(apt.userId),
             title: 'No asistió / We missed you',
@@ -335,20 +314,10 @@ export async function DELETE(request: NextRequest) {
 
     const appointments = await Appointment.find(scopedFilter);
 
-    // Update appointment slot capacities
+    // Release seats still held (cancelled/no-show already released theirs); also promotes the waitlist
     for (const appointment of appointments) {
-      const appointmentSlot = await AppointmentSlot.findOne({
-        hubName: appointment.hubName,
-        date: {
-          $gte: new Date(appointment.appointmentDate.toDateString()),
-          $lt: new Date(new Date(appointment.appointmentDate).setDate(appointment.appointmentDate.getDate() + 1))
-        },
-        time: appointment.appointmentTime
-      });
-
-      if (appointmentSlot) {
-        appointmentSlot.bookedCount = Math.max(0, appointmentSlot.bookedCount - 1);
-        await appointmentSlot.save();
+      if ((SEAT_HOLDING_STATUSES as readonly string[]).includes(appointment.status)) {
+        await freeAppointmentSeat(appointment);
       }
     }
 

@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { verifyAdminToken, isSuperAdmin } from '@/lib/adminPermissions';
 import { sendDueReminders } from '@/lib/reminderService';
 
 // "Send now": runs the same job as the hourly cron instead of waiting for the next run
@@ -20,9 +20,10 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
 
-    if (!isAdmin(adminUser)) {
+    // Sends reminders for every hub; matches the super-admin-only Reminders page
+    if (!isSuperAdmin(adminUser)) {
       return NextResponse.json(
-        { error: 'Admin access required' },
+        { error: 'Super admin access required' },
         { status: 403 }
       );
     }

@@ -304,13 +304,14 @@ export async function sendPasswordResetEmail(email: string, name: string, resetU
 
 export async function sendWaitlistAvailableEmail(data: AppointmentNoticeData): Promise<boolean> {
   try {
+    const seatWhen = data.appointmentDate && data.appointmentTime ? ` (${data.appointmentDate}, ${data.appointmentTime})` : '';
     const result = await sendMail({
       from: process.env.SMTP_FROM || 'noreply@district79.edu',
       to: data.recipientEmail,
       subject: `Se abrió un cupo / A seat opened at ${data.hubName || 'your learning center'}`,
       html: appointmentEmailShell(
         'Hay un cupo / A seat is available',
-        `<p>Hola ${data.recipientName},</p><p>Se abrió un cupo en ${data.hubName || 'su centro'}. Resérvelo desde su panel antes de que se llene.</p><p><a class="button" href="${data.profileUrl.replace('/profile', '/dashboard')}">Abrir panel / Open dashboard</a></p><hr><p>Hi ${data.recipientName},</p><p>A seat opened at ${data.hubName || 'your learning center'}. Book it from your dashboard before it fills again.</p>`
+        `<p>Hola ${data.recipientName},</p><p>Se abrió un cupo en ${data.hubName || 'su centro'}${seatWhen}. Resérvelo desde su panel antes de que se llene.</p><p><a class="button" href="${data.profileUrl.replace('/profile', '/dashboard')}">Abrir panel / Open dashboard</a></p><hr><p>Hi ${data.recipientName},</p><p>A seat opened at ${data.hubName || 'your learning center'}${seatWhen}. Book it from your dashboard before it fills again.</p>`
       ),
       text: `Se abrió un cupo / A seat opened at ${data.hubName || 'your learning center'}.`,
     });
