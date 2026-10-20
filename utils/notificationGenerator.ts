@@ -69,10 +69,8 @@ export async function generateNoShowNotifications() {
     const hubNoShows: { [hubName: string]: number } = {};
     
     for (const appointment of appointments) {
-      if (!hubNoShows[appointment.hubName]) {
-        hubNoShows[appointment.hubName] = 0;
-      }
-      hubNoShows[appointment.hubName]++;
+      const hubName = appointment.hubName || 'Unknown hub';
+      hubNoShows[hubName] = (hubNoShows[hubName] || 0) + 1;
     }
 
     // Generate notifications for hubs with no-shows

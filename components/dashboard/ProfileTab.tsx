@@ -20,10 +20,10 @@ interface User {
   heardFrom: string;
   barriersToLearning: string[];
   homeAddress?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
   };
   address: {
     street: string;
@@ -38,9 +38,9 @@ interface User {
   schoolInterest?: string;
   programInterests?: string[];
   emergencyContact?: {
-    name: string;
-    relationship: string;
-    phone: string;
+    name?: string;
+    relationship?: string;
+    phone?: string;
   };
 }
 

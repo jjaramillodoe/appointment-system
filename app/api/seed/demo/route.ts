@@ -130,9 +130,9 @@ export async function GET(request: NextRequest) {
     const appointmentTimes = [
       '9:00 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM', '4:00 PM'
     ];
-    const classInterests = ['ESL', 'BE/HSE'];
-    const timePreferences = ['Morning', 'Evening', 'Saturday'];
-    const statuses = ['confirmed', 'pending', 'cancelled', 'completed'];
+    const classInterests = ['ESL', 'BE/HSE'] as const;
+    const timePreferences = ['Morning', 'Evening', 'Saturday'] as const;
+    const statuses = ['confirmed', 'pending', 'cancelled', 'completed'] as const;
 
     let appointmentIndex = 0;
     for (let i = 0; i < 15; i++) {

@@ -25,7 +25,9 @@ export async function assertProgramQuota(options: {
   capacity: number;
 }): Promise<{ ok: boolean; error?: string }> {
   const settings = await getSystemSettings();
-  if (!settings.programQuotasEnabled || !options.classInterest) {
+  const classInterest = options.classInterest;
+  // Quotas only exist for the two programs; anything else can never match a booking
+  if (!settings.programQuotasEnabled || (classInterest !== 'ESL' && classInterest !== 'BE/HSE')) {
     return { ok: true };
   }
 
@@ -39,7 +41,7 @@ export async function assertProgramQuota(options: {
   const taken = await Appointment.countDocuments({
     hubName: options.hubName,
     appointmentTime: time,
-    classInterest: options.classInterest,
+    classInterest,
     status: { $in: [...ACTIVE_APPOINTMENT_STATUSES] },
     appointmentDate: { $gte: dayStart, $lt: dayEnd },
   });
@@ -47,7 +49,7 @@ export async function assertProgramQuota(options: {
   if (taken >= quota) {
     return {
       ok: false,
-      error: `This ${options.classInterest} window is full. Join the waitlist or pick another time.`,
+      error: `This ${classInterest} window is full. Join the waitlist or pick another time.`,
     };
   }
 

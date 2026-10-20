@@ -1,4 +1,5 @@
 import { logger } from '@/lib/logger';
+import mongoose from 'mongoose';
 import Appointment from '@/models/Appointment';
 import AppointmentOptimized from '@/models/AppointmentOptimized';
 import {
@@ -74,7 +75,10 @@ export async function notifyAppointmentBooked(
 }
 
 export async function confirmPendingProfileAppointments(user: NoticeUser & { _id: unknown }) {
-  const filter = { userId: user._id, status: APPOINTMENT_STATUS.PENDING_PROFILE };
+  const filter = {
+    userId: new mongoose.Types.ObjectId(String(user._id)),
+    status: APPOINTMENT_STATUS.PENDING_PROFILE,
+  };
   const [appointments, optimized] = await Promise.all([
     Appointment.find(filter),
     AppointmentOptimized.find(filter),
