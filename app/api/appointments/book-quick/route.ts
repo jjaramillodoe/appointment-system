@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
           _id: appointment._id,
           userId: appointment.userId,
           hubId: appointment.hubId,
+          hubName: appointment.hubName,
           appointmentDate: appointment.appointmentDate,
           appointmentTime: appointment.appointmentTime,
           status: appointment.status,
