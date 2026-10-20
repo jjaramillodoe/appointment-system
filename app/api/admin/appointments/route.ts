@@ -6,8 +6,8 @@ import { resolveRequestedHub } from '@/lib/adminUserAccess';
 import Appointment from '@/models/Appointment';
 import AppointmentSlot from '@/models/AppointmentSlot';
 import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
-import { APPOINTMENT_STATUS } from '@/lib/appointmentStatus';
-import { freeAppointmentSeat } from '@/lib/appointmentLifecycle';
+import { APPOINTMENT_STATUS, SEAT_HOLDING_STATUSES, isAppointmentStatus } from '@/lib/appointmentStatus';
+import { freeAppointmentSeat, retakeAppointmentSeat } from '@/lib/appointmentLifecycle';
 import { notifyStudent } from '@/lib/studentNotifications';
 import { utcDayBounds } from '@/lib/slotDateTime';
 
@@ -224,11 +224,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'At least one field to update is required' }, { status: 400 });
     }
 
-    // Build update object
-    const updateData: any = {};
-    if (status) updateData.status = status;
-    if (notes !== undefined) updateData.notes = notes;
-    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    // updateMany skips schema validation, so check the status explicitly
+    if (status !== undefined && !isAppointmentStatus(status)) {
+      return NextResponse.json({ error: `Invalid status: ${status}` }, { status: 400 });
+    }
 
     const scope = await resolveRequestedHub(adminUser, null);
     if (scope.error) {
@@ -245,22 +244,50 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No matching appointments in your hub' }, { status: 403 });
     }
 
-    const result = await Appointment.updateMany(
-      { _id: { $in: current.map((apt) => apt._id) } },
-      { $set: updateData }
-    );
+    const now = new Date();
+    const holdsSeat = (value: string) => (SEAT_HOLDING_STATUSES as readonly string[]).includes(value);
 
-    if (status === APPOINTMENT_STATUS.NO_SHOW || status === APPOINTMENT_STATUS.CANCELLED) {
+    // Per-appointment updates so undo keeps the original check-in time
+    const result = await Appointment.bulkWrite(current.map((apt) => {
+      const set: Record<string, unknown> = {};
+      const unset: Record<string, ''> = {};
+      if (notes !== undefined) set.notes = notes;
+      if (adminNotes !== undefined) set.adminNotes = adminNotes;
+      if (status) {
+        set.status = status;
+        if (status === APPOINTMENT_STATUS.ARRIVED) {
+          set.checkedInAt = apt.checkedInAt || now;
+          unset.completedAt = '';
+        } else if (status === APPOINTMENT_STATUS.COMPLETED) {
+          set.checkedInAt = apt.checkedInAt || now;
+          set.completedAt = apt.completedAt || now;
+        } else {
+          unset.checkedInAt = '';
+          unset.completedAt = '';
+        }
+      }
+      return {
+        updateOne: {
+          filter: { _id: apt._id },
+          update: Object.keys(unset).length ? { $set: set, $unset: unset } : { $set: set },
+        },
+      };
+    }));
+
+    if (status) {
       for (const apt of current) {
-        if (apt.status !== status) {
+        // Only move seats when crossing between seat-holding and released states
+        if (holdsSeat(apt.status) && !holdsSeat(status)) {
           await freeAppointmentSeat(apt);
+        } else if (!holdsSeat(apt.status) && holdsSeat(status)) {
+          await retakeAppointmentSeat(apt);
         }
       }
     }
 
     if (status === APPOINTMENT_STATUS.NO_SHOW) {
       for (const apt of current) {
-        if (apt.userId) {
+        if (apt.userId && apt.status !== APPOINTMENT_STATUS.NO_SHOW) {
           await notifyStudent({
             userId: String(apt.userId),
             title: 'No asistió / We missed you',

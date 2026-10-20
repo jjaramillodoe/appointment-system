@@ -4,7 +4,7 @@ import { logger } from '@/lib/logger';
 
 import { useState, useEffect } from 'react';
 import AppointmentsTab from '@/components/admin/AppointmentsTab';
-import IntakeQueue from '@/components/admin/IntakeQueue';
+import Link from 'next/link';
 import WaitlistPanel from '@/components/admin/WaitlistPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubFilter } from '@/contexts/HubFilterContext';
@@ -82,11 +82,12 @@ export default function AppointmentsPage() {
 
   return (
     <div className="space-y-6">
-      <IntakeQueue
-        token={token}
-        hubName={selectedHub && selectedHub !== 'all' ? selectedHub : undefined}
-        onRefreshParent={loadAppointments}
-      />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <p className="text-sm text-blue-900">Checking students in? The front desk view has search, late flags, and undo.</p>
+        <Link href="/admin/dashboard/today" className="text-sm font-semibold text-blue-700 underline">
+          Open today’s front desk
+        </Link>
+      </div>
       <WaitlistPanel token={token} hubName={selectedHub && selectedHub !== 'all' ? selectedHub : undefined} />
       {loading ? (
         <div className="flex items-center justify-center h-40">
