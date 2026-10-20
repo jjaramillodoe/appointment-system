@@ -43,15 +43,26 @@ export interface ReminderEmailData {
   hubName: string;
   hoursUntilAppointment: number;
   calendarDate?: string;
+  /** Calendar relation in the hub timezone; drives the subject line */
+  when?: 'today' | 'tomorrow' | 'upcoming';
+  dashboardUrl?: string;
 }
+
+const REMINDER_SUBJECTS = {
+  today: (hub: string) => `Recordatorio: su cita hoy en ${hub} / Reminder: appointment today`,
+  tomorrow: (hub: string) => `Recordatorio: su cita mañana en ${hub} / Reminder: appointment tomorrow`,
+  upcoming: (hub: string) => `Recordatorio: su próxima cita en ${hub} / Reminder: upcoming appointment`,
+};
 
 export async function sendReminderEmail(data: ReminderEmailData): Promise<boolean> {
   try {
     const { recipientEmail, recipientName, appointmentTime, appointmentDate, hubName, hoursUntilAppointment } = data;
 
-    const subject = hoursUntilAppointment === 24
-      ? `Recordatorio: su cita mañana en ${hubName} / Reminder: appointment tomorrow`
-      : `Recordatorio: su cita hoy en ${hubName} / Reminder: appointment today`;
+    const when = data.when ?? (hoursUntilAppointment >= 24 ? 'tomorrow' : 'today');
+    const subject = REMINDER_SUBJECTS[when](hubName);
+    const dashboardButton = data.dashboardUrl
+      ? `<p><a class="button" href="${data.dashboardUrl}">Ver, cambiar o cancelar / View, reschedule or cancel</a></p>`
+      : '';
 
     const htmlContent = appointmentEmailShell(
       'Recordatorio de cita / Appointment reminder',
@@ -64,6 +75,7 @@ export async function sendReminderEmail(data: ReminderEmailData): Promise<boolea
           <p><span class="label">Lugar / Location:</span> ${hubName}</p>
         </div>
         <p>Llegue 5-10 minutos antes. Si el centro está cerrado, revise su panel para ver el motivo y elija otro día.</p>
+        ${dashboardButton}
         <hr>
         <p>Hi ${recipientName},</p>
         <p>This is a reminder about your upcoming appointment. Please arrive 5-10 minutes early. If the site is unexpectedly closed, check your dashboard for the posted reason and pick another day.</p>

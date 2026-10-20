@@ -7,7 +7,7 @@ import Hub from '@/models/Hub';
 import User from '@/models/User';
 import dbConnect from '@/lib/mongodb';
 import { verifyStudentToken } from '@/lib/studentAuth';
-import { formatAppointmentTime, getHubTimezone } from '@/lib/slotDateTime';
+import { formatAppointmentTime, getHubTimezone, utcDayBounds } from '@/lib/slotDateTime';
 import { isTimePreference, slotMatchesTimePreference } from '@/lib/timePreference';
 import crypto from 'crypto';
 import { calculateProfileCompletion } from '@/lib/profileCompletion';
@@ -155,7 +155,8 @@ export async function POST(request: NextRequest) {
       hubId,
       hubName: hub.name,
       slotId,
-      appointmentDate: appointmentDateTime.toJSDate(),
+      // Same convention as every other writer: UTC midnight of the hub calendar day + wall-clock time
+      appointmentDate: dateStr ? utcDayBounds(dateStr).start : appointmentDateTime.toJSDate(),
       appointmentTime,
       status,
       preferredLanguage: user.preferredLanguage || '',

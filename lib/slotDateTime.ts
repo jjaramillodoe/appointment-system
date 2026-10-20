@@ -48,6 +48,23 @@ export function combineSlotDateTime(
   });
 }
 
+/**
+ * Start time of a stored appointment. Most writers persist UTC midnight + a wall-clock
+ * time; older quick bookings stored the exact instant, so honor that when present.
+ */
+export function appointmentStartDateTime(
+  appointmentDate: Date | string,
+  appointmentTime: string | undefined,
+  timezone: string
+): DateTime {
+  const instant = DateTime.fromJSDate(new Date(appointmentDate), { zone: 'utc' });
+  const isUtcMidnight = instant.isValid && instant.hour === 0 && instant.minute === 0;
+  if (!isUtcMidnight && instant.isValid) {
+    return instant.setZone(timezone);
+  }
+  return combineSlotDateTime(appointmentDate, appointmentTime || '9:00 AM', timezone);
+}
+
 export function getBookingWindow(
   timezone: string,
   now: DateTime = DateTime.now(),

@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { expirePastAppointments } from '@/lib/appointmentLifecycle';
-
-function isAuthorized(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) return process.env.NODE_ENV !== 'production';
-  const header = request.headers.get('authorization');
-  return header === `Bearer ${secret}`;
-}
+import { isAuthorizedCronRequest } from '@/lib/cronAuth';
 
 export async function GET(request: NextRequest) {
-  if (!isAuthorized(request)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 

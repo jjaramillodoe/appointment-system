@@ -7,7 +7,7 @@ import { AvailabilityCache } from '@/lib/redis';
 import { APPOINTMENT_STATUS, ACTIVE_APPOINTMENT_STATUSES } from '@/lib/appointmentStatus';
 import { calendarDateFromValue, toAppointmentClock, toTwentyFourHour } from '@/lib/appointmentTime';
 import { promoteWaitlist } from '@/lib/waitlistService';
-import { combineSlotDateTime, getHubTimezone } from '@/lib/slotDateTime';
+import { appointmentStartDateTime, getHubTimezone } from '@/lib/slotDateTime';
 
 export function appointmentDateKey(value?: Date | string | null): string {
   return calendarDateFromValue(value);
@@ -94,9 +94,9 @@ export async function expirePastAppointments() {
       : appointment.hubName
         ? await Hub.findOne({ name: appointment.hubName }).select('timezone')
         : null;
-    const start = combineSlotDateTime(
+    const start = appointmentStartDateTime(
       appointment.appointmentDate,
-      appointment.appointmentTime || '9:00 AM',
+      appointment.appointmentTime,
       getHubTimezone(hub?.timezone)
     );
     if (!start.isValid || start.toMillis() > now) continue;
