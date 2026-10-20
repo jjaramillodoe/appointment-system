@@ -4,7 +4,7 @@ import dbConnect from '../../../../lib/mongodb';
 import User from '../../../../models/User';
 import { normalizeProfileFields } from '../../../../lib/textNormalization';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 interface JWTPayload {
   userId: string;
@@ -25,7 +25,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload;
 
     let profileData = await request.json();
 

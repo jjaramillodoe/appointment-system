@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import Hub from '@/models/Hub';
 import dbConnect from '@/lib/mongodb';
 
@@ -41,6 +42,9 @@ const SAMPLE_HUBS = [
 ];
 
 export async function POST(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     await dbConnect();
 
@@ -75,6 +79,9 @@ export async function POST(request: NextRequest) {
 
 // GET endpoint to check seed status
 export async function GET(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     await dbConnect();
     const count = await Hub.countDocuments();

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     console.log('Analytics - Admin User:', {
       adminUser,
       isAdminCheck: isAdmin(adminUser),

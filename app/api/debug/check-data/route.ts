@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import dbConnect from '@/lib/mongodb';
 import Appointment from '@/models/Appointment';
 import AppointmentSlot from '@/models/AppointmentSlot';
 
 export async function GET(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     await dbConnect();
 

@@ -5,7 +5,7 @@ import Appointment from '../../../models/Appointment';
 import Hub from '../../../models/Hub';
 import { AvailabilityService } from '../../../lib/availabilityService';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 interface JWTPayload {
   userId: string;
@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload;
 
     // Find user's most recent appointment
     const appointment = await Appointment.findOne({
@@ -81,7 +81,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload;
 
     console.log('🗑️ Student cancellation request for user:', decoded.userId);
 

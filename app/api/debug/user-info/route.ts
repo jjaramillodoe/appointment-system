@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import { verifyAdminToken, isAdmin, isSuperAdmin } from '@/lib/adminPermissions';
 
 export async function GET(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     const authHeader = request.headers.get('authorization');
 
@@ -15,7 +19,7 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7);
     console.log('Debug - Token:', token.substring(0, 30) + '...');
 
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     console.log('Debug - Verified User:', adminUser);
 
     if (!adminUser) {

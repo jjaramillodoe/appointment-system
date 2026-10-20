@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token) as AdminUser;
+    const adminUser = await verifyAdminToken(token) as AdminUser;
 
     if (!checkSuperAdmin(adminUser)) {
       return NextResponse.json(
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token) as AdminUser;
+    const adminUser = await verifyAdminToken(token) as AdminUser;
 
     if (!checkSuperAdmin(adminUser)) {
       return NextResponse.json(

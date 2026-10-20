@@ -3,15 +3,22 @@ import Appointment from '@/models/Appointment';
 import AppointmentSlot from '@/models/AppointmentSlot';
 import Hub from '@/models/Hub';
 import dbConnect from '@/lib/mongodb';
+import { verifyStudentToken } from '@/lib/studentAuth';
 import crypto from 'crypto';
 
 export async function POST(request: NextRequest) {
   try {
+    const decoded = verifyStudentToken(request.headers.get('authorization'));
+    if (!decoded) {
+      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
+    }
+
     await dbConnect();
 
     const body = await request.json();
+    // Always book for the authenticated student, never a userId from the body
+    const userId = decoded.userId;
     const {
-      userId,
       classInterest,
       timePreference,
       hubId,

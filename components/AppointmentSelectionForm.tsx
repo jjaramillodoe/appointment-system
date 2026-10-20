@@ -129,11 +129,14 @@ export default function AppointmentSelectionForm({
 
     try {
       setIsLoading(true);
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
       const response = await fetch('/api/appointments/book-quick', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
-          userId,
           classInterest,
           timePreference,
           hubId: selectedHub._id,

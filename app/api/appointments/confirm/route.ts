@@ -12,12 +12,12 @@ import mongoose from 'mongoose';
 const Appointment = mongoose.models.Appointment;
 const NotificationModel = mongoose.models.Notification;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 // Helper function to verify JWT token
 function verifyToken(token: string) {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    return jwt.verify(token, getJwtSecret()) as { userId: string; email: string };
   } catch (error) {
     return null;
   }

@@ -3,7 +3,8 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rateLimit';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +25,13 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const { email, password } = body;
+
+    const limited = await enforceRateLimit(
+      request,
+      RATE_LIMITS.login,
+      typeof email === 'string' ? email : undefined
+    );
+    if (limited) return limited;
 
     // Find user by email (lowercase to match schema)
     const user = await User.findOne({ email: email.toLowerCase().trim() });
@@ -52,7 +60,7 @@ export async function POST(request: NextRequest) {
         isSuperAdmin: user.isSuperAdmin || false,
         assignedHub: user.assignedHub?.toString() || null,
       },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 

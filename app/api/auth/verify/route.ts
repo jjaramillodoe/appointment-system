@@ -3,11 +3,11 @@ import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 function verifyToken(token: string) {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
+    return jwt.verify(token, getJwtSecret()) as { userId: string; email: string; isAdmin: boolean };
   } catch (error) {
     return null;
   }

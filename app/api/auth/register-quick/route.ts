@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getJwtSecret } from '@/lib/jwtSecret';
+import { enforceRateLimit, RATE_LIMITS } from '@/lib/rateLimit';
 import User from '@/models/User';
 import dbConnect from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
@@ -6,6 +8,9 @@ import { validateEmail } from '@/utils/emailValidation';
 
 export async function POST(request: NextRequest) {
   try {
+    const limited = await enforceRateLimit(request, RATE_LIMITS.register);
+    if (limited) return limited;
+
     await dbConnect();
 
     const body = await request.json();
@@ -81,7 +86,7 @@ export async function POST(request: NextRequest) {
         userId: newUser._id,
         email: newUser.email,
       },
-      process.env.JWT_SECRET || 'your-secret-key',
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 

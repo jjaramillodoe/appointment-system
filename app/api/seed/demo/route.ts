@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import Appointment from '@/models/Appointment';
@@ -6,6 +7,9 @@ import Hub from '@/models/Hub';
 import * as bcrypt from 'bcryptjs';
 
 export async function GET(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     await dbConnect();
 
