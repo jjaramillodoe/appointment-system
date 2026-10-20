@@ -7,6 +7,7 @@ import Hub from '@/models/Hub';
 import User from '@/models/User';
 import dbConnect from '@/lib/mongodb';
 import { verifyStudentToken } from '@/lib/studentAuth';
+import { markWaitlistBooked } from '@/lib/waitlistService';
 import { formatAppointmentTime, getHubTimezone, utcDayBounds } from '@/lib/slotDateTime';
 import { isTimePreference, slotMatchesTimePreference } from '@/lib/timePreference';
 import crypto from 'crypto';
@@ -167,6 +168,8 @@ export async function POST(request: NextRequest) {
     });
 
     await appointment.save();
+    // Booked students should stop receiving waitlist offers
+    await markWaitlistBooked(appointment.userId);
     void notifyAppointmentBooked(user, appointment, completion.isComplete);
     void notifyStudent({
       userId: String(user._id),

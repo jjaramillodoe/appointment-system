@@ -57,7 +57,7 @@ export async function freeAppointmentSeat(appointment: {
       }
     }
     await AvailabilityCache.invalidate(String(hub._id), date);
-    await promoteWaitlist(String(hub._id), hub.name);
+    await promoteWaitlist(String(hub._id), hub.name, { date, time: displayTime });
   }
 }
 
