@@ -32,6 +32,7 @@ import { DASHBOARD_CONTENT_CLASS } from '@/components/dashboard/shell';
 import { calculateProfileCompletion } from '@/lib/profileCompletion';
 import { APPOINTMENT_STATUS, isPendingProfile } from '@/lib/appointmentStatus';
 import { toAppointmentClock } from '@/lib/appointmentTime';
+import { useI18n } from '@/contexts/I18nContext';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -78,6 +79,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { toasts, showSuccess, showError, showInfo, removeToast } = useToast();
   const { user: authUser, token, isAuthenticated, loading: authLoading } = useAuth();
+  const { t } = useI18n();
+  const msg = t.dashboard.page;
   const [user, setUser] = useState<User | null>(null);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
   const [appointmentHistory, setAppointmentHistory] = useState<Appointment[]>([]);
@@ -170,7 +173,7 @@ export default function DashboardPage() {
 
   // Helper function to format time with improved error handling
   const formatTime = (time: string | undefined): string => {
-    if (!time) return 'Time not available';
+    if (!time) return t.dashboard.common.timeNotAvailable;
     
     try {
       // Handle various time formats
@@ -193,7 +196,7 @@ export default function DashboardPage() {
       return timeStr;
     } catch (error) {
       logger.warn('Error formatting time:', time, error);
-      return 'Time not available';
+      return t.dashboard.common.timeNotAvailable;
     }
   };
 
@@ -312,7 +315,7 @@ export default function DashboardPage() {
       .then(data => {
         const hubs = Array.isArray(data) ? data : data.hubs;
         if (!Array.isArray(hubs)) {
-          throw new Error(data.error || 'Failed to load hubs');
+          throw new Error(data.error || msg.loadHubsFailed);
         }
 
         setHubConfigs(hubs.map((hub: any) => ({
@@ -411,7 +414,7 @@ export default function DashboardPage() {
     const userData = localStorage.getItem('user');
 
     if (!token || !userData) {
-      setError('Authentication required');
+      setError(msg.authRequired);
       setIsScheduling(false);
       return;
     }
@@ -422,7 +425,7 @@ export default function DashboardPage() {
       const selectedHubConfig = hubConfigs.find(cfg => cfg.hubName === scheduleForm.selectedHub);
       
       if (!selectedHubConfig?._id) {
-        throw new Error('Selected hub not found');
+        throw new Error(msg.hubNotFound);
       }
 
       // Convert 12-hour time to 24-hour format for backend
@@ -451,7 +454,7 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         if (String(data.error || '').toLowerCase().includes('fully booked') || response.status === 409) {
-          const join = window.confirm('That window is full. Join the waitlist for this site?');
+          const join = window.confirm(msg.windowFullConfirm);
           if (join) {
             await fetch('/api/waitlist', {
               method: 'POST',
@@ -461,16 +464,16 @@ export default function DashboardPage() {
               },
               body: JSON.stringify({ hubId: selectedHubConfig._id }),
             });
-            showSuccess('You are on the waitlist. We will email you if a seat opens.');
+            showSuccess(msg.waitlistJoined);
             setShowScheduleForm(false);
             return;
           }
         }
-        throw new Error(data.error || 'Failed to schedule appointment');
+        throw new Error(data.error || msg.scheduleFailed);
       }
 
       if (!data.success) {
-        throw new Error(data.error || 'Booking failed');
+        throw new Error(data.error || msg.scheduleFailed);
       }
 
       // Update local appointment state with proper typing
@@ -490,25 +493,26 @@ export default function DashboardPage() {
       
       // Show success message
       setError('');
-      showSuccess('Appointment scheduled successfully!');
+      showSuccess(msg.scheduled);
 
     } catch (err: any) {
       logger.error('❌ Booking error:', err);
-      setError(err.message || 'Failed to schedule appointment');
-      showError(err.message || 'Failed to schedule appointment');
+      setError(err.message || msg.scheduleFailed);
+      showError(err.message || msg.scheduleFailed);
     } finally {
       setIsScheduling(false);
     }
   };
 
   const handleCancelAppointment = async () => {
+    if (!window.confirm(msg.cancelConfirm)) return;
     setIsCancelling(true);
     setError('');
 
     const token = localStorage.getItem('token');
     
     if (!token) {
-      showError('Authentication required');
+      showError(msg.authRequired);
       setIsCancelling(false);
       return;
     }
@@ -524,18 +528,18 @@ export default function DashboardPage() {
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || 'Failed to cancel appointment');
+        throw new Error(data.error || msg.cancelFailed);
       }
 
       setAppointment(null);
 
       // Show success toast
       setError('');
-      showSuccess('Your appointment has been successfully cancelled and removed from your dashboard.', 6000);
+      showSuccess(msg.cancelled, 6000);
 
     } catch (err: any) {
-      setError(err.message || 'Failed to cancel appointment');
-      showError(err.message || 'Failed to cancel appointment');
+      setError(err.message || msg.cancelFailed);
+      showError(err.message || msg.cancelFailed);
     } finally {
       setIsCancelling(false);
     }
@@ -552,16 +556,16 @@ export default function DashboardPage() {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to confirm appointment');
+      if (!response.ok) throw new Error(data.error || msg.confirmFailed);
       if (appointment) {
         setAppointment({ ...appointment, status: 'confirmed' });
       }
       setShowConfirmationSuccess(true);
       setTimeout(() => setShowConfirmationSuccess(false), 5000);
-      showSuccess('Appointment confirmed successfully!');
+      showSuccess(msg.confirmed);
     } catch (err: any) {
-      setError(err.message || 'Failed to confirm appointment');
-      showError(err.message || 'Failed to confirm appointment');
+      setError(err.message || msg.confirmFailed);
+      showError(err.message || msg.confirmFailed);
     } finally {
       setIsConfirming(false);
     }
@@ -578,7 +582,7 @@ export default function DashboardPage() {
     setError('');
     try {
       const selectedHubConfig = hubConfigs.find((cfg) => cfg.hubName === scheduleForm.selectedHub);
-      if (!selectedHubConfig?._id) throw new Error('Selected hub not found');
+      if (!selectedHubConfig?._id) throw new Error(msg.hubNotFound);
       const authToken = token || localStorage.getItem('token');
       const response = await fetch('/api/appointments/reschedule', {
         method: 'PATCH',
@@ -593,7 +597,7 @@ export default function DashboardPage() {
         }),
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to reschedule');
+      if (!response.ok) throw new Error(data.error || msg.rescheduleFailed);
       setAppointment({
         ...(appointment as Appointment),
         appointmentDate: scheduleForm.appointmentDate,
@@ -602,10 +606,10 @@ export default function DashboardPage() {
       });
       setShowScheduleForm(false);
       setIsRescheduling(false);
-      showSuccess('Appointment rescheduled.');
+      showSuccess(msg.rescheduled);
     } catch (err: any) {
-      setError(err.message || 'Failed to reschedule');
-      showError(err.message || 'Failed to reschedule');
+      setError(err.message || msg.rescheduleFailed);
+      showError(err.message || msg.rescheduleFailed);
     } finally {
       setIsScheduling(false);
     }
@@ -630,7 +634,7 @@ export default function DashboardPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to update address');
+        throw new Error(data.error || msg.addressFailed);
       }
 
       // Update local user data
@@ -645,10 +649,10 @@ export default function DashboardPage() {
         state: '',
         zipCode: ''
       });
-      showSuccess('Address updated successfully!');
+      showSuccess(msg.addressUpdated);
     } catch (err: any) {
-      setError(err.message || 'Failed to update address');
-      showError(err.message || 'Failed to update address');
+      setError(err.message || msg.addressFailed);
+      showError(err.message || msg.addressFailed);
     } finally {
       setIsUpdatingAddress(false);
     }
@@ -719,7 +723,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your dashboard...</p>
+          <p className="text-gray-600" role="status">{msg.loading}</p>
         </div>
       </div>
     );
@@ -729,7 +733,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-gray-600">Please log in to access your dashboard.</p>
+          <p className="text-gray-600">{msg.loginRequired}</p>
         </div>
       </div>
     );

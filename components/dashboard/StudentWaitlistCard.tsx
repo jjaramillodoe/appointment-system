@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
+import type { Dictionary } from '@/lib/i18n/dictionaries/en';
 
 interface WaitlistEntry {
   _id: string;
@@ -11,8 +13,16 @@ interface WaitlistEntry {
   status: string;
 }
 
+function timeWindowLabel(t: Dictionary, value?: string) {
+  if (!value) return '';
+  const windows: Record<string, string> = t.slots.timePreferences;
+  return windows[value]?.split(' (')[0] ?? value;
+}
+
 export default function StudentWaitlistCard() {
   const { token } = useAuth();
+  const { t } = useI18n();
+  const copy = t.dashboard.waitlist;
   const [entries, setEntries] = useState<WaitlistEntry[]>([]);
   const [error, setError] = useState('');
 
@@ -23,7 +33,7 @@ export default function StudentWaitlistCard() {
     });
     const data = await response.json();
     if (!response.ok) {
-      setError(data.error || 'Unable to load waitlist');
+      setError(data.error || copy.loadFailed);
       return;
     }
     setEntries(data.entries || []);
@@ -46,7 +56,7 @@ export default function StudentWaitlistCard() {
     });
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
-      setError(data.error || 'Unable to leave the waitlist');
+      setError(data.error || copy.leaveFailed);
       return;
     }
     await load();
@@ -56,18 +66,16 @@ export default function StudentWaitlistCard() {
 
   return (
     <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">Waitlist</h3>
-      <p className="text-sm text-gray-600 mb-4">
-        We will email you and send an inbox message if a seat opens at these sites.
-      </p>
-      {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+      <h3 className="text-lg font-semibold text-gray-900 mb-2">{copy.title}</h3>
+      <p className="text-sm text-gray-600 mb-4">{copy.intro}</p>
+      {error && <p className="mb-3 text-sm text-red-600" role="alert">{error}</p>}
       <div className="space-y-3">
         {entries.map((entry) => (
           <div key={entry._id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-100 p-3">
             <div>
-              <p className="font-medium text-gray-900">{entry.hubName || 'Learning center'}</p>
+              <p className="font-medium text-gray-900">{entry.hubName || t.dashboard.common.learningCenter}</p>
               <p className="text-sm text-gray-600">
-                {entry.classInterest || 'Program TBD'} · {entry.timePreference || 'Any time'} · {entry.status === 'notified' ? 'A seat opened' : 'Waiting'}
+                {entry.classInterest || copy.programTbd} · {timeWindowLabel(t, entry.timePreference) || copy.anyTime} · {entry.status === 'notified' ? copy.seatOpened : copy.waiting}
               </p>
             </div>
             <button
@@ -75,7 +83,7 @@ export default function StudentWaitlistCard() {
               onClick={() => leave(entry._id)}
               className="text-sm font-semibold text-primary-700 hover:text-primary-800"
             >
-              Leave waitlist
+              {copy.leave}
             </button>
           </div>
         ))}

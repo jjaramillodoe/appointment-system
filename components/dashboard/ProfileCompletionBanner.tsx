@@ -2,6 +2,8 @@
 
 import { AlertCircle, X } from 'lucide-react';
 import { useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
 
 interface ProfileCompletionBannerProps {
   completionPercentage: number;
@@ -12,6 +14,8 @@ export default function ProfileCompletionBanner({
   completionPercentage,
   onNavigateToProfile,
 }: ProfileCompletionBannerProps) {
+  const { t } = useI18n();
+  const copy = t.dashboard.completionBanner;
   const [isDismissed, setIsDismissed] = useState(false);
 
   // Only show if profile is incomplete
@@ -20,14 +24,9 @@ export default function ProfileCompletionBanner({
   }
 
   const getMessage = () => {
-    if (completionPercentage === 0) {
-      return "Get started! Complete your profile to help us serve you better.";
-    } else if (completionPercentage < 50) {
-      return "You're just getting started! Complete your profile for a better experience.";
-    } else if (completionPercentage < 100) {
-      return "Almost there! Finish completing your profile so we can better assist you.";
-    }
-    return "Complete your profile";
+    if (completionPercentage === 0) return copy.start;
+    if (completionPercentage < 50) return copy.low;
+    return copy.high;
   };
 
   return (
@@ -37,7 +36,7 @@ export default function ProfileCompletionBanner({
           <AlertCircle className="h-6 w-6 text-blue-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-blue-900 mb-1">
-              Profile Completion: {completionPercentage}%
+              {fmt(copy.title, { percent: completionPercentage })}
             </h3>
             <p className="text-blue-800 text-sm mb-3">{getMessage()}</p>
 
@@ -53,14 +52,14 @@ export default function ProfileCompletionBanner({
               onClick={onNavigateToProfile}
               className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
             >
-              Complete Your Profile
+              {copy.button}
             </button>
           </div>
         </div>
         <button
           onClick={() => setIsDismissed(true)}
           className="text-blue-600 hover:text-blue-800 transition-colors flex-shrink-0"
-          aria-label="Dismiss notification"
+          aria-label={copy.dismiss}
         >
           <X className="h-5 w-5" />
         </button>

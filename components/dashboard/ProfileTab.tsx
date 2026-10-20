@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 import { UserCircle, Edit, XCircle, Save } from 'lucide-react';
 import { format } from 'date-fns';
 import ProfileCompletionDashboard from './ProfileCompletionDashboard';
+import { useI18n } from '@/contexts/I18nContext';
+import { dateFnsLocale, optionLabel } from '@/lib/i18n/labels';
 
 interface User {
   firstName: string;
@@ -52,7 +54,20 @@ interface ProfileTabProps {
 }
 
 export default function ProfileTab({ user, onProfileUpdate, showSuccess, showError }: ProfileTabProps) {
+  const { t, locale } = useI18n();
+  const copy = t.dashboard.profile;
+  const common = t.dashboard.common;
+  const options = copy.options;
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [schoolNames, setSchoolNames] = useState<string[]>([]);
+
+  // Real school list (the form used to offer placeholder "School 1–8")
+  useEffect(() => {
+    fetch('/api/schools')
+      .then((res) => (res.ok ? res.json() : { schools: [] }))
+      .then((data) => setSchoolNames((data.schools || []).map((school: { name: string }) => school.name)))
+      .catch(() => setSchoolNames([]));
+  }, []);
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileForm, setProfileForm] = useState({
     firstName: '',
@@ -151,14 +166,14 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
         const data = await response.json();
         onProfileUpdate(data.user);
         setIsEditingProfile(false);
-        showSuccess('Profile updated successfully!');
+        showSuccess(copy.updated);
       } else {
         const errorData = await response.json();
-        showError(errorData.error || 'Failed to update profile');
+        showError(errorData.error || copy.updateFailed);
       }
     } catch (error) {
       logger.error('Profile update error:', error);
-      showError('Failed to update profile');
+      showError(copy.updateFailed);
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -228,7 +243,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                 <UserCircle className="h-6 w-6 text-white" />
               </div>
               <h2 className="text-xl font-semibold text-white">
-                Profile Information
+                {copy.title}
               </h2>
             </div>
           <button
@@ -237,13 +252,13 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           >
             {isEditingProfile ? (
               <>
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel
+                <XCircle className="h-4 w-4 mr-2" aria-hidden />
+                {common.cancel}
               </>
             ) : (
               <>
-                <Edit className="h-4 w-4 mr-2" />
-                Edit Profile
+                <Edit className="h-4 w-4 mr-2" aria-hidden />
+                {copy.edit}
               </>
             )}
           </button>
@@ -253,9 +268,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
       <div className="p-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+            <label htmlFor="profile-first-name" className="block text-sm font-medium text-gray-700 mb-1">{copy.firstName}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-first-name"
                 type="text"
                 value={profileForm.firstName}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, firstName: e.target.value }))}
@@ -267,23 +282,23 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Middle Name</label>
+            <label htmlFor="profile-middle-name" className="block text-sm font-medium text-gray-700 mb-1">{copy.middleName}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-middle-name"
                 type="text"
                 value={profileForm.middleName}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, middleName: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             ) : (
-              <p className="text-gray-900 py-2">{user.middleName || 'N/A'}</p>
+              <p className="text-gray-900 py-2">{user.middleName || common.notAvailable}</p>
             )}
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+            <label htmlFor="profile-last-name" className="block text-sm font-medium text-gray-700 mb-1">{copy.lastName}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-last-name"
                 type="text"
                 value={profileForm.lastName}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, lastName: e.target.value }))}
@@ -295,9 +310,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label htmlFor="profile-email" className="block text-sm font-medium text-gray-700 mb-1">{copy.email}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-email"
                 type="email"
                 value={profileForm.email}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, email: e.target.value }))}
@@ -309,9 +324,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+            <label htmlFor="profile-phone" className="block text-sm font-medium text-gray-700 mb-1">{copy.phone}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-phone"
                 type="tel"
                 value={profileForm.phone}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, phone: e.target.value }))}
@@ -323,9 +338,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
+            <label htmlFor="profile-dob" className="block text-sm font-medium text-gray-700 mb-1">{copy.dateOfBirth}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-dob"
                 type="date"
                 value={profileForm.dateOfBirth}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, dateOfBirth: e.target.value }))}
@@ -333,199 +348,181 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               />
             ) : (
               <p className="text-gray-900 py-2">
-                {user.dateOfBirth ? format(new Date(user.dateOfBirth), 'MMMM dd, yyyy') : 'N/A'}
+                {user.dateOfBirth ? format(new Date(user.dateOfBirth), 'PPP', { locale: dateFnsLocale(locale) }) : common.notAvailable}
               </p>
             )}
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+            <label htmlFor="profile-gender" className="block text-sm font-medium text-gray-700 mb-1">{copy.gender}</label>
             {isEditingProfile ? (
-              <select
+              <select id="profile-gender"
                 value={profileForm.sex}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, sex: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Select gender</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Non-binary">Non-binary</option>
-                <option value="Prefer not to say">Prefer not to say</option>
+                <option value="">{copy.selectGender}</option>
+                {Object.entries(options.sex).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             ) : (
-              <p className="text-gray-900 py-2">{user.sex}</p>
+              <p className="text-gray-900 py-2">{optionLabel(options.sex, user.sex)}</p>
             )}
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">How did you hear about us?</label>
+            <label htmlFor="profile-heard-from" className="block text-sm font-medium text-gray-700 mb-1">{copy.heardFrom}</label>
             {isEditingProfile ? (
-              <select
+              <select id="profile-heard-from"
                 value={profileForm.heardFrom}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, heardFrom: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Select option</option>
-                <option value="Google">Google</option>
-                <option value="Facebook">Facebook</option>
-                <option value="Friend/Family">Friend/Family</option>
-                <option value="Community Center">Community Center</option>
-                <option value="School">School</option>
-                <option value="Advertisement">Advertisement</option>
-                <option value="Other">Other</option>
+                <option value="">{copy.selectOption}</option>
+                {Object.entries(options.heardFrom).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             ) : (
-              <p className="text-gray-900 py-2">{user.heardFrom}</p>
+              <p className="text-gray-900 py-2">{optionLabel(options.heardFrom, user.heardFrom)}</p>
             )}
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Primary Language</label>
+            <label htmlFor="profile-language" className="block text-sm font-medium text-gray-700 mb-1">{copy.primaryLanguage}</label>
             {isEditingProfile ? (
-              <select
+              <select id="profile-language"
                 value={profileForm.preferredLanguage}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, preferredLanguage: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Select language</option>
-                <option value="English">English</option>
-                <option value="Spanish">Spanish</option>
-                <option value="French">French</option>
-                <option value="Arabic">Arabic</option>
-                <option value="Chinese">Chinese</option>
-                <option value="Other">Other</option>
+                <option value="">{copy.selectLanguage}</option>
+                {Object.entries(options.language).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             ) : (
-              <p className="text-gray-900 py-2">{user.preferredLanguage}</p>
+              <p className="text-gray-900 py-2">{optionLabel(options.language, user.preferredLanguage)}</p>
             )}
           </div>
           
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Additional Languages</label>
+            <label htmlFor="profile-additional-languages" className="block text-sm font-medium text-gray-700 mb-1">{copy.additionalLanguages}</label>
             {isEditingProfile ? (
-              <input
+              <input id="profile-additional-languages"
                 type="text"
                 value={profileForm.additionalLanguages.join(', ')}
                 onChange={(e) => setProfileForm(prev => ({ 
                   ...prev, 
                   additionalLanguages: e.target.value.split(',').map(lang => lang.trim()).filter(lang => lang)
                 }))}
-                placeholder="Enter languages separated by commas"
+                placeholder={copy.additionalLanguagesPlaceholder}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             ) : (
-              <p className="text-gray-900 py-2">{user.additionalLanguages?.join(', ') || 'None'}</p>
+              <p className="text-gray-900 py-2">{user.additionalLanguages?.join(', ') || common.none}</p>
             )}
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Education Level</label>
+            <label htmlFor="profile-education" className="block text-sm font-medium text-gray-700 mb-1">{copy.educationLevel}</label>
             {isEditingProfile ? (
-              <select
+              <select id="profile-education"
                 value={profileForm.educationLevel}
                 onChange={(e) => setProfileForm(prev => ({ ...prev, educationLevel: e.target.value }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="">Select education level</option>
-                <option value="no-hs">No High School</option>
-                <option value="some-hs">Some High School</option>
-                <option value="ged">GED</option>
-                <option value="hs-diploma">High School Diploma</option>
-                <option value="some-college">Some College</option>
-                <option value="college-degree">College Degree</option>
+                <option value="">{copy.selectEducation}</option>
+                {Object.entries(options.education).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
               </select>
             ) : (
-              <p className="text-gray-900 py-2">{user.educationLevel}</p>
+              <p className="text-gray-900 py-2">{optionLabel(options.education, user.educationLevel)}</p>
             )}
           </div>
         </div>
 
         {/* Employment Information */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Employment Information</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{copy.employmentTitle}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employment Status</label>
+              <label htmlFor="profile-employment" className="block text-sm font-medium text-gray-700 mb-1">{copy.employmentStatus}</label>
               {isEditingProfile ? (
-                <select
+                <select id="profile-employment"
                   value={profileForm.employmentStatus}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, employmentStatus: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select employment status</option>
-                  <option value="employed">Employed</option>
-                  <option value="unemployed">Unemployed</option>
-                  <option value="self-employed">Self-employed</option>
-                  <option value="retired">Retired</option>
-                  <option value="student">Student</option>
+                  <option value="">{copy.selectEmployment}</option>
+                  {Object.entries(options.employment).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               ) : (
-                <p className="text-gray-900 py-2">{user.employmentStatus}</p>
+                <p className="text-gray-900 py-2">{optionLabel(options.employment, user.employmentStatus)}</p>
               )}
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employer Name</label>
+              <label htmlFor="profile-employer" className="block text-sm font-medium text-gray-700 mb-1">{copy.employerName}</label>
               {isEditingProfile ? (
-                <input
+                <input id="profile-employer"
                   type="text"
                   value={profileForm.employerName}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, employerName: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               ) : (
-                <p className="text-gray-900 py-2">{user.employerName || 'N/A'}</p>
+                <p className="text-gray-900 py-2">{user.employerName || common.notAvailable}</p>
               )}
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Job Title</label>
+              <label htmlFor="profile-job-title" className="block text-sm font-medium text-gray-700 mb-1">{copy.jobTitle}</label>
               {isEditingProfile ? (
-                <input
+                <input id="profile-job-title"
                   type="text"
                   value={profileForm.jobTitle}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, jobTitle: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               ) : (
-                <p className="text-gray-900 py-2">{user.jobTitle || 'N/A'}</p>
+                <p className="text-gray-900 py-2">{user.jobTitle || common.notAvailable}</p>
               )}
             </div>
           </div>
 
           {/* School and Program Information */}
           <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="text-md font-medium text-gray-800 mb-4">School and Program Interests</h4>
+            <h4 className="text-md font-medium text-gray-800 mb-4">{copy.schoolProgramTitle}</h4>
 
             {/* School Interest Dropdown */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">School Interest</label>
+              <label htmlFor="profile-school" className="block text-sm font-medium text-gray-700 mb-1">{copy.schoolInterest}</label>
               {isEditingProfile ? (
-                <select
+                <select id="profile-school"
                   value={profileForm.schoolInterest}
                   onChange={(e) => setProfileForm(prev => ({ ...prev, schoolInterest: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select a school</option>
-                  <option value="School 1">School 1</option>
-                  <option value="School 2">School 2</option>
-                  <option value="School 3">School 3</option>
-                  <option value="School 4">School 4</option>
-                  <option value="School 5">School 5</option>
-                  <option value="School 6">School 6</option>
-                  <option value="School 7">School 7</option>
-                  <option value="School 8">School 8</option>
+                  <option value="">{copy.selectSchool}</option>
+                  {[...new Set([...schoolNames, ...(profileForm.schoolInterest ? [profileForm.schoolInterest] : [])])].map((name) => (
+                    <option key={name} value={name}>{name}</option>
+                  ))}
                 </select>
               ) : (
-                <p className="text-gray-900 py-2">{user.schoolInterest || 'Not specified'}</p>
+                <p className="text-gray-900 py-2">{user.schoolInterest || common.notSpecified}</p>
               )}
             </div>
 
             {/* Program Interests Checkboxes */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Program Interests (Select all that apply)</label>
+              <p id="profile-programs-label" className="block text-sm font-medium text-gray-700 mb-3">{copy.programInterests}</p>
               {isEditingProfile ? (
-                <div className="space-y-2">
+                <div className="space-y-2" role="group" aria-labelledby="profile-programs-label">
                   {['Adult Basic Education', 'ESL', 'CTE'].map(program => (
                     <label key={program} className="flex items-center">
                       <input
@@ -546,20 +543,20 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                         }}
                         className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                       />
-                      <span className="ml-2 text-gray-700">{program}</span>
+                      <span className="ml-2 text-gray-700">{optionLabel(options.program, program)}</span>
                     </label>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-900 py-2">{user.programInterests?.length ? user.programInterests.join(', ') : 'None selected'}</p>
+                <p className="text-gray-900 py-2">{user.programInterests?.length ? user.programInterests.map((program) => optionLabel(options.program, program)).join(', ') : common.noneSelected}</p>
               )}
             </div>
 
             {/* Barriers to Learning Checkboxes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-3">Barriers to Learning (Select all that apply)</label>
+              <p id="profile-barriers-label" className="block text-sm font-medium text-gray-700 mb-3">{copy.barriers}</p>
               {isEditingProfile ? (
-                <div className="space-y-2">
+                <div className="space-y-2" role="group" aria-labelledby="profile-barriers-label">
                   {['Language', 'Literacy', 'Technology', 'Transportation', 'Other'].map(barrier => (
                     <label key={barrier} className="flex items-center">
                       <input
@@ -580,12 +577,12 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                         }}
                         className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                       />
-                      <span className="ml-2 text-gray-700">{barrier}</span>
+                      <span className="ml-2 text-gray-700">{optionLabel(options.barrier, barrier)}</span>
                     </label>
                   ))}
                 </div>
               ) : (
-                <p className="text-gray-900 py-2">{user.barriersToLearning?.length ? user.barriersToLearning.join(', ') : 'None selected'}</p>
+                <p className="text-gray-900 py-2">{user.barriersToLearning?.length ? user.barriersToLearning.map((barrier) => optionLabel(options.barrier, barrier)).join(', ') : common.noneSelected}</p>
               )}
             </div>
           </div>
@@ -593,16 +590,16 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
 
         {/* Address Information */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Address Information</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{copy.addressTitle}</h3>
           
           {/* Current/Mailing Address */}
           <div className="mb-6">
-            <h4 className="text-md font-medium text-gray-800 mb-3">Current/Mailing Address</h4>
+            <h4 className="text-md font-medium text-gray-800 mb-3">{copy.currentAddress}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <label htmlFor="profile-address-street" className="block text-sm font-medium text-gray-700 mb-1">{copy.street}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-address-street"
                     type="text"
                     value={profileForm.address.street}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -617,9 +614,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label htmlFor="profile-address-city" className="block text-sm font-medium text-gray-700 mb-1">{copy.city}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-address-city"
                     type="text"
                     value={profileForm.address.city}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -634,9 +631,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <label htmlFor="profile-address-state" className="block text-sm font-medium text-gray-700 mb-1">{copy.state}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-address-state"
                     type="text"
                     value={profileForm.address.state}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -651,9 +648,9 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                <label htmlFor="profile-address-zip" className="block text-sm font-medium text-gray-700 mb-1">{copy.zip}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-address-zip"
                     type="text"
                     value={profileForm.address.zipCode}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -671,12 +668,12 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
 
           {/* Home Address */}
           <div>
-            <h4 className="text-md font-medium text-gray-800 mb-3">Home Address</h4>
+            <h4 className="text-md font-medium text-gray-800 mb-3">{copy.homeAddress}</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <label htmlFor="profile-home-street" className="block text-sm font-medium text-gray-700 mb-1">{copy.street}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-home-street"
                     type="text"
                     value={profileForm.homeAddress.street}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -686,14 +683,14 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 ) : (
-                  <p className="text-gray-900 py-2">{user.homeAddress?.street || user.address?.street || 'Same as current address'}</p>
+                  <p className="text-gray-900 py-2">{user.homeAddress?.street || user.address?.street || copy.sameAsCurrent}</p>
                 )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label htmlFor="profile-home-city" className="block text-sm font-medium text-gray-700 mb-1">{copy.city}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-home-city"
                     type="text"
                     value={profileForm.homeAddress.city}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -703,14 +700,14 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 ) : (
-                  <p className="text-gray-900 py-2">{user.homeAddress?.city || user.address?.city || 'Same as current'}</p>
+                  <p className="text-gray-900 py-2">{user.homeAddress?.city || user.address?.city || copy.sameAsCurrent}</p>
                 )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">State</label>
+                <label htmlFor="profile-home-state" className="block text-sm font-medium text-gray-700 mb-1">{copy.state}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-home-state"
                     type="text"
                     value={profileForm.homeAddress.state}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -720,14 +717,14 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 ) : (
-                  <p className="text-gray-900 py-2">{user.homeAddress?.state || user.address?.state || 'Same as current'}</p>
+                  <p className="text-gray-900 py-2">{user.homeAddress?.state || user.address?.state || copy.sameAsCurrent}</p>
                 )}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">ZIP Code</label>
+                <label htmlFor="profile-home-zip" className="block text-sm font-medium text-gray-700 mb-1">{copy.zip}</label>
                 {isEditingProfile ? (
-                  <input
+                  <input id="profile-home-zip"
                     type="text"
                     value={profileForm.homeAddress.zipCode}
                     onChange={(e) => setProfileForm(prev => ({ 
@@ -737,7 +734,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                 ) : (
-                  <p className="text-gray-900 py-2">{user.homeAddress?.zipCode || user.address?.zipCode || 'Same as current'}</p>
+                  <p className="text-gray-900 py-2">{user.homeAddress?.zipCode || user.address?.zipCode || copy.sameAsCurrent}</p>
                 )}
               </div>
             </div>
@@ -746,12 +743,12 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
 
         {/* Emergency Contact */}
         <div className="mt-6 pt-6 border-t border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Emergency Contact</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{copy.emergencyTitle}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Name</label>
+              <label htmlFor="profile-emergency-name" className="block text-sm font-medium text-gray-700 mb-1">{copy.contactName}</label>
               {isEditingProfile ? (
-                <input
+                <input id="profile-emergency-name"
                   type="text"
                   value={profileForm.emergencyContact.name}
                   onChange={(e) => setProfileForm(prev => ({ 
@@ -761,14 +758,14 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               ) : (
-                <p className="text-gray-900 py-2">{user.emergencyContact?.name || 'N/A'}</p>
+                <p className="text-gray-900 py-2">{user.emergencyContact?.name || common.notAvailable}</p>
               )}
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Relationship</label>
+              <label htmlFor="profile-emergency-relationship" className="block text-sm font-medium text-gray-700 mb-1">{copy.relationship}</label>
               {isEditingProfile ? (
-                <select
+                <select id="profile-emergency-relationship"
                   value={profileForm.emergencyContact.relationship}
                   onChange={(e) => setProfileForm(prev => ({ 
                     ...prev, 
@@ -776,23 +773,20 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                   }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select relationship</option>
-                  <option value="Parent">Parent</option>
-                  <option value="Spouse">Spouse</option>
-                  <option value="Sibling">Sibling</option>
-                  <option value="Child">Child</option>
-                  <option value="Friend">Friend</option>
-                  <option value="Other">Other</option>
+                  <option value="">{copy.selectRelationship}</option>
+                  {Object.entries(options.relationship).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               ) : (
-                <p className="text-gray-900 py-2">{user.emergencyContact?.relationship || 'N/A'}</p>
+                <p className="text-gray-900 py-2">{optionLabel(options.relationship, user.emergencyContact?.relationship) || common.notAvailable}</p>
               )}
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Contact Phone</label>
+              <label htmlFor="profile-emergency-phone" className="block text-sm font-medium text-gray-700 mb-1">{copy.contactPhone}</label>
               {isEditingProfile ? (
-                <input
+                <input id="profile-emergency-phone"
                   type="tel"
                   value={profileForm.emergencyContact.phone}
                   onChange={(e) => setProfileForm(prev => ({ 
@@ -802,7 +796,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               ) : (
-                <p className="text-gray-900 py-2">{user.emergencyContact?.phone || 'N/A'}</p>
+                <p className="text-gray-900 py-2">{user.emergencyContact?.phone || common.notAvailable}</p>
               )}
             </div>
           </div>
@@ -814,7 +808,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               onClick={handleCancelProfileEdit}
               className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
             >
-              Cancel
+              {common.cancel}
             </button>
             <button
               onClick={handleSaveProfile}
@@ -824,12 +818,12 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               {isUpdatingProfile ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Saving...
+                  {copy.saving}
                 </>
               ) : (
                 <>
-                  <Save className="h-4 w-4 mr-2" />
-                  Save Changes
+                  <Save className="h-4 w-4 mr-2" aria-hidden />
+                  {copy.save}
                 </>
               )}
             </button>
