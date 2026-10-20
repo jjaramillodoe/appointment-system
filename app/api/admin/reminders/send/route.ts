@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
@@ -6,6 +7,7 @@ import User from '@/models/User';
 import ReminderSettings from '@/models/ReminderSettings';
 import SentReminder from '@/models/SentReminder';
 import { sendReminderEmail } from '@/lib/emailService';
+import { calendarDateFromValue } from '@/lib/appointmentTime';
 
 export async function POST(request: NextRequest) {
   try {
@@ -95,6 +97,7 @@ export async function POST(request: NextRequest) {
             appointmentDate: appointment.appointmentDate.toLocaleDateString(),
             hubName: appointment.hubName || 'Learning Center',
             hoursUntilAppointment: reminderConfig.hoursBeforeAppointment,
+            calendarDate: calendarDateFromValue(appointment.appointmentDate),
           });
 
           // Track sent reminder
@@ -113,7 +116,7 @@ export async function POST(request: NextRequest) {
             remindersFailed++;
           }
         } catch (error: any) {
-          console.error('Error processing reminder:', error);
+          logger.error('Error processing reminder:', error);
           remindersFailed++;
         }
       }
@@ -126,7 +129,7 @@ export async function POST(request: NextRequest) {
       remindersFailed,
     });
   } catch (error: any) {
-    console.error('Send reminders error:', error);
+    logger.error('Send reminders error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to send reminders' },
       { status: 500 }

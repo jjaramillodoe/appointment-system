@@ -1,6 +1,11 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { hubScopeFilter, resolveRequestedHub, slotHubFilter } from '@/lib/adminUserAccess';
+import { fillDailyVolume, percent } from '@/lib/analyticsSeries';
+import { DateTime } from 'luxon';
+import { DEFAULT_HUB_TIMEZONE, hubCalendarToday, utcDayBounds } from '@/lib/slotDateTime';
 
 // Import models
 import '@/models/User';
@@ -29,22 +34,9 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
-    console.log('Analytics - Admin User:', {
-      adminUser,
-      isAdminCheck: isAdmin(adminUser),
-      token: token.substring(0, 20) + '...'
-    });
 
     if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
-    }
-
-    // Apply hub filter for regular admins
-    const adminHubFilter = getHubFilter(adminUser);
-    console.log('Analytics - Hub Filter:', { adminHubFilter });
-
-    if (adminHubFilter === null) {
-      return NextResponse.json({ error: 'No hub access' }, { status: 403 });
     }
 
     const { searchParams } = new URL(request.url);
@@ -52,28 +44,21 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const hubName = searchParams.get('hubName');
 
+    const hubScope = await resolveRequestedHub(adminUser, hubName);
+    if (hubScope.error) {
+      return NextResponse.json({ error: hubScope.error }, { status: 403 });
+    }
+
     // Build date filter for Appointment (uses appointmentDate field)
     const dateFilter: any = {};
     if (startDate && endDate) {
       dateFilter.appointmentDate = {
-        $gte: new Date(startDate),
-        $lte: new Date(endDate)
+        $gte: utcDayBounds(startDate).start,
+        $lt: utcDayBounds(endDate).end,
       };
     }
 
-    // Build hub filter - combine admin's hub filter with optional hubName filter
-    let appointmentHubFilter: any = { ...adminHubFilter };
-    if (hubName && hubName !== 'all') {
-      const hub = await Hub.findOne({ name: hubName });
-      if (hub) {
-        // For super admins, allow filtering by any hub
-        // For regular admins, ensure they can only filter by their own hub
-        if (adminHubFilter.hubId && adminHubFilter.hubId.toString() !== hub._id.toString()) {
-          return NextResponse.json({ error: 'Access denied to this hub' }, { status: 403 });
-        }
-        appointmentHubFilter.hubId = hub._id;
-      }
-    }
+    const appointmentHubFilter: any = hubScope.appointmentFilter;
 
     // Get appointment statistics
     const appointmentStats = await Appointment.aggregate([
@@ -89,7 +74,6 @@ export async function GET(request: NextRequest) {
     // Get total appointments
     const totalAppointments = await Appointment.countDocuments({ ...dateFilter, ...appointmentHubFilter });
 
-    // Get appointments by hub (populate hub name from hubId)
     const appointmentsByHub = await Appointment.aggregate([
       { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
@@ -100,13 +84,20 @@ export async function GET(request: NextRequest) {
           as: 'hub'
         }
       },
-      { $unwind: '$hub' },
+      {
+        $addFields: {
+          resolvedHubName: {
+            $ifNull: [{ $arrayElemAt: ['$hub.name', 0] }, '$hubName'],
+          },
+        },
+      },
       {
         $group: {
-          _id: '$hub.name',
+          _id: '$resolvedHubName',
           total: { $sum: 1 },
-          pending: { $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] } },
-          confirmed: { $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] } },
+          pending: { $sum: { $cond: [{ $in: ['$status', ['pending', 'pending_profile']] }, 1, 0] } },
+          pendingProfile: { $sum: { $cond: [{ $eq: ['$status', 'pending_profile'] }, 1, 0] } },
+          confirmed: { $sum: { $cond: [{ $in: ['$status', ['confirmed', 'completed']] }, 1, 0] } },
           cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
           completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }
         }
@@ -141,44 +132,116 @@ export async function GET(request: NextRequest) {
       { $limit: 8 }
     ]);
 
-    // If no weekly trends data, generate some sample data for demonstration
-    if (weeklyTrends.length === 0) {
-      const currentDate = new Date();
-      for (let i = 7; i >= 0; i--) {
-        const weekDate = new Date(currentDate);
-        weekDate.setDate(currentDate.getDate() - (i * 7));
-        weeklyTrends.push({
+    const dailyVolumeRows = await Appointment.aggregate([
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
+      {
+        $group: {
           _id: {
-            year: weekDate.getFullYear(),
-            week: Math.ceil((weekDate.getDate() + new Date(weekDate.getFullYear(), weekDate.getMonth(), 0).getDate()) / 7)
+            $dateToString: {
+              format: '%Y-%m-%d',
+              date: '$appointmentDate',
+              timezone: DEFAULT_HUB_TIMEZONE,
+            },
           },
-          count: Math.floor(Math.random() * 20) + 5 // Random count between 5-25
-        });
-      }
-    }
+          total: { $sum: 1 },
+          confirmed: {
+            $sum: { $cond: [{ $in: ['$status', ['confirmed', 'completed']] }, 1, 0] },
+          },
+          cancelled: { $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] } },
+          pendingProfile: {
+            $sum: { $cond: [{ $eq: ['$status', 'pending_profile'] }, 1, 0] },
+          },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
 
-    // Build user filter based on hub selection
-    // Only filter users if a specific hub is selected (not "All Hubs")
+    const rangeStart = startDate || DateTime.now().minus({ days: 30 }).toISODate() || '';
+    const rangeEnd = endDate || DateTime.now().toISODate() || '';
+    const dailyVolume = fillDailyVolume(rangeStart, rangeEnd, dailyVolumeRows);
+
+    const byClassInterest = await Appointment.aggregate([
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
+      { $group: { _id: { $ifNull: ['$classInterest', 'Unspecified'] }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byTimePreference = await Appointment.aggregate([
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
+      { $group: { _id: { $ifNull: ['$timePreference', 'Unspecified'] }, count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+
+    const byWeekday = await Appointment.aggregate([
+      { $match: { ...dateFilter, ...appointmentHubFilter } },
+      {
+        $group: {
+          _id: { $dayOfWeek: '$appointmentDate' },
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    const weekdayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const appointmentsByWeekday = weekdayLabels.map((label, index) => ({
+      _id: label,
+      count: byWeekday.find((row: { _id: number }) => row._id === index + 1)?.count || 0,
+    }));
+
+    const nowNy = DateTime.now().setZone(DEFAULT_HUB_TIMEZONE).startOf('day');
+    const upcomingStart = new Date(`${nowNy.toISODate()}T00:00:00.000Z`);
+    const upcomingEnd = new Date(`${nowNy.plus({ days: 7 }).toISODate()}T00:00:00.000Z`);
+    const upcomingSlotMatch = {
+      ...(hubScope.hub ? slotHubFilter(hubScope.hub) : {}),
+      isActive: true,
+      date: { $gte: upcomingStart, $lt: upcomingEnd },
+    };
+
+    const upcomingCapacity = await AppointmentSlot.aggregate([
+      { $match: upcomingSlotMatch },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone: 'UTC' } },
+            hubName: '$hubName',
+          },
+          capacity: { $sum: '$capacity' },
+          booked: { $sum: '$bookedCount' },
+        },
+      },
+      { $sort: { '_id.date': 1, '_id.hubName': 1 } },
+    ]);
+
+    const upcomingByHub = await AppointmentSlot.aggregate([
+      { $match: upcomingSlotMatch },
+      {
+        $group: {
+          _id: '$hubName',
+          capacity: { $sum: '$capacity' },
+          booked: { $sum: '$bookedCount' },
+        },
+      },
+      { $sort: { booked: -1 } },
+    ]);
+
+    const upcomingTotals = upcomingByHub.reduce(
+      (acc: { capacity: number; booked: number }, row: { capacity: number; booked: number }) => ({
+        capacity: acc.capacity + row.capacity,
+        booked: acc.booked + row.booked,
+      }),
+      { capacity: 0, booked: 0 }
+    );
+
     let userFilter: any = {};
-    
-    // Check if we're filtering by a specific hub
-    const isFilteringBySpecificHub = hubName && hubName !== 'all' && appointmentHubFilter.hubId;
-    const isHubAdminViewingTheirHub = adminHubFilter && adminHubFilter.hubId && (!hubName || hubName === 'all');
-    
-    if (isFilteringBySpecificHub || isHubAdminViewingTheirHub) {
-      // Get user IDs from appointments in the filtered hub(s)
-      // This ensures we only show demographics for users who have appointments in that hub
+    if (hubScope.hub) {
       const appointmentUserIds = await Appointment.distinct('userId', { ...dateFilter, ...appointmentHubFilter });
-      if (appointmentUserIds.length > 0) {
-        userFilter._id = { $in: appointmentUserIds };
-      } else {
-        // No appointments found, so no users to show
-        userFilter._id = { $in: [] }; // Empty array means no matches
-      }
+      userFilter = {
+        $or: [
+          ...hubScopeFilter(hubScope.hub).$or,
+          ...(appointmentUserIds.length > 0 ? [{ _id: { $in: appointmentUserIds } }] : []),
+        ],
+      };
     }
-    // If no hub filter (super admin viewing "All Hubs"), userFilter remains empty {} to show all users
-
-    // Get user demographics - filtered by users with appointments in selected hub
     const userDemographics = await User.aggregate([
       { $match: userFilter },
       {
@@ -211,19 +274,10 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    // Get capacity utilization
-    // Note: AppointmentSlot uses hubName (string), not hubId (ObjectId)
-    // So we need to get the hub name from the filter
-    let slotHubFilter: any = {};
-    if (appointmentHubFilter.hubId) {
-      const hub = await Hub.findById(appointmentHubFilter.hubId);
-      if (hub) {
-        slotHubFilter.hubName = hub.name;
-      }
-    }
-    
+    const capacityMatch = hubScope.hub ? slotHubFilter(hubScope.hub) : {};
+
     const capacityUtilization = await AppointmentSlot.aggregate([
-      { $match: slotHubFilter },
+      { $match: capacityMatch },
       {
         $group: {
           _id: '$hubName',
@@ -249,59 +303,67 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Get today's appointments
-    const today = new Date();
-    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
-
+    const todayBounds = utcDayBounds(hubCalendarToday());
     const todaysAppointments = await Appointment.find({
       appointmentDate: {
-        $gte: todayStart,
-        $lt: todayEnd
+        $gte: todayBounds.start,
+        $lt: todayBounds.end,
       },
       ...appointmentHubFilter
     })
       .populate('userId', 'firstName lastName email')
       .populate('hubId', 'name');
 
-    // Convert appointment stats to object
     const stats = {
       total: totalAppointments,
       pending: 0,
+      pending_profile: 0,
       confirmed: 0,
       cancelled: 0,
-      completed: 0
+      completed: 0,
+      expired: 0,
     };
 
-    appointmentStats.forEach(stat => {
-      stats[stat._id as keyof typeof stats] = stat.count;
+    appointmentStats.forEach((stat: { _id: string; count: number }) => {
+      if (stat._id in stats) {
+        stats[stat._id as keyof typeof stats] = stat.count;
+      }
     });
 
-    // Debug: Log the data being returned
-    console.log('Analytics API Response:', {
-      stats,
-      appointmentStats,
-      weeklyTrends: weeklyTrends.slice(0, 3), // Log first 3 for debugging
-      totalAppointments,
-      dateFilter,
-      appointmentHubFilter
-    });
+    const confirmedLike = stats.confirmed + stats.completed;
+    const actionRequired = stats.pending_profile + stats.pending;
 
     return NextResponse.json({
-      stats,
+      stats: {
+        ...stats,
+        confirmationRate: percent(confirmedLike, stats.total),
+        cancelRate: percent(stats.cancelled, stats.total),
+        actionRequiredRate: percent(actionRequired, stats.total),
+        upcomingBooked: upcomingTotals.booked,
+        upcomingCapacity: upcomingTotals.capacity,
+        upcomingFillRate: percent(upcomingTotals.booked, upcomingTotals.capacity),
+        todayCount: todaysAppointments.length,
+      },
       appointmentsByHub,
       appointmentsByTime,
+      appointmentsByWeekday,
+      appointmentsByDate: dailyVolume.map((point) => ({ _id: point.date, count: point.total })),
+      dailyVolume,
+      byClassInterest,
+      byTimePreference,
       weeklyTrends,
+      upcomingCapacity,
+      upcomingByHub,
       userDemographics,
       programInterests,
       barriersToLearning,
       capacityUtilization,
       recentAppointments,
-      todaysAppointments
+      todaysAppointments,
     });
 
   } catch (error: any) {
-    console.error('Analytics error:', error);
+    logger.error('Analytics error:', error);
     return NextResponse.json(
       { error: 'Failed to get analytics', details: error.message },
       { status: 500 }

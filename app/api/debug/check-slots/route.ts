@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import AppointmentSlot from '@/models/AppointmentSlot';
 
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest) {
       sample,
     });
   } catch (error: any) {
-    console.error('Check slots error:', error);
+    logger.error('Check slots error:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

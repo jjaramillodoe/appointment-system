@@ -1,8 +1,11 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
 import User from '@/models/User';
 import { findClosestHubForAddress } from '@/utils/hubMatching';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { confirmPendingProfileAppointments } from '@/lib/appointmentNotifications';
 
 import { getJwtSecret } from '@/lib/jwtSecret';
 
@@ -84,7 +87,14 @@ export async function PUT(request: NextRequest) {
       // This prevents the user from losing their hub assignment
     }
 
+    const wasComplete = !!user.profileCompleted;
+    const completion = calculateProfileCompletion(user);
+    user.profileCompleted = completion.isComplete;
     await user.save();
+
+    if (!wasComplete && completion.isComplete) {
+      await confirmPendingProfileAppointments(user);
+    }
 
     // Return updated user data (without password)
     const userResponse = {
@@ -106,6 +116,9 @@ export async function PUT(request: NextRequest) {
       closestHub: user.closestHub,
       createdAt: user.createdAt,
       isAdmin: user.isAdmin || false,
+      profileCompleted: user.profileCompleted,
+      emergencyContact: user.emergencyContact,
+      homeAddress: user.homeAddress,
     };
 
     return NextResponse.json({
@@ -113,7 +126,7 @@ export async function PUT(request: NextRequest) {
       user: userResponse,
     });
   } catch (error: any) {
-    console.error('Update address error:', error);
+    logger.error('Update address error:', error);
     return NextResponse.json(
       { error: 'Failed to update address', details: error.message },
       { status: 500 }

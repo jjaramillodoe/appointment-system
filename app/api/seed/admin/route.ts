@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import * as bcrypt from 'bcryptjs';
@@ -47,7 +48,7 @@ export async function GET(request: NextRequest) {
       password: 'Admin@12345',
     });
   } catch (error: any) {
-    console.error('Seed admin error:', error);
+    logger.error('Seed admin error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to seed admin user' },
       { status: 500 }

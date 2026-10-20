@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Bell, CheckCircle, AlertCircle, Loader, Save, RefreshCw } from 'lucide-react';
@@ -45,7 +47,7 @@ export default function RemindersPage() {
       }
     } catch (err) {
       setError('Failed to load reminder settings');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export default function RemindersPage() {
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }
@@ -130,7 +132,7 @@ export default function RemindersPage() {
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSending(false);
     }

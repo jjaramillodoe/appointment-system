@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState } from 'react';
 import { Calendar, Search, Filter, Eye, Edit, Trash2, CheckCircle, XCircle, Clock, AlertTriangle, Users, RefreshCw, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useHubs } from '@/hooks/useHubs';
@@ -99,7 +101,7 @@ export default function AppointmentsTab({
         onRefresh();
       }
     } catch (error) {
-      console.error('Error performing bulk action:', error);
+      logger.error('Error performing bulk action:', error);
     }
   };
 
@@ -126,7 +128,7 @@ export default function AppointmentsTab({
         onRefresh();
       }
     } catch (error) {
-      console.error('Error deleting appointments:', error);
+      logger.error('Error deleting appointments:', error);
     }
   };
 
@@ -248,9 +250,13 @@ export default function AppointmentsTab({
                 <SelectContent>
                   <SelectItem value="all">All Statuses</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="pending_profile">Needs intake packet</SelectItem>
                   <SelectItem value="confirmed">Confirmed</SelectItem>
+                  <SelectItem value="arrived">Arrived</SelectItem>
+                  <SelectItem value="no_show">No-show</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -495,6 +501,8 @@ export default function AppointmentsTab({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="confirmed">Confirm</SelectItem>
+                  <SelectItem value="arrived">Arrived</SelectItem>
+                  <SelectItem value="no_show">No-show</SelectItem>
                   <SelectItem value="cancelled">Cancel</SelectItem>
                   <SelectItem value="completed">Mark Complete</SelectItem>
                 </SelectContent>

@@ -166,7 +166,7 @@ export default function LoginPage() {
       />
       <Header />
       <main className="flex flex-1 flex-col py-10 sm:py-12">
-        <div className="mx-auto w-full max-w-md px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto w-full max-w-xl px-4 sm:px-6 lg:px-8">
           <div className="mb-8 text-center">
             <Link
               href="/"
@@ -320,6 +320,11 @@ export default function LoginPage() {
                     {validation.password.message}
                   </p>
                 )}
+                <div className="mt-2 text-right">
+                  <Link href="/forgot-password" className="text-sm font-semibold text-primary-700">
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
 
               {/* Remember Me Checkbox */}

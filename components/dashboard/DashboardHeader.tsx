@@ -1,9 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { GraduationCap, Bell, LogOut } from 'lucide-react';
+import { GraduationCap, LogOut } from 'lucide-react';
 import LanguageSelector from '../LanguageSelector';
 import { useAuth } from '@/contexts/AuthContext';
+import { DASHBOARD_CONTENT_CLASS } from './shell';
+import NotificationsInbox from './NotificationsInbox';
 
 interface User {
   firstName: string;
@@ -28,7 +30,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
 
   return (
     <header className="bg-gradient-to-r from-primary-700 to-primary-800 shadow-lg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={DASHBOARD_CONTENT_CLASS}>
         <div className="flex justify-between items-center py-6">
           <div className="flex items-center">
             <div className="bg-white/20 backdrop-blur-sm rounded-xl p-2.5 mr-4">
@@ -43,10 +45,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
           </div>
 
           <div className="flex items-center space-x-3">
-            <button className="hidden md:flex items-center space-x-2 text-primary-100 hover:text-white transition-colors px-3 py-2 rounded-lg hover:bg-white/10">
-              <Bell className="h-5 w-5" />
-              <span className="text-sm font-medium">Notifications</span>
-            </button>
+            <NotificationsInbox />
 
             <LanguageSelector />
 

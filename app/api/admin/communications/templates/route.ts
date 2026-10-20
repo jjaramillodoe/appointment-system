@@ -1,6 +1,7 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
 import CommunicationTemplate from '@/models/CommunicationTemplate';
 import User from '@/models/User';
 import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
@@ -21,20 +22,44 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token) as AdminUser;
 
-    if (!checkSuperAdmin(adminUser)) {
+    if (!isAdmin(adminUser)) {
       return NextResponse.json(
-        { error: 'Super admin access required' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }
 
-    const templates = await CommunicationTemplate.find({ isActive: true })
-      .select('_id name subject description isActive createdAt')
+    let templates = await CommunicationTemplate.find({ isActive: true })
+      .select('_id name subject description isActive createdAt body')
       .sort({ createdAt: -1 });
+
+    if (templates.length === 0) {
+      await CommunicationTemplate.insertMany([
+        {
+          name: 'Incomplete profile',
+          subject: 'Please complete your Adult Education profile',
+          body: 'Hi {{firstName}}, your intake appointment is reserved. Complete your profile in the student dashboard so we can confirm it.',
+          description: 'Hub reminder for students still in pending_profile',
+          isActive: true,
+          createdBy: adminUser.userId,
+        },
+        {
+          name: 'Tomorrow reminder',
+          subject: 'Your appointment is tomorrow',
+          body: 'Hi {{firstName}}, this is a reminder about your appointment tomorrow. Arrive 5-10 minutes early and bring a photo ID.',
+          description: 'Day-before reminder for a hub',
+          isActive: true,
+          createdBy: adminUser.userId,
+        },
+      ]);
+      templates = await CommunicationTemplate.find({ isActive: true })
+        .select('_id name subject description isActive createdAt body')
+        .sort({ createdAt: -1 });
+    }
 
     return NextResponse.json({ templates });
   } catch (error: any) {
-    console.error('Get templates error:', error);
+    logger.error('Get templates error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch templates' },
       { status: 500 }
@@ -104,7 +129,7 @@ export async function POST(request: NextRequest) {
       message: 'Template created successfully',
     });
   } catch (error: any) {
-    console.error('Create template error:', error);
+    logger.error('Create template error:', error);
     if (error.code === 11000) {
       return NextResponse.json(
         { error: 'Template name already exists' },

@@ -1,8 +1,11 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import dbConnect from '../../../../lib/mongodb';
 import User from '../../../../models/User';
 import { normalizeProfileFields } from '../../../../lib/textNormalization';
+import { calculateProfileCompletion } from '../../../../lib/profileCompletion';
+import { confirmPendingProfileAppointments } from '../../../../lib/appointmentNotifications';
 
 import { getJwtSecret } from '@/lib/jwtSecret';
 
@@ -71,11 +74,26 @@ export async function PUT(request: NextRequest) {
       }
     });
 
+    const existingUser = await User.findById(decoded.userId);
+    if (!existingUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    const wasComplete = !!existingUser.profileCompleted;
+    const completion = calculateProfileCompletion({
+      ...existingUser.toObject(),
+      ...updateData,
+    });
+    updateData.profileCompleted = completion.isComplete;
+
     // Update user profile without strict validation (schema will validate on save)
     const updatedUser = await User.findByIdAndUpdate(
       decoded.userId,
       updateData,
-      { new: true, runValidators: false }
+      { returnDocument: 'after', runValidators: false }
     );
 
     if (!updatedUser) {
@@ -85,17 +103,22 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    if (!wasComplete && completion.isComplete) {
+      await confirmPendingProfileAppointments(updatedUser);
+    }
+
     // Remove sensitive information before sending response
     const { password, ...userResponse } = updatedUser.toObject();
 
     return NextResponse.json({
       success: true,
       message: 'Profile updated successfully',
-      user: userResponse
+      user: userResponse,
+      profileCompletion: completion,
     });
 
   } catch (error: any) {
-    console.error('Profile update error:', error);
+    logger.error('Profile update error:', error);
     
     if (error.name === 'JsonWebTokenError') {
       return NextResponse.json(

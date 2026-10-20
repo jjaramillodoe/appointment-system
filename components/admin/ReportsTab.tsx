@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState } from 'react';
 import { FileText, Download, Calendar, Users, BarChart3, Filter, Clock, TrendingUp, CheckCircle, XCircle, RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
 import { useHubFilter } from '@/contexts/HubFilterContext';
@@ -108,7 +110,7 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
         showError(error.error || 'Failed to generate report');
       }
     } catch (error) {
-      console.error('Error generating report:', error);
+      logger.error('Error generating report:', error);
       showError('Failed to generate report. Please try again.');
     } finally {
       setGeneratingReport(false);
@@ -140,7 +142,7 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
         showError(error.error || 'Failed to download report');
       }
     } catch (error) {
-      console.error('Error downloading report:', error);
+      logger.error('Error downloading report:', error);
       showError('Failed to download report. Please try again.');
     }
   };

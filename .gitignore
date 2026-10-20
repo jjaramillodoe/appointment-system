@@ -168,11 +168,11 @@ tmp/
 temp/
 
 # Reports
-reports/
+/reports/
 *.report
 
 # MongoDB data (if using local MongoDB)
-data/
+/data/
 
 # SSL certificates
 *.pem
@@ -244,3 +244,7 @@ ARCHITECTURE.md
 index.html
 .vercel
 .env*.local
+
+# Data exports (may contain student PII) - never commit
+/*.csv
+/*.xlsx

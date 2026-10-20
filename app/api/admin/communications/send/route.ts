@@ -1,6 +1,8 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
+import { getActorHub } from '@/lib/adminUserAccess';
 import User from '@/models/User';
 import Appointment from '@/models/Appointment';
 import CommunicationTemplate from '@/models/CommunicationTemplate';
@@ -24,15 +26,24 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token) as AdminUser;
 
-    if (!checkSuperAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json(
-        { error: 'Super admin access required' },
+        { error: 'Admin access required' },
         { status: 403 }
       );
     }
 
+    const assignedHub = !checkSuperAdmin(adminUser) ? await getActorHub(adminUser) : null;
+    if (!checkSuperAdmin(adminUser) && !assignedHub) {
+      return NextResponse.json({ error: 'No hub assigned to this admin account' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { templateId, subject, body: messageBody, criteria } = body;
+    const { templateId, subject, body: messageBody, criteria: rawCriteria } = body;
+    const criteria = {
+      ...(rawCriteria || {}),
+      ...(assignedHub ? { hubName: assignedHub.name } : {}),
+    };
 
     if (!templateId || !subject || !messageBody) {
       return NextResponse.json(
@@ -177,7 +188,7 @@ export async function POST(request: NextRequest) {
       totalRecipients: users.length,
     });
   } catch (error: any) {
-    console.error('Send bulk communication error:', error);
+    logger.error('Send bulk communication error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to send communications' },
       { status: 500 }

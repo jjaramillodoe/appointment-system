@@ -116,5 +116,5 @@ export function canAccessHub(user: AdminUser | null, hubId: string): boolean {
   }
 
   // Regular admins can only access their assigned hub
-  return user.assignedHub === hubId;
+  return String(user.assignedHub) === String(hubId);
 }

@@ -1,105 +1,66 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import Appointment from '@/models/Appointment';
+import { verifyStudentToken } from '@/lib/studentAuth';
+import { APPOINTMENT_STATUS } from '@/lib/appointmentStatus';
+import { notifyStudent } from '@/lib/studentNotifications';
+import { combineSlotDateTime, DEFAULT_HUB_TIMEZONE, slotCalendarDate } from '@/lib/slotDateTime';
+import { getSystemSettings } from '@/lib/systemSettings';
 
-// Import models to ensure they are registered
-import '@/models/User';
-import '@/models/Appointment';
-import '@/models/Notification';
-
-// Get the models after registration
-import mongoose from 'mongoose';
-const Appointment = mongoose.models.Appointment;
-const NotificationModel = mongoose.models.Notification;
-
-import { getJwtSecret } from '@/lib/jwtSecret';
-
-// Helper function to verify JWT token
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, getJwtSecret()) as { userId: string; email: string };
-  } catch (error) {
-    return null;
-  }
-}
-
-// POST - Confirm appointment
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
+    const decoded = verifyStudentToken(request.headers.get('authorization'));
     if (!decoded) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
     }
 
-    const appointment = await Appointment.findOne({ userId: decoded.userId });
-    if (!appointment) {
-      return NextResponse.json(
-        { error: 'No appointment found' },
-        { status: 404 }
-      );
-    }
-
-    // Check if appointment is in pending status
-    if (appointment.status !== 'pending') {
-      return NextResponse.json(
-        { error: `Appointment cannot be confirmed. Current status: ${appointment.status}` },
-        { status: 400 }
-      );
-    }
-
-    // Check if appointment is within confirmation window (e.g., 24 hours before)
-    const appointmentDate = new Date(appointment.appointmentDate);
-    const now = new Date();
-    const hoursUntilAppointment = (appointmentDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-    
-    if (hoursUntilAppointment < 0) {
-      return NextResponse.json(
-        { error: 'Cannot confirm appointment that has already passed' },
-        { status: 400 }
-      );
-    }
-
-    // Update appointment status to confirmed
-    appointment.status = 'confirmed';
-    await appointment.save();
-
-    // Generate notification for appointment confirmation
-    await NotificationModel.create({
-      type: 'appointment',
-      title: 'Appointment Confirmed',
-      message: `Appointment confirmed at ${appointment.hubName} for ${appointment.appointmentDate.toDateString()} at ${appointment.appointmentTime}`,
-      hubName: appointment.hubName,
-      appointmentId: appointment._id,
+    const appointment = await Appointment.findOne({
       userId: decoded.userId,
-      priority: 'medium'
+      status: { $in: [APPOINTMENT_STATUS.PENDING, APPOINTMENT_STATUS.PENDING_PROFILE] },
     });
 
-    const updatedAppointment = await Appointment.findById(appointment._id)
-      .populate('userId', 'firstName lastName email');
+    if (!appointment) {
+      return NextResponse.json({ error: 'No appointment found' }, { status: 404 });
+    }
+
+    const settings = await getSystemSettings();
+    if (settings.requireProfileBeforeConfirm && appointment.status === APPOINTMENT_STATUS.PENDING_PROFILE) {
+      return NextResponse.json(
+        { error: 'Complete your profile before confirming this appointment' },
+        { status: 400 }
+      );
+    }
+
+    const slot = combineSlotDateTime(
+      appointment.appointmentDate,
+      appointment.appointmentTime || '9:00 AM',
+      DEFAULT_HUB_TIMEZONE
+    );
+    if (slot.isValid && slot.toMillis() < Date.now()) {
+      return NextResponse.json({ error: 'Cannot confirm an appointment that has already passed' }, { status: 400 });
+    }
+
+    appointment.status = APPOINTMENT_STATUS.CONFIRMED;
+    await appointment.save();
+
+    const dateLabel = slot.isValid ? slot.toFormat('EEEE, MMMM d') : slotCalendarDate(appointment.appointmentDate);
+    await notifyStudent({
+      userId: decoded.userId,
+      title: 'Cita confirmada / Appointment confirmed',
+      message: `Su cita en ${appointment.hubName || 'su centro'} está confirmada para ${dateLabel} a las ${appointment.appointmentTime}. / Your appointment at ${appointment.hubName || 'your site'} is confirmed for ${dateLabel} at ${appointment.appointmentTime}.`,
+      hubName: appointment.hubName,
+      appointmentId: String(appointment._id),
+    });
 
     return NextResponse.json({
       message: 'Appointment confirmed successfully',
-      appointment: updatedAppointment,
+      appointment,
     });
   } catch (error: any) {
-    console.error('Confirm appointment error:', error);
-    return NextResponse.json(
-      { error: 'Failed to confirm appointment', details: error.message },
-      { status: 500 }
-    );
+    logger.error('Confirm appointment error:', error);
+    return NextResponse.json({ error: 'Failed to confirm appointment' }, { status: 500 });
   }
-} 
+}

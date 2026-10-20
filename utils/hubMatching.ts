@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 export interface Hub {
   name: string;
   address: string;
@@ -47,7 +48,8 @@ export const HUBS: Hub[] = [
     "name": "Adult Education School 6 at Coney Island Avenue",
     "address": "1223 Coney Island Avenue, Brooklyn, NY 11230",
     "latitude": 40.6311,
-    "longitude": -73.9620
+    "longitude": -73.9620,
+    "publicTransitDirections": "## Subway\n\n### Q Train (closest, about 8–10 minutes)\n\n- Take the Q train to **Avenue H** (or Avenue J).\n- Exit towards Avenue H and walk west toward Coney Island Avenue (about 3 blocks).\n- Turn left onto Coney Island Avenue. The building is on your left between Avenue H and Avenue I.\n\n### B or Q Train to Newkirk Plaza (about 12–14 minutes)\n\n- Take the B (weekday express) or Q train to **Newkirk Plaza**.\n- Walk west along Newkirk Avenue to Coney Island Avenue, then turn left and walk to Avenue H / Avenue I.\n\n### F Train (about 12–15 minutes)\n\n- Take the F train to **Avenue I** (at McDonald Avenue).\n- Walk east on Avenue I until Coney Island Avenue, then turn left.\n\n## Bus\n\n### B68 (along Coney Island Avenue)\n\n- The B68 runs north-south on Coney Island Avenue.\n- Get off at **Coney Island Ave / Avenue H** or **Coney Island Ave / Avenue I**. The building is across or down the block.\n\n### B8 (crosstown connection)\n\n- Runs along 18th Avenue and Foster Avenue.\n- Transfer to the southbound B68 on Coney Island Avenue, or walk south from Foster Avenue (about 8 minutes)."
   },
   {
     "name": "Melrose Alternate Learning Center",
@@ -135,6 +137,41 @@ function formatDistance(distance: number): string {
 /**
  * Find the closest hub to the given coordinates
  */
+function normalizeHubName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+export function findHubByName(name?: string | null): Hub | undefined {
+  if (!name) return undefined;
+
+  const exact = HUBS.find((hub) => hub.name === name);
+  if (exact) return exact;
+
+  const needle = normalizeHubName(name);
+  const contains = HUBS.filter((hub) => {
+    const hay = normalizeHubName(hub.name);
+    return hay.includes(needle) || needle.includes(hay);
+  });
+  if (contains.length === 1) return contains[0];
+
+  const tokens = needle
+    .split(' ')
+    .filter((token) => token.length > 3 && !['adult', 'education', 'school', 'learning', 'center'].includes(token));
+
+  let best: Hub | undefined;
+  let bestScore = 0;
+  for (const hub of HUBS) {
+    const hay = normalizeHubName(hub.name);
+    const score = tokens.filter((token) => hay.includes(token)).length;
+    if (score > bestScore) {
+      bestScore = score;
+      best = hub;
+    }
+  }
+
+  return bestScore >= 2 ? best : undefined;
+}
+
 export function findClosestHub(latitude: number, longitude: number): HubMatch {
   let closestHub = HUBS[0];
   let shortestDistance = calculateDistance(latitude, longitude, closestHub.latitude, closestHub.longitude);
@@ -161,7 +198,7 @@ export async function geocodeAddress(address: string): Promise<{ latitude: numbe
   try {
     const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     if (!mapboxToken) {
-      console.error('Mapbox token not found');
+      logger.error('Mapbox token not found');
       return null;
     }
 
@@ -171,7 +208,7 @@ export async function geocodeAddress(address: string): Promise<{ latitude: numbe
     const response = await fetch(url);
     
     if (!response.ok) {
-      console.error('Geocoding response not ok:', response.status, response.statusText);
+      logger.error('Geocoding response not ok:', response.status, response.statusText);
       throw new Error(`Geocoding failed: ${response.status} ${response.statusText}`);
     }
 
@@ -187,7 +224,7 @@ export async function geocodeAddress(address: string): Promise<{ latitude: numbe
     }
     return null;
   } catch (error) {
-    console.error('Geocoding error:', error);
+    logger.error('Geocoding error:', error);
     return null;
   }
 }

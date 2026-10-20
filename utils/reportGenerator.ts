@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import dbConnect from '@/lib/mongodb';
 import Report from '@/models/Report';
 import Appointment from '@/models/Appointment';
@@ -46,7 +47,7 @@ export async function generateReportData(reportId: string, type: string, paramet
 
 
   } catch (error) {
-    console.error('Error generating report data:', error);
+    logger.error('Error generating report data:', error);
     await Report.findByIdAndUpdate(reportId, { status: 'failed' });
     throw error;
   }

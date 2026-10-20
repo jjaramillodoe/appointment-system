@@ -1,125 +1,99 @@
 import { NextRequest, NextResponse } from 'next/server';
-import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
+import { isAdmin, isSuperAdmin, verifyAdminToken } from '@/lib/adminPermissions';
+import { getSystemSettings, updateSystemSettings, DEFAULT_SYSTEM_SETTINGS } from '@/lib/systemSettings';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
 
-import { getJwtSecret } from '@/lib/jwtSecret';
-
-// Helper function to verify JWT token
-import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
-
-// GET - Fetch system settings
-export async function GET(request: NextRequest) {
-  try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const adminUser = await verifyAdminToken(token);
-    if (!isAdmin(adminUser)) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    // Return default settings (in a real app, these would come from a database)
-    const settings = {
-      general: {
-        systemName: 'Adult Education Appointment System',
-        timeZone: 'America/New_York',
-        dateFormat: 'MM/DD/YYYY'
-      },
-      appointments: {
-        defaultCapacity: 20,
-        reminderHours: 24,
-        autoConfirm: false,
-        maxAppointmentsPerUser: 1
-      },
-      notifications: {
-        emailNotifications: true,
-        smsNotifications: true,
-        lowCapacityAlerts: true
-      },
-      users: {
-        allowRegistration: true,
-        requireEmailVerification: true,
-        sessionTimeout: 30
-      },
-      security: {
-        passwordMinLength: 8,
-        requireStrongPasswords: true,
-        twoFactorAuth: false
-      },
-      system: {
-        database: 'MongoDB',
-        framework: 'Next.js 15',
-        environment: process.env.NODE_ENV || 'development',
-        lastBackup: new Date().toISOString()
-      }
-    };
-
-    return NextResponse.json(settings);
-  } catch (error: any) {
-    console.error('Get settings error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch settings', details: error.message },
-      { status: 500 }
-    );
-  }
+function toClientSettings(stored: typeof DEFAULT_SYSTEM_SETTINGS) {
+  return {
+    general: {
+      systemName: 'Adult Education Appointment System',
+      timeZone: 'America/New_York',
+      dateFormat: 'MM/DD/YYYY',
+    },
+    appointments: {
+      defaultCapacity: stored.defaultCapacity,
+      reminderHours: stored.reminderHours,
+      autoConfirm: !stored.requireProfileBeforeConfirm,
+      maxAppointmentsPerUser: stored.maxActiveAppointments,
+      bookingWindowDays: stored.bookingWindowDays,
+      requireProfileBeforeConfirm: stored.requireProfileBeforeConfirm,
+      programQuotasEnabled: stored.programQuotasEnabled,
+    },
+    notifications: {
+      emailNotifications: true,
+      smsNotifications: false,
+      lowCapacityAlerts: true,
+    },
+    users: {
+      allowRegistration: true,
+      requireEmailVerification: false,
+      sessionTimeout: 30,
+    },
+    security: {
+      passwordMinLength: 8,
+      requireStrongPasswords: true,
+      twoFactorAuth: false,
+    },
+    system: {
+      database: 'MongoDB',
+      framework: 'Next.js',
+      environment: process.env.NODE_ENV || 'development',
+      lastBackup: new Date().toISOString(),
+    },
+  };
 }
 
-// POST - Update system settings
-export async function POST(request: NextRequest) {
-  try {
-    await dbConnect();
-
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization token required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    const adminUser = await verifyAdminToken(token);
-    if (!isAdmin(adminUser)) {
-      return NextResponse.json(
-        { error: 'Admin access required' },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const { settings } = body;
-
-    if (!settings) {
-      return NextResponse.json(
-        { error: 'Settings data is required' },
-        { status: 400 }
-      );
-    }
-
-    // In a real app, you would save these to a database
-    // For now, we'll just validate and return success
-    console.log('Settings updated:', settings);
-
-    return NextResponse.json({
-      message: 'Settings updated successfully',
-      settings
-    });
-  } catch (error: any) {
-    console.error('Update settings error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update settings', details: error.message },
-      { status: 500 }
-    );
+export async function GET(request: NextRequest) {
+  const adminUser = await verifyAdminToken((request.headers.get('authorization') || '').replace('Bearer ', ''));
+  if (!isAdmin(adminUser)) {
+    return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
   }
+
+  const stored = await getSystemSettings();
+  return NextResponse.json(toClientSettings(stored));
+}
+
+export async function POST(request: NextRequest) {
+  const adminUser = await verifyAdminToken((request.headers.get('authorization') || '').replace('Bearer ', ''));
+  if (!isSuperAdmin(adminUser) || !adminUser) {
+    return NextResponse.json({ error: 'Super admin access required' }, { status: 403 });
+  }
+
+  const body = await request.json();
+  const incoming = body.settings || body;
+  const appointments = incoming.appointments || {};
+
+  const updated = await updateSystemSettings({
+    bookingWindowDays: Number(appointments.bookingWindowDays ?? DEFAULT_SYSTEM_SETTINGS.bookingWindowDays),
+    reminderHours: Number(appointments.reminderHours ?? DEFAULT_SYSTEM_SETTINGS.reminderHours),
+    maxActiveAppointments: Number(appointments.maxAppointmentsPerUser ?? appointments.maxActiveAppointments ?? DEFAULT_SYSTEM_SETTINGS.maxActiveAppointments),
+    requireProfileBeforeConfirm: appointments.requireProfileBeforeConfirm !== undefined
+      ? Boolean(appointments.requireProfileBeforeConfirm)
+      : appointments.autoConfirm !== undefined
+        ? !appointments.autoConfirm
+        : DEFAULT_SYSTEM_SETTINGS.requireProfileBeforeConfirm,
+    programQuotasEnabled: Boolean(appointments.programQuotasEnabled),
+    defaultCapacity: Number(appointments.defaultCapacity ?? DEFAULT_SYSTEM_SETTINGS.defaultCapacity),
+  });
+
+  await logAuditEvent({
+    adminId: adminUser.userId,
+    adminEmail: adminUser.email,
+    adminName: adminUser.email,
+    action: 'update',
+    resourceType: 'settings',
+    description: 'Updated persisted system settings',
+    ipAddress: getClientIpAddress(request),
+    userAgent: getUserAgent(request),
+    metadata: {
+      bookingWindowDays: updated.bookingWindowDays,
+      reminderHours: updated.reminderHours,
+      maxActiveAppointments: updated.maxActiveAppointments,
+    },
+  });
+
+  return NextResponse.json({
+    message: 'Settings updated successfully',
+    settings: toClientSettings(updated),
+  });
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { Home, UserCircle, Calendar as CalendarIcon } from 'lucide-react';
+import { DASHBOARD_CONTENT_CLASS } from './shell';
 
 type TabType = 'dashboard' | 'profile' | 'appointments';
 
@@ -30,7 +31,7 @@ export default function TabNavigation({ activeTab, setActiveTab }: TabNavigation
 
   return (
     <div className="bg-white border-b-2 border-primary-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className={DASHBOARD_CONTENT_CLASS}>
         <nav className="flex space-x-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;

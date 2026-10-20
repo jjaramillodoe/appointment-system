@@ -4,8 +4,7 @@ import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { BarChart3, PieChart, TrendingUp, Calendar, Users, Clock } from 'lucide-react';
 
-// Dynamically import Plotly to avoid SSR issues
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
+const Plot = dynamic(() => import('./PlotChart'), { ssr: false });
 
 interface ChartsTabProps {
   data: any;
@@ -32,26 +31,21 @@ export default function ChartsTab({ data, loading, selectedHub }: ChartsTabProps
     );
   }
 
-  // Debug: Log the data structure
-  console.log('ChartsTab Data:', {
-    stats: data.stats,
-    appointmentStats: data.appointmentStats,
-    weeklyTrends: data.weeklyTrends,
-    appointmentsByTime: data.appointmentsByTime,
-    appointmentsByHub: data.appointmentsByHub
-  });
-
   // Prepare data for charts
   const statusData = data.stats ? [
-    { _id: 'confirmed', count: data.stats.confirmed || 0 },
-    { _id: 'pending', count: data.stats.pending || 0 },
-    { _id: 'cancelled', count: data.stats.cancelled || 0 },
-    { _id: 'completed', count: data.stats.completed || 0 }
+    { _id: 'Confirmed', count: data.stats.confirmed || 0 },
+    { _id: 'Action required', count: (data.stats.pending_profile || 0) + (data.stats.pending || 0) },
+    { _id: 'Cancelled', count: data.stats.cancelled || 0 },
+    { _id: 'Completed', count: data.stats.completed || 0 },
+    { _id: 'Expired', count: data.stats.expired || 0 },
   ].filter(s => s.count > 0) : [];
   
   const hubData = data.appointmentsByHub || [];
   const timeData = data.appointmentsByTime || [];
-  const weeklyData = data.weeklyTrends || [];
+  const weeklyData = (data.dailyVolume || []).map((point: any) => ({
+    _id: { week: point.date, year: '' },
+    count: point.total,
+  }));
 
   // Status Distribution Pie Chart
   const statusPieData: any[] = [{
@@ -123,11 +117,11 @@ export default function ChartsTab({ data, loading, selectedHub }: ChartsTabProps
   const weeklyLineData: any[] = [{
     type: 'scatter',
     mode: 'lines+markers',
-    x: weeklyData.map((w: any) => `Week ${w._id?.week || w._id} (${w._id?.year || '2025'})`),
+    x: weeklyData.map((w: any) => w._id?.week || w._id),
     y: weeklyData.map((w: any) => w.count),
     line: { color: '#8B5CF6', width: 3 },
     marker: { size: 8, color: '#8B5CF6' },
-    fill: 'tonexty',
+    fill: 'tozeroy',
     fillcolor: 'rgba(139, 92, 246, 0.1)'
   }];
 
@@ -202,7 +196,7 @@ export default function ChartsTab({ data, loading, selectedHub }: ChartsTabProps
             <span className="font-medium text-blue-900">Total Appointments</span>
           </div>
           <p className="text-2xl font-bold text-blue-900 mt-2">
-            {data.totalAppointments || 0}
+            {data.stats?.total || 0}
           </p>
         </div>
         

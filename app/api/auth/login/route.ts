@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
@@ -12,7 +13,7 @@ export async function POST(request: NextRequest) {
     try {
       await dbConnect();
     } catch (dbError: any) {
-      console.error('Database connection error:', dbError);
+      logger.error('Database connection error:', dbError);
       return NextResponse.json(
         { 
           error: 'Database connection failed', 
@@ -85,7 +86,14 @@ export async function POST(request: NextRequest) {
       createdAt: user.createdAt,
       isAdmin: user.isAdmin || false,
       isSuperAdmin: user.isSuperAdmin || false,
-      assignedHub: user.assignedHub || null,
+      assignedHub: user.assignedHub?.toString() || null,
+      profileCompleted: user.profileCompleted || false,
+      emergencyContact: user.emergencyContact || null,
+      homeAddress: user.homeAddress || null,
+      additionalLanguages: user.additionalLanguages || [],
+      employerName: user.employerName || '',
+      jobTitle: user.jobTitle || '',
+      middleName: user.middleName || '',
     };
 
 
@@ -96,7 +104,7 @@ export async function POST(request: NextRequest) {
       token,
     });
   } catch (error: any) {
-    console.error('Login error:', error);
+    logger.error('Login error:', error);
     return NextResponse.json(
       { error: 'Login failed', details: error.message },
       { status: 500 }

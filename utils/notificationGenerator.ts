@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import dbConnect from '@/lib/mongodb';
 import Notification from '@/models/Notification';
 import Appointment from '@/models/Appointment';
@@ -45,7 +46,7 @@ export async function generateLowCapacityNotifications() {
       }
     }
   } catch (error) {
-    console.error('Error generating low capacity notifications:', error);
+    logger.error('Error generating low capacity notifications:', error);
   }
 }
 
@@ -97,7 +98,7 @@ export async function generateNoShowNotifications() {
       }
     }
   } catch (error) {
-    console.error('Error generating no-show notifications:', error);
+    logger.error('Error generating no-show notifications:', error);
   }
 }
 
@@ -134,7 +135,7 @@ export async function generateReminderNotifications() {
       }
     }
   } catch (error) {
-    console.error('Error generating reminder notifications:', error);
+    logger.error('Error generating reminder notifications:', error);
   }
 }
 
@@ -150,7 +151,7 @@ export async function generateSystemNotification(title: string, message: string,
       priority
     });
   } catch (error) {
-    console.error('Error generating system notification:', error);
+    logger.error('Error generating system notification:', error);
   }
 }
 
@@ -180,6 +181,6 @@ export async function generateAppointmentNotification(
       priority: type === 'cancelled' ? 'high' : 'medium'
     });
   } catch (error) {
-    console.error('Error generating appointment notification:', error);
+    logger.error('Error generating appointment notification:', error);
   }
 } 

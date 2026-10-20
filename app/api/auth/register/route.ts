@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     try {
       body = await request.json();
     } catch (parseError: any) {
-      console.error('Error parsing request body:', parseError);
+      logger.error('Error parsing request body:', parseError);
       return NextResponse.json(
         { error: 'Invalid request body', details: parseError.message },
         { status: 400 }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     
     for (const field of requiredFields) {
       if (!body[field]) {
-        console.error(`Missing required field: ${field}`);
+        logger.error(`Missing required field: ${field}`);
         return NextResponse.json(
           { error: `Missing required field: ${field}` },
           { status: 400 }
@@ -146,8 +147,8 @@ export async function POST(request: NextRequest) {
     try {
       user = new User(userData);
     } catch (modelError: any) {
-      console.error('User model creation error:', modelError);
-      console.error('Model error details:', {
+      logger.error('User model creation error:', modelError);
+      logger.error('Model error details:', {
         name: modelError.name,
         message: modelError.message,
         errors: modelError.errors
@@ -158,8 +159,8 @@ export async function POST(request: NextRequest) {
     try {
       await user.save();
     } catch (saveError: any) {
-      console.error('User save error:', saveError);
-      console.error('Validation errors:', saveError.errors);
+      logger.error('User save error:', saveError);
+      logger.error('Validation errors:', saveError.errors);
       throw saveError;
     }
 
@@ -206,14 +207,14 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Registration error:', error);
-    console.error('Error name:', error.name);
-    console.error('Error message:', error.message);
-    console.error('Error stack:', error.stack);
+    logger.error('Registration error:', error);
+    logger.error('Error name:', error.name);
+    logger.error('Error message:', error.message);
+    logger.error('Error stack:', error.stack);
     
     // Check if it's a validation error
     if (error.name === 'ValidationError') {
-      console.error('Validation errors:', error.errors);
+      logger.error('Validation errors:', error.errors);
       return NextResponse.json(
         { error: 'Validation failed', details: error.message, validationErrors: error.errors },
         { status: 400 }

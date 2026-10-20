@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { createClient, RedisClientType } from 'redis';
 
 declare global {
@@ -66,7 +67,7 @@ async function getRedisClient(): Promise<RedisClientType | null> {
     cached.lastError = Date.now();
     // Only log error once per retry interval
     if (!cached.lastError || Date.now() - cached.lastError > REDIS_ERROR_RETRY_INTERVAL) {
-      console.warn('Redis connection failed. Caching disabled. Set REDIS_ENABLED=false to suppress this message.');
+      logger.warn('Redis connection failed. Caching disabled. Set REDIS_ENABLED=false to suppress this message.');
     }
     return null;
   }

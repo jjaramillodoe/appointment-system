@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useAuth } from './AuthContext';
 
@@ -28,11 +30,13 @@ export function HubFilterProvider({ children }: { children: ReactNode }) {
           });
           if (response.ok) {
             const hubs = await response.json();
-            const hub = hubs.find((h: any) => {
-              const hubId = h._id?.toString() || h._id;
-              const assignedId = assignedHub.toString();
-              return hubId === assignedId;
-            });
+            const assignedId = assignedHub.toString();
+            const hub = Array.isArray(hubs)
+              ? hubs.find((h: any) => {
+                  const hubId = h._id?.toString() || h._id;
+                  return hubId === assignedId;
+                }) || (hubs.length === 1 ? hubs[0] : null)
+              : null;
             if (hub) {
               setHubName(hub.name);
               setSelectedHub(hub.name);
@@ -40,7 +44,7 @@ export function HubFilterProvider({ children }: { children: ReactNode }) {
             }
           }
         } catch (error) {
-          console.error('Error fetching hub name:', error);
+          logger.error('Error fetching hub name:', error);
         }
       } else if (isSuperAdmin) {
         // Super admins can select any hub

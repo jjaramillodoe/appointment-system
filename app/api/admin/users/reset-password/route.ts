@@ -1,6 +1,8 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { assertCanMutateUser } from '@/lib/adminUserAccess';
 import mongoose from 'mongoose';
 import '@/models/User';
 
@@ -18,7 +20,7 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
-    if (!isAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -41,6 +43,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const mutateError = await assertCanMutateUser(adminUser, user, 'reset-password');
+    if (mutateError) {
+      return NextResponse.json({ error: mutateError }, { status: 403 });
+    }
+
     // Set password as plain text - Mongoose pre-save hook will hash it
     user.password = newPassword;
     await user.save();
@@ -51,7 +58,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Reset password API error:', error);
+    logger.error('Reset password API error:', error);
     return NextResponse.json(
       { error: 'Failed to reset password', details: error.message },
       { status: 500 }

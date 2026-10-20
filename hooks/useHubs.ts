@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 
 export function useHubs() {
@@ -11,7 +12,10 @@ export function useHubs() {
         setLoading(true);
         setError(null);
         
-        const response = await fetch('/api/admin/hubs');
+        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+        const response = await fetch('/api/admin/hubs', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!response.ok) {
           throw new Error('Failed to fetch hubs');
         }
@@ -21,16 +25,9 @@ export function useHubs() {
         const hubNames = data.map((hub: any) => hub.name);
         setHubs(hubNames);
       } catch (err) {
-        console.error('Error fetching hubs:', err);
+        logger.error('Error fetching hubs:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch hubs');
-        // Fallback to hardcoded hubs if API fails
-        setHubs([
-          'Bronx Adult Learning Center',
-          'Manhattan Hub',
-          'Brooklyn Hub',
-          'Queens Hub',
-          'Staten Island Hub'
-        ]);
+        setHubs([]);
       } finally {
         setLoading(false);
       }

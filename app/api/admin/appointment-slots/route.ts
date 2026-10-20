@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
@@ -75,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ slots });
   } catch (error: any) {
-    console.error('Get appointment slots error:', error);
+    logger.error('Get appointment slots error:', error);
     return NextResponse.json(
       { error: 'Failed to get appointment slots', details: error.message },
       { status: 500 }
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
       slot
     });
   } catch (error: any) {
-    console.error('Update appointment slot error:', error);
+    logger.error('Update appointment slot error:', error);
     return NextResponse.json(
       { error: 'Failed to update appointment slot', details: error.message },
       { status: 500 }
@@ -235,7 +236,7 @@ export async function PUT(request: NextRequest) {
       slots: results
     });
   } catch (error: any) {
-    console.error('Bulk update appointment slots error:', error);
+    logger.error('Bulk update appointment slots error:', error);
     return NextResponse.json(
       { error: 'Failed to update appointment slots', details: error.message },
       { status: 500 }

@@ -131,6 +131,16 @@ function setCookie(name: string, value: string, days: number) {
   document.cookie = name + '=' + (value || '') + expires + '; path=/';
 }
 
+function clearTranslateCookie() {
+  const expire = 'expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  const hostname = window.location.hostname;
+  document.cookie = `googtrans=; ${expire}; path=/`;
+  document.cookie = `googtrans=; ${expire}; path=/; domain=${hostname}`;
+  if (hostname !== 'localhost') {
+    document.cookie = `googtrans=; ${expire}; path=/; domain=.${hostname}`;
+  }
+}
+
 function getSelectedLangFromCookie() {
   const match = document.cookie.match(/googtrans=\/en\/(\w+-?\w*)/);
   return match && match[1] ? match[1] : 'en';
@@ -158,6 +168,12 @@ export default function LanguageSelector() {
     // If a language is already selected, initialize translation
     const lang = getSelectedLangFromCookie();
     setSelected(lang);
+    if (lang === 'en' && /googtrans=\/en\/en/.test(document.cookie) && !sessionStorage.getItem('cleared-en-en')) {
+      clearTranslateCookie();
+      sessionStorage.setItem('cleared-en-en', '1');
+      window.location.reload();
+      return;
+    }
     if (lang !== 'en') {
       // Wait for script to load, then initialize
       const interval = setInterval(() => {
@@ -175,7 +191,8 @@ export default function LanguageSelector() {
     const lang = e.target.value;
     setSelected(lang);
     if (lang === 'en') {
-      setCookie('googtrans', '/en/en', 365);
+      // /en/en makes Google Translate rewrite English and garbles the page.
+      clearTranslateCookie();
     } else {
       setCookie('googtrans', `/en/${lang}`, 365);
     }
@@ -183,7 +200,7 @@ export default function LanguageSelector() {
   };
 
   return (
-    <div className="flex items-center space-x-2 bg-white rounded-lg px-3 py-1 shadow border border-primary-200">
+    <div className="notranslate flex items-center space-x-2 bg-white rounded-lg px-3 py-1 shadow border border-primary-200" translate="no">
       <Globe className="h-5 w-5 text-primary-600" />
       <select
         value={selected}

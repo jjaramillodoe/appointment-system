@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
 import { Calendar, ChevronLeft, ChevronRight, X, Edit, Check, Plus } from 'lucide-react';
@@ -73,6 +75,7 @@ export default function ScheduleTab({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           action: 'markDayOff',
@@ -90,7 +93,7 @@ export default function ScheduleTab({
       // Refresh the parent component data
       window.location.reload(); // Simple refresh for now
     } catch (error: any) {
-      console.error('Error marking day off:', error);
+      logger.error('Error marking day off:', error);
       setUpdateStatus(`❌ Error: ${error.message}`);
     } finally {
       setIsUpdating(false);
@@ -115,6 +118,7 @@ export default function ScheduleTab({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           action: 'updateSlots',
@@ -134,7 +138,7 @@ export default function ScheduleTab({
       // Refresh the parent component data
       window.location.reload(); // Simple refresh for now
     } catch (error: any) {
-      console.error('Error updating slots:', error);
+      logger.error('Error updating slots:', error);
       setUpdateStatus(`❌ Error: ${error.message}`);
     } finally {
       setIsUpdating(false);

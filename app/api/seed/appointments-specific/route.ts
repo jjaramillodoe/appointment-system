@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Appointment from '@/models/Appointment';
 import User from '@/models/User';
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Seed specific appointments error:', error);
+    logger.error('Seed specific appointments error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to seed appointments' },
       { status: 500 }

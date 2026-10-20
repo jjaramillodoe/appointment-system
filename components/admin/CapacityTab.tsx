@@ -1,9 +1,12 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { BarChart, Users, Settings, RefreshCw, AlertCircle, Building2, Calendar, Clock } from 'lucide-react';
 import { useHubFilter } from '@/contexts/HubFilterContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,12 +34,15 @@ export default function CapacityTab({
   setEditCapacities,
   loadSlotCapacities
 }: CapacityTabProps) {
-  const { selectedHub } = useHubFilter();
+  const { token } = useAuth();
+  const { selectedHub, hubName, isLocked } = useHubFilter();
+  const activeHub = isLocked && hubName ? hubName : selectedHub;
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [optimizedData, setOptimizedData] = useState<any>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Set default date to today
   useEffect(() => {
@@ -47,52 +53,61 @@ export default function CapacityTab({
 
   // Load optimized availability data
   useEffect(() => {
-    if (selectedHub && selectedDate) {
+    if (activeHub && selectedDate) {
       loadOptimizedAvailability();
     }
-  }, [selectedHub, selectedDate]);
+  }, [activeHub, selectedDate, token]);
 
   const loadOptimizedAvailability = async () => {
-    if (!selectedHub || selectedHub === 'all' || !selectedDate) {
+    if (!activeHub || activeHub === 'all' || !selectedDate) {
       setOptimizedData(null);
+      setLoadError(null);
       return;
     }
 
     setLoading(true);
+    setLoadError(null);
     try {
-      // Find hub ID
-      const hubData = await fetch('/api/admin/hubs').then(res => res.json());
-      const hub = hubData.find((h: any) => h.name === selectedHub);
-
-      if (!hub) {
-        console.error('Hub not found:', selectedHub);
-        setOptimizedData(null);
-        return;
-      }
-
-      const response = await fetch(`/api/admin/slot-capacities?hubName=${encodeURIComponent(selectedHub)}&date=${selectedDate}`);
+      const response = await fetch(
+        `/api/admin/slot-capacities?hubName=${encodeURIComponent(activeHub)}&date=${selectedDate}`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
       if (response.ok) {
         const slotCapacities = await response.json();
-        // Transform the data to match table format
-        const slots = Object.entries(slotCapacities).map(([time, slot]: [string, any]) => ({
-          time,
-          capacity: slot.capacity,
-          booked: slot.bookedCount,
-          available: slot.capacity - slot.bookedCount,
-          isActive: slot.isActive
-        }));
+        const timeOrder = (time: string) => {
+          const match = time.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+          if (!match) return 0;
+          let hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const period = match[3].toUpperCase();
+          if (period === 'PM' && hours !== 12) hours += 12;
+          if (period === 'AM' && hours === 12) hours = 0;
+          return hours * 60 + minutes;
+        };
+        const slots = Object.entries(slotCapacities)
+          .map(([time, slot]: [string, any]) => ({
+            time,
+            capacity: slot.capacity,
+            booked: slot.bookedCount,
+            available: slot.capacity - slot.bookedCount,
+            isActive: slot.isActive
+          }))
+          .sort((a, b) => timeOrder(a.time) - timeOrder(b.time));
         const transformedData = {
-          hubName: selectedHub,
+          hubName: activeHub,
           date: selectedDate,
           slots
         };
         setOptimizedData(transformedData);
-        console.log('✅ Loaded capacity data:', transformedData);
       } else {
-        console.error('Failed to load capacity data:', response.status);
+        const errorBody = await response.json().catch(() => ({}));
+        setOptimizedData(null);
+        setLoadError(errorBody.error || `Failed to load capacity (${response.status})`);
       }
     } catch (error) {
-      console.error('Error loading optimized availability:', error);
+      logger.error('Error loading optimized availability:', error);
+      setOptimizedData(null);
+      setLoadError('Failed to load capacity data');
     } finally {
       setLoading(false);
     }
@@ -104,27 +119,22 @@ export default function CapacityTab({
     
     try {
       // Find hub ID
-      const hubData = await fetch('/api/admin/hubs').then(res => res.json());
-      const hub = hubData.find((h: any) => h.name === selectedHub);
-      
-      if (!hub) {
+      if (!activeHub) {
         throw new Error('Hub not found');
       }
 
-      // For now, we'll need to implement a specific capacity update endpoint
-      // This is a simplified approach - in a full implementation, you'd have a dedicated endpoint
-      const response = await fetch('/api/availability', {
+      const response = await fetch('/api/admin/slot-capacities', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         body: JSON.stringify({
-          action: 'updateCapacity',
-          hubId: hub._id,
+          hubName: activeHub,
           date: selectedDate,
-          time: time,
-          capacity: capacity,
-          isActive: isActive
+          capacities: {
+            [time]: { capacity, isActive },
+          },
         })
       });
 
@@ -137,7 +147,7 @@ export default function CapacityTab({
       setCapacityModal(null);
       await loadOptimizedAvailability(); // Refresh data
     } catch (error: any) {
-      console.error('Error updating capacity:', error);
+      logger.error('Error updating capacity:', error);
       setUpdateStatus({ message: `Error: ${error.message}`, type: 'error' });
     } finally {
       setIsUpdating(false);
@@ -198,7 +208,7 @@ export default function CapacityTab({
             <div>
               <Label htmlFor="hub-select">Hub</Label>
               <div className="mt-2 px-3 py-2 border border-input rounded-md bg-muted text-foreground">
-                {selectedHub === 'all' || !selectedHub ? 'All Hubs (select from top filter)' : selectedHub}
+                {activeHub === 'all' || !activeHub ? 'All Hubs (select from top filter)' : activeHub}
               </div>
             </div>
             <div>
@@ -214,7 +224,7 @@ export default function CapacityTab({
             <div className="flex items-end">
               <Button
                 onClick={loadOptimizedAvailability}
-                disabled={loading || !selectedHub || selectedHub === 'all' || !selectedDate}
+                disabled={loading || !activeHub || activeHub === 'all' || !selectedDate}
                 className="w-full"
               >
                 {loading ? (
@@ -230,7 +240,7 @@ export default function CapacityTab({
       </Card>
 
       {/* Message when "all" is selected */}
-      {(selectedHub === 'all' || !selectedHub) && (
+      {(activeHub === 'all' || !activeHub) && (
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Select a Hub</AlertTitle>
@@ -333,9 +343,9 @@ export default function CapacityTab({
                           <TableCell>
                             <Button
                               onClick={() => {
-                                if (!selectedHub) return; // Guard clause: ensure hub is selected
+                                if (!activeHub) return;
                                 setCapacityModal({
-                                  hubName: selectedHub,
+                                  hubName: activeHub,
                                   date: selectedDate,
                                   time: slot.time,
                                   open: true
@@ -349,7 +359,7 @@ export default function CapacityTab({
                               }}
                               variant="ghost"
                               size="sm"
-                              disabled={isUpdating || !selectedHub}
+                              disabled={isUpdating || !activeHub}
                             >
                               <Settings className="h-4 w-4 mr-1" />
                               Edit
@@ -370,8 +380,10 @@ export default function CapacityTab({
         <Card>
           <CardContent className="text-center py-12">
             <BarChart className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <CardTitle className="text-lg mb-2">No Data Available</CardTitle>
-            <CardDescription>Select a hub and date to view capacity information</CardDescription>
+            <CardTitle className="text-lg mb-2">{loadError ? 'Unable to Load Capacity' : 'No Data Available'}</CardTitle>
+            <CardDescription>
+              {loadError || 'Select a hub and date to view capacity information'}
+            </CardDescription>
           </CardContent>
         </Card>
       )}

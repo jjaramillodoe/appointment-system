@@ -1,109 +1,65 @@
 # Hub-Based Admin System
 
-## Overview
-The system now supports hub-based admin access with super-admin capabilities. Regular admins can only see and manage data for their assigned hub, while super-admins can see everything across all hubs.
+Hub-admins manage one learning center. Super-admins manage every site, district closures, and system policy.
 
-## Features
+## Roles
 
-### 1. Admin Types
-- **Super Admin**: Can see and manage all hubs and system-wide settings
-- **Hub Admin**: Can only see and manage data for their assigned hub (e.g., "Manhattan Hub")
+- **Super Admin** (`isSuperAdmin: true`): all hubs, generator, reminders, blackout dates, audit logs, and settings.
+- **Hub Admin** (`isAdmin: true` + `assignedHub`): only their assigned site. They can run intake day, book or reschedule a student, send hub messages, and export reports for that site.
+- **Student** (`user`): register, book, confirm after profile, reschedule, inbox, PDF, and calendar file.
 
-### 2. User Model Updates
-- Added `isSuperAdmin` field (boolean)
-- Added `assignedHub` field (ObjectId reference to Hub)
-- Existing `isAdmin` field remains for backward compatibility
+## Live admin navigation
 
-### 3. API Routes Updated
-All admin API routes now filter by hub for regular admins:
-- `/api/admin/appointments` - Only shows appointments for assigned hub
-- `/api/admin/users` - Only shows users whose closestHub matches assigned hub
-- `/api/admin/analytics` - Only shows analytics for assigned hub
-- `/api/admin/settings` - Accessible to all admins
-- `/api/admin/cache` - Accessible to all admins
+Shared by hub-admins and super-admins:
 
-### 4. Admin Dashboard
-- Shows admin type badge (Super Admin or Hub Admin)
-- Displays assigned hub name for hub admins
-- All data is automatically filtered based on admin permissions
+- Analytics — today at the site, 7-day fill, charts
+- Users — scoped CRUD, book or reschedule for a student
+- Appointments — today’s intake queue, check-in / no-show / completed, waitlist, roster print
+- Schools — district schools that own hubs (super-admins create and edit)
+- Hubs — hub-admins edit their site; super-admins create and manage all hubs
+- Classes — course catalog students can select after school and hub (super-admins create and edit)
+- Schedule — weekly day-off with a reason
+- Capacity — slot capacity for the assigned hub
+- Messages — hub-admins send templates to their students only
+- Notifications — in-app admin notices
+- Reports — summary + CSV (hub-scoped for hub-admins)
 
-## Usage
+Super-admin only:
 
-### Creating a Super Admin
+- Generator
+- Reminders
+- Blackout (district closures; booking also respects per-hub day-off)
+- Audit Logs
+- Settings (booking window, reminder hours, max active appointments, require-profile-before-confirm, program quotas)
+- Maintenance (reset operational data, reseed analytics, archive/retention)
+
+## How access is enforced
+
+1. Login JWT includes `isAdmin`, `isSuperAdmin`, and `assignedHub`.
+2. Admin APIs use `verifyAdminToken`, `isAdmin` / `isSuperAdmin`, and `resolveRequestedHub` / `canAccessHub` in `lib/adminPermissions.ts` and `lib/adminUserAccess.ts`.
+3. Appointments often store `hubName` only; hub filters match `hubId` or `hubName`.
+4. Students use `lib/studentAuth.ts`. Active booking statuses are `pending`, `pending_profile`, `confirmed`, and `arrived`.
+
+## Student flows that staff should know
+
+- Quick register books a Morning / Evening / Saturday slot as `pending_profile` until the profile is complete.
+- Confirm, reschedule, history, inbox, PDF, and **Add to calendar** live on the student dashboard.
+- Forgot password emails a reset link. Locally, if SMTP is not configured, the form shows a continue link.
+- Full windows can join a waitlist. A cancellation or no-show emails the next student and writes an inbox message.
+- Confirmation, reminder, intake, password-reset, and waitlist emails are Spanish-first and attach an `.ics` when there is a date/time.
+
+## Create admins
+
 ```bash
 npm run admin:create <email> <password> super
-```
-
-Example:
-```bash
-npm run admin:create jjaramillo7@schools.nyc.gov Welcome12345! super
-```
-
-### Creating a Hub Admin
-```bash
 npm run admin:create <email> <password> false "Hub Name"
 ```
 
-Example:
-```bash
-npm run admin:create admin@example.com Welcome12345! false "Manhattan Hub"
+Convert an existing user in MongoDB:
+
+```javascript
+db.users.updateOne({ email: "admin@example.com" }, { $set: { isSuperAdmin: true } });
+
+const hub = db.hubs.findOne({ name: "Adult Education at Coney Island Avenue" });
+db.users.updateOne({ email: "hub.admin@example.com" }, { $set: { isAdmin: true, assignedHub: hub._id } });
 ```
-
-### Available Hubs
-To see available hubs, check your MongoDB `hubs` collection or use:
-```bash
-# In MongoDB shell
-db.hubs.find({ isActive: true })
-```
-
-## Permission System
-
-### Helper Functions (`lib/adminPermissions.ts`)
-- `verifyAdminToken(token)` - Verifies JWT and extracts admin info
-- `isAdmin(user)` - Checks if user is admin or super-admin
-- `isSuperAdmin(user)` - Checks if user is super-admin
-- `getHubFilter(user)` - Returns MongoDB filter for hub-based queries
-- `canAccessHub(user, hubId)` - Checks if admin can access specific hub
-
-### How It Works
-1. User logs in → JWT token includes `isSuperAdmin` and `assignedHub`
-2. Admin makes API request → Token is verified
-3. If super-admin → No filter applied (sees everything)
-4. If hub-admin → Filter applied to show only assigned hub data
-
-## Database Schema
-
-### User Model
-```typescript
-{
-  isAdmin: Boolean,        // Legacy field, kept for compatibility
-  isSuperAdmin: Boolean,  // New: true for super-admins
-  assignedHub: ObjectId,  // New: Hub ID for hub-based admins
-}
-```
-
-## Migration Notes
-
-- Existing admins with `isAdmin: true` will continue to work
-- To convert existing admin to super-admin:
-  ```javascript
-  db.users.updateOne(
-    { email: "admin@example.com" },
-    { $set: { isSuperAdmin: true } }
-  )
-  ```
-- To assign hub to existing admin:
-  ```javascript
-  const hub = db.hubs.findOne({ name: "Manhattan Hub" });
-  db.users.updateOne(
-    { email: "admin@example.com" },
-    { $set: { assignedHub: hub._id } }
-  )
-  ```
-
-## Security
-
-- Super-admins can access all hubs
-- Hub-admins are restricted to their assigned hub only
-- API routes automatically enforce hub filtering
-- Frontend displays appropriate badges and restrictions

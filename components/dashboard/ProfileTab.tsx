@@ -1,5 +1,7 @@
 'use client';
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { UserCircle, Edit, XCircle, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -155,7 +157,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
         showError(errorData.error || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Profile update error:', error);
+      logger.error('Profile update error:', error);
       showError('Failed to update profile');
     } finally {
       setIsUpdatingProfile(false);

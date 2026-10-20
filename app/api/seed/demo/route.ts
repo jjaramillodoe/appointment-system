@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import Appointment from '@/models/Appointment';
@@ -176,7 +177,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Seed demo error:', error);
+    logger.error('Seed demo error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to seed demo data' },
       { status: 500 }

@@ -1,7 +1,9 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin, isSuperAdmin, canAccessHub } from '@/lib/adminPermissions';
 import Hub from '@/models/Hub';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
 
 export async function GET(
   request: NextRequest,
@@ -10,6 +12,20 @@ export async function GET(
   const { hubId } = await params;
   try {
     await dbConnect();
+
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return NextResponse.json({ error: 'Authorization token required' }, { status: 401 });
+    }
+
+    const adminUser = await verifyAdminToken(authHeader.substring(7));
+    if (!isAdmin(adminUser) || !adminUser) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    }
+
+    if (!canAccessHub(adminUser, hubId)) {
+      return NextResponse.json({ error: 'You can only view your assigned hub' }, { status: 403 });
+    }
 
     const hub = await Hub.findById(hubId);
 
@@ -22,7 +38,7 @@ export async function GET(
 
     return NextResponse.json({ hub });
   } catch (error: any) {
-    console.error('Get hub error:', error);
+    logger.error('Get hub error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -49,15 +65,19 @@ export async function PUT(
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
 
-    if (!isAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
       );
     }
 
+    if (!canAccessHub(adminUser, hubId)) {
+      return NextResponse.json({ error: 'You can only update your assigned hub' }, { status: 403 });
+    }
+
     const body = await request.json();
-    const { name, location, timezone, defaultSlots, publicTransitDirections, isActive } = body;
+    const { name, location, timezone, defaultSlots, publicTransitDirections, isActive, schoolId } = body;
 
     // Build update object with only provided fields
     const updateData: any = {};
@@ -67,11 +87,12 @@ export async function PUT(
     if (defaultSlots !== undefined) updateData.defaultSlots = defaultSlots;
     if (publicTransitDirections !== undefined) updateData.publicTransitDirections = publicTransitDirections;
     if (isActive !== undefined) updateData.isActive = isActive;
+    if (schoolId !== undefined) updateData.schoolId = schoolId || null;
 
     const updatedHub = await Hub.findByIdAndUpdate(
       hubId,
       updateData,
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedHub) {
@@ -81,13 +102,26 @@ export async function PUT(
       );
     }
 
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: adminUser.email,
+      adminName: adminUser.email,
+      action: 'update',
+      resourceType: 'hub',
+      resourceId: hubId,
+      resourceName: updatedHub.name,
+      description: `Updated hub ${updatedHub.name}`,
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Hub updated successfully',
       hub: updatedHub
     });
   } catch (error: any) {
-    console.error('Update hub error:', error);
+    logger.error('Update hub error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }
@@ -114,9 +148,16 @@ export async function DELETE(
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
 
-    if (!isAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json(
         { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+
+    if (!isSuperAdmin(adminUser)) {
+      return NextResponse.json(
+        { error: 'Only super admins can delete hubs' },
         { status: 403 }
       );
     }
@@ -135,7 +176,7 @@ export async function DELETE(
       message: 'Hub deleted successfully'
     });
   } catch (error: any) {
-    console.error('Delete hub error:', error);
+    logger.error('Delete hub error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
       { status: 500 }

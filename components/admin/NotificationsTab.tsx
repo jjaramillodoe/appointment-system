@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState } from 'react';
 import { Bell, AlertTriangle, Clock, CheckCircle, Settings, Volume2, VolumeX, RefreshCw, Eye, CheckCheck } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,10 +47,10 @@ export default function NotificationsTab({ notifications, settings, setSettings,
           onRefresh();
         }
       } else {
-        console.error('Failed to mark notification as read:', response.status);
+        logger.error('Failed to mark notification as read:', response.status);
       }
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      logger.error('Error marking notification as read:', error);
     }
     setLoading(false);
   };
@@ -75,10 +77,10 @@ export default function NotificationsTab({ notifications, settings, setSettings,
           onRefresh();
         }
       } else {
-        console.error('Failed to mark all notifications as read:', response.status);
+        logger.error('Failed to mark all notifications as read:', response.status);
       }
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      logger.error('Error marking all notifications as read:', error);
     }
     setLoading(false);
   };

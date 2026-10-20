@@ -9,12 +9,14 @@ import {
   Clock 
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { appointmentStatusLabel, isPendingProfile } from '@/lib/appointmentStatus';
+import StudentWaitlistCard from './StudentWaitlistCard';
 
 interface Appointment {
   _id: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'pending_profile' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
   notes: string;
   intakeType: string;
   hubName?: string;
@@ -29,7 +31,9 @@ interface ScheduleForm {
 
 interface AppointmentsTabProps {
   appointment: Appointment | null;
+  history?: Appointment[];
   onScheduleClick: () => void;
+  onReschedule?: () => void;
   onConfirm: () => void;
   onCancel: () => void;
   isConfirming: boolean;
@@ -44,6 +48,7 @@ interface AppointmentsTabProps {
   onCloseSchedule: () => void;
   isScheduling: boolean;
   isDayOff: boolean;
+  dayOffReason?: string;
   availableSlots: string[];
   hubConfigs: any[];
   user: any;
@@ -51,7 +56,9 @@ interface AppointmentsTabProps {
 
 export default function AppointmentsTab({
   appointment,
+  history = [],
   onScheduleClick,
+  onReschedule,
   onConfirm,
   onCancel,
   isConfirming,
@@ -66,6 +73,7 @@ export default function AppointmentsTab({
   onCloseSchedule,
   isScheduling,
   isDayOff,
+  dayOffReason,
   availableSlots,
   hubConfigs,
   user
@@ -75,6 +83,7 @@ export default function AppointmentsTab({
       case 'confirmed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'pending':
+      case 'pending_profile':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'cancelled':
         return 'bg-red-100 text-red-800 border-red-200';
@@ -127,7 +136,7 @@ export default function AppointmentsTab({
                     </h3>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium border flex items-center ${getStatusColor(appointment.status)}`}>
                       {getStatusIcon(appointment.status)}
-                      <span className="ml-1 capitalize">{appointment.status}</span>
+                      <span className="ml-1">{appointmentStatusLabel(appointment.status)}</span>
                     </span>
                   </div>
                   
@@ -167,24 +176,41 @@ export default function AppointmentsTab({
               </div>
               
               <div className="mt-6 flex space-x-3">
-                <button
-                  onClick={onConfirm}
-                  disabled={isConfirming || appointment.status === 'confirmed'}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center"
-                >
-                  {isConfirming ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Confirming...
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="h-4 w-4 mr-2" />
-                      {appointment.status === 'confirmed' ? 'Confirmed' : 'Confirm Attendance'}
-                    </>
-                  )}
-                </button>
+                {isPendingProfile(appointment.status) ? (
+                  <button
+                    onClick={() => window.location.assign('/dashboard?tab=profile')}
+                    className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
+                  >
+                    Complete Profile to Confirm
+                  </button>
+                ) : (
+                  <button
+                    onClick={onConfirm}
+                    disabled={isConfirming || appointment.status === 'confirmed'}
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center"
+                  >
+                    {isConfirming ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Confirming...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        {appointment.status === 'confirmed' ? 'Confirmed' : 'Confirm Attendance'}
+                      </>
+                    )}
+                  </button>
+                )}
                 
+                {onReschedule && (
+                  <button
+                    onClick={onReschedule}
+                    className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium"
+                  >
+                    Reschedule
+                  </button>
+                )}
                 <button
                   onClick={onCancel}
                   disabled={isCancelling}
@@ -221,116 +247,29 @@ export default function AppointmentsTab({
         </div>
       </div>
 
-      {/* Schedule Form Modal */}
-      {showScheduleForm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-6">Schedule Your Appointment</h2>
-              
-              <form onSubmit={onSubmitSchedule} className="space-y-4">
+      {history.length > 0 && (
+        <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment history</h3>
+          <div className="space-y-3">
+            {history.map((item) => (
+              <div key={item._id} className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appointment Date
-                  </label>
-                  <input
-                    type="date"
-                    value={scheduleForm.appointmentDate}
-                    min={(() => {
-                      const selectedHubConfig = hubConfigs.find(cfg => cfg.hubName === scheduleForm.selectedHub);
-                      if (!selectedHubConfig) return format(new Date(), 'yyyy-MM-dd');
-                      const tomorrow = new Date();
-                      tomorrow.setDate(tomorrow.getDate() + 1);
-                      return format(tomorrow, 'yyyy-MM-dd');
-                    })()}
-                    onChange={(e) => {
-                      const selectedHubConfig = hubConfigs.find(cfg => cfg.hubName === scheduleForm.selectedHub);
-                      if (selectedHubConfig && e.target.value) {
-                        setScheduleForm({ ...scheduleForm, appointmentDate: e.target.value });
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    required
-                  />
+                  <p className="font-medium text-gray-900">{item.hubName || 'Learning center'}</p>
+                  <p className="text-sm text-gray-600">
+                    {(() => {
+                      const d = parseToLocalDate(item.appointmentDate);
+                      return d ? format(d, 'MMM d, yyyy') : '';
+                    })()} · {formatTime(item.appointmentTime)}
+                  </p>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Appointment Time
-                  </label>
-                  <select
-                    value={scheduleForm.appointmentTime}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, appointmentTime: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    required
-                  >
-                    <option value="">Select a time</option>
-                    {availableSlots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
-                  </select>
-                  {isDayOff && (
-                    <p className="text-sm text-red-600 mt-1">
-                      This location is closed on the selected date.
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Learning Center
-                  </label>
-                  <select
-                    value={scheduleForm.selectedHub}
-                    onChange={e => setScheduleForm({ ...scheduleForm, selectedHub: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    required
-                  >
-                    <option value="">Select a learning center</option>
-                    {hubConfigs.map((hub) => (
-                      <option key={hub._id} value={hub.hubName}>
-                        {hub.hubName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notes (optional)
-                  </label>
-                  <textarea
-                    value={scheduleForm.notes}
-                    onChange={(e) => setScheduleForm({ ...scheduleForm, notes: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-                    rows={3}
-                    placeholder="Any additional information or special requests..."
-                  />
-                </div>
-
-                <div className="flex space-x-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={onCloseSchedule}
-                    className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isScheduling}
-                    className="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
-                  >
-                    {isScheduling ? 'Scheduling...' : 'Schedule Appointment'}
-                  </button>
-                </div>
-              </form>
-            </div>
+                <span className="text-sm text-gray-500">{appointmentStatusLabel(item.status)}</span>
+              </div>
+            ))}
           </div>
         </div>
       )}
+
+      <StudentWaitlistCard />
     </div>
   );
 } 

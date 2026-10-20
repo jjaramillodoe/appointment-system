@@ -24,40 +24,60 @@ export default function InsightsTab({ data, loading, selectedHub }: InsightsTabP
 
   const generateInsights = () => {
     if (!data) return;
+    const stats = data.stats || {};
+    const weekday = [...(Array.isArray(data.appointmentsByWeekday) ? data.appointmentsByWeekday : [])].sort((a: any, b: any) => b.count - a.count)[0];
+    const preference = [...(Array.isArray(data.byTimePreference) ? data.byTimePreference : [])].sort((a: any, b: any) => b.count - a.count)[0];
+    const busiestHub = [...(Array.isArray(data.appointmentsByHub) ? data.appointmentsByHub : [])].sort((a: any, b: any) => b.total - a.total)[0];
+    const tightestHub = [...(Array.isArray(data.upcomingByHub) ? data.upcomingByHub : [])]
+      .filter((hub: any) => hub.capacity > 0)
+      .sort((a: any, b: any) => (b.booked / b.capacity) - (a.booked / a.capacity))[0];
 
     const newInsights = [
       {
-        type: 'success',
-        icon: CheckCircle,
-        title: 'High Engagement Period',
-        description: 'Appointments between 9:00 AM and 11:00 AM show 40% higher completion rates',
-        impact: 'High',
-        category: 'Performance'
-      },
-      {
-        type: 'warning',
-        icon: AlertTriangle,
-        title: 'Capacity Optimization',
-        description: 'South Shore High School is operating at 85% capacity during peak hours',
-        impact: 'Medium',
-        category: 'Capacity'
+        type: stats.actionRequiredRate >= 20 ? 'warning' : 'success',
+        icon: stats.actionRequiredRate >= 20 ? AlertTriangle : CheckCircle,
+        title: 'Profile completion',
+        description: `${stats.actionRequiredRate || 0}% of appointments still need a completed student profile.`,
+        impact: stats.actionRequiredRate >= 20 ? 'High' : 'Low',
+        category: 'Intake'
       },
       {
         type: 'info',
-        icon: Clock,
-        title: 'Peak Time Pattern',
-        description: 'Tuesday and Thursday afternoons consistently show the highest appointment density',
+        icon: Calendar,
+        title: 'Busiest day',
+        description: weekday
+          ? `${weekday._id} has the most appointments in this range (${weekday.count}).`
+          : 'Not enough appointment dates to find a busiest day.',
         impact: 'Medium',
         category: 'Patterns'
       },
       {
-        type: 'success',
-        icon: Users,
-        title: 'User Retention',
-        description: 'Users who book morning appointments are 25% more likely to return',
+        type: 'info',
+        icon: Clock,
+        title: 'Preferred window',
+        description: preference
+          ? `Students most often choose ${preference._id} (${preference.count} bookings).`
+          : 'Time preference data is not available yet.',
+        impact: 'Medium',
+        category: 'Demand'
+      },
+      tightestHub ? {
+        type: (tightestHub.booked / tightestHub.capacity) >= 0.7 ? 'warning' : 'success',
+        icon: Target,
+        title: 'Upcoming capacity',
+        description: `${tightestHub._id} is ${Math.round((tightestHub.booked / tightestHub.capacity) * 100)}% booked for the next 7 days.`,
         impact: 'High',
-        category: 'User Behavior'
-      }
+        category: 'Capacity'
+      } : {
+        type: 'info',
+        icon: Users,
+        title: 'Site volume',
+        description: busiestHub
+          ? `${busiestHub._id} has the most appointments (${busiestHub.total}).`
+          : 'No hub volume to compare yet.',
+        impact: 'Medium',
+        category: 'Sites'
+      },
     ];
 
     setInsights(newInsights);
@@ -65,38 +85,42 @@ export default function InsightsTab({ data, loading, selectedHub }: InsightsTabP
 
   const generatePredictions = () => {
     if (!data) return;
+    const stats = data.stats || {};
+    const daily = data.dailyVolume || [];
+    const recent = daily.slice(-7).reduce((sum: number, point: any) => sum + (point.total || 0), 0);
+    const weekday = [...(Array.isArray(data.appointmentsByWeekday) ? data.appointmentsByWeekday : [])].sort((a: any, b: any) => b.count - a.count)[0];
 
     const newPredictions = [
       {
-        metric: 'Next Week Appointments',
-        prediction: Math.floor((data.totalAppointments || 0) * 1.15),
-        confidence: '85%',
-        trend: 'up',
-        change: '+15%',
+        metric: 'Recent 7-day volume',
+        prediction: recent,
+        confidence: 'Actual',
+        trend: 'stable',
+        change: 'Last 7 days in range',
         icon: TrendingUp
       },
       {
-        metric: 'Peak Day Next Week',
-        prediction: 'Wednesday',
-        confidence: '92%',
+        metric: 'Peak day',
+        prediction: weekday?._id || 'n/a',
+        confidence: 'Actual',
         trend: 'stable',
-        change: 'Consistent',
+        change: weekday ? `${weekday.count} bookings` : 'No data',
         icon: Calendar
       },
       {
-        metric: 'Capacity Utilization',
-        prediction: '78%',
-        confidence: '88%',
-        trend: 'up',
-        change: '+8%',
+        metric: 'Upcoming fill',
+        prediction: `${stats.upcomingFillRate || 0}%`,
+        confidence: 'Actual',
+        trend: (stats.upcomingFillRate || 0) >= 70 ? 'up' : 'stable',
+        change: `${stats.upcomingBooked || 0}/${stats.upcomingCapacity || 0} seats`,
         icon: Target
       },
       {
-        metric: 'New User Signups',
-        prediction: Math.floor((data.totalAppointments || 0) * 0.12),
-        confidence: '76%',
-        trend: 'up',
-        change: '+12%',
+        metric: 'Cancel rate',
+        prediction: `${stats.cancelRate || 0}%`,
+        confidence: 'Actual',
+        trend: (stats.cancelRate || 0) >= 15 ? 'up' : 'stable',
+        change: `${stats.cancelled || 0} cancelled`,
         icon: Users
       }
     ];
@@ -106,37 +130,69 @@ export default function InsightsTab({ data, loading, selectedHub }: InsightsTabP
 
   const generateRecommendations = () => {
     if (!data) return;
+    const stats = data.stats || {};
+    const preference = [...(Array.isArray(data.byTimePreference) ? data.byTimePreference : [])].sort((a: any, b: any) => b.count - a.count)[0];
+    const upcomingHubs = Array.isArray(data.upcomingByHub) ? data.upcomingByHub : [];
+    const lightestHub = [...upcomingHubs]
+      .filter((hub: any) => hub.capacity > 0)
+      .sort((a: any, b: any) => (a.booked / a.capacity) - (b.booked / b.capacity))[0];
+    const tightestHub = [...upcomingHubs]
+      .filter((hub: any) => hub.capacity > 0)
+      .sort((a: any, b: any) => (b.booked / b.capacity) - (a.booked / a.capacity))[0];
 
     const newRecommendations = [
-      {
+      stats.actionRequiredRate >= 15 ? {
         priority: 'High',
-        title: 'Increase Morning Slot Capacity',
-        description: 'Add 3 more appointment slots between 9:00-11:00 AM at high-demand hubs',
-        impact: 'Expected 20% increase in appointment completion rates',
+        title: 'Follow up on incomplete profiles',
+        description: `${(stats.pending_profile || 0) + (stats.pending || 0)} students still need to finish their profile before intake.`,
+        impact: 'Fewer pending appointments and clearer site lists',
+        effort: 'Low',
+        icon: Users
+      } : {
+        priority: 'Medium',
+        title: 'Keep profile completion high',
+        description: 'Most bookings already have complete profiles. Watch this if action-required starts climbing.',
+        impact: 'Students stay ready for intake',
+        effort: 'Low',
+        icon: CheckCircle
+      },
+      preference ? {
+        priority: 'High',
+        title: `Protect ${preference._id} capacity`,
+        description: `${preference._id} is the most requested window. Add or keep seats there if sites are filling.`,
+        impact: 'Matches how students actually book',
+        effort: 'Low',
+        icon: Clock
+      } : {
+        priority: 'Medium',
+        title: 'Collect time preferences',
+        description: 'Newer bookings should keep morning, evening, or Saturday so demand stays visible.',
+        impact: 'Better staffing against real demand',
         effort: 'Low',
         icon: Clock
       },
-      {
-        priority: 'Medium',
-        title: 'Optimize Hub Distribution',
-        description: 'Redistribute staff from low-utilization hubs to high-demand locations',
-        impact: 'Expected 15% improvement in overall system efficiency',
+      tightestHub && (tightestHub.booked / tightestHub.capacity) >= 0.6 ? {
+        priority: 'High',
+        title: `Review ${tightestHub._id}`,
+        description: 'This site is filling fastest for the next 7 days. Check capacity or nearby overflow sites.',
+        impact: 'Avoid turning students away',
         effort: 'Medium',
+        icon: Target
+      } : {
+        priority: 'Medium',
+        title: 'Use quieter sites',
+        description: lightestHub
+          ? `${lightestHub._id} still has open seats this week.`
+          : 'Upcoming slot data is not available yet.',
+        impact: 'Spread demand across sites',
+        effort: 'Low',
         icon: Target
       },
       {
-        priority: 'High',
-        title: 'Implement Smart Scheduling',
-        description: 'Use AI to suggest optimal appointment times based on user preferences',
-        impact: 'Expected 30% reduction in no-shows',
-        effort: 'High',
-        icon: Zap
-      },
-      {
         priority: 'Medium',
-        title: 'Enhanced User Communication',
-        description: 'Send personalized reminders based on appointment time and user behavior',
-        impact: 'Expected 25% improvement in user satisfaction',
+        title: 'Watch cancellations',
+        description: `${stats.cancelRate || 0}% of appointments in this range were cancelled.`,
+        impact: 'Freed seats can be offered again quickly',
         effort: 'Low',
         icon: Users
       }

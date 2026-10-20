@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -12,24 +12,31 @@ import {
   Navigation
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { HUBS } from '@/utils/hubMatching';
+import { HUBS, findHubByName, type Hub } from '@/utils/hubMatching';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import { appointmentStatusLabel, isPendingProfile } from '@/lib/appointmentStatus';
+import MarkdownContent from '@/components/MarkdownContent';
 
 interface Appointment {
   _id: string;
   appointmentDate: string;
   appointmentTime: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'pending_profile' | 'confirmed' | 'cancelled' | 'completed' | 'expired';
   notes: string;
   intakeType: string;
   hubName?: string;
   hubId?: string;
+  hubLocation?: string;
+  publicTransitDirections?: string;
 }
 
 interface User {
   closestHub?: {
     name: string;
     address: string;
+    latitude?: number;
+    longitude?: number;
   };
   address?: {
     street: string;
@@ -45,18 +52,19 @@ interface AppointmentCardProps {
   onScheduleClick: () => void;
   onConfirm: () => void;
   onCancel: () => void;
+  onReschedule?: () => void;
+  onCompleteProfile?: () => void;
   isConfirming: boolean;
   isCancelling: boolean;
   error: string;
   showConfirmationSuccess: boolean;
   parseToLocalDate: (dateValue: any) => Date | null;
   formatTime: (time: string | undefined) => string;
-  isSendingSms: boolean;
-  onSendSms: () => void;
-  smsError: string;
-  smsSuccess: boolean;
-  qrCodeUrl: string | null;
-  map: any;
+  isSendingSms?: boolean;
+  onSendSms?: () => void;
+  smsError?: string;
+  smsSuccess?: boolean;
+  qrCodeUrl?: string | null;
   scheduleForm: any;
 }
 
@@ -66,6 +74,8 @@ export default function AppointmentCard({
   onScheduleClick,
   onConfirm,
   onCancel,
+  onReschedule,
+  onCompleteProfile,
   isConfirming,
   isCancelling,
   error,
@@ -77,58 +87,83 @@ export default function AppointmentCard({
   smsError,
   smsSuccess,
   qrCodeUrl,
-  map,
   scheduleForm
 }: AppointmentCardProps) {
   const [hubName, setHubName] = useState<string>('');
-  const [hubLocation, setHubLocation] = useState<any>(null);
+  const [resolvedHub, setResolvedHub] = useState<Hub | null>(null);
   const [publicTransitDirections, setPublicTransitDirections] = useState<string>('');
-  const [mapInitialized, setMapInitialized] = useState(false);
+  const [mapContainer, setMapContainer] = useState<HTMLDivElement | null>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
 
-  // Initialize map when appointment changes
-  useEffect(() => {
-    if (!appointment || (!appointment.hubId && !appointment.hubName)) return;
+  const resolveHub = (): Hub | null => {
+    const lookupName = appointment?.hubName || user?.closestHub?.name || scheduleForm?.selectedHub;
+    const matched = findHubByName(lookupName);
+    if (matched) return matched;
 
-    // Find hub from HUBS list by name
-    const hub = HUBS.find(h => h.name === (appointment.hubName || scheduleForm?.selectedHub));
-
-    if (hub) {
-      setHubName(hub.name);
-      setHubLocation(hub);
-      setPublicTransitDirections(hub.publicTransitDirections || '');
-
-      // Initialize Mapbox map
-      const mapContainer = document.getElementById('appointment-map');
-      if (mapContainer && !mapInitialized) {
-        try {
-          if (mapboxgl.accessToken) {
-            const mapInstance = new mapboxgl.Map({
-              container: mapContainer,
-              style: 'mapbox://styles/mapbox/streets-v12',
-              center: [hub.longitude, hub.latitude],
-              zoom: 13,
-            });
-
-            // Add marker for hub
-            new mapboxgl.Marker({ color: '#3B82F6' })
-              .setLngLat([hub.longitude, hub.latitude])
-              .setPopup(new mapboxgl.Popup().setHTML(`<strong>${hub.name}</strong><br/>${hub.address}`))
-              .addTo(mapInstance);
-
-            setMapInitialized(true);
-          }
-        } catch (err) {
-          console.warn('Map initialization error:', err);
-        }
-      }
+    if (
+      user?.closestHub?.latitude != null &&
+      user?.closestHub?.longitude != null
+    ) {
+      return {
+        name: user.closestHub.name,
+        address: user.closestHub.address,
+        latitude: user.closestHub.latitude,
+        longitude: user.closestHub.longitude,
+      };
     }
-  }, [appointment, mapInitialized]);
+
+    return null;
+  };
+
+  useEffect(() => {
+    const hub = resolveHub();
+    if (!hub) return;
+    setHubName(appointment?.hubName || hub.name);
+    setResolvedHub(hub);
+    setPublicTransitDirections(
+      appointment?.publicTransitDirections || hub.publicTransitDirections || ''
+    );
+  }, [appointment?.hubName, appointment?.publicTransitDirections, user?.closestHub?.name, scheduleForm?.selectedHub]);
+
+  useEffect(() => {
+    if (!appointment || !mapContainer || !resolvedHub) return;
+
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) return;
+
+    mapboxgl.accessToken = token;
+    mapContainer.replaceChildren();
+
+    const mapInstance = new mapboxgl.Map({
+      container: mapContainer,
+      style: 'mapbox://styles/mapbox/streets-v12',
+      center: [resolvedHub.longitude, resolvedHub.latitude],
+      zoom: 13,
+    });
+
+    mapInstance.on('load', () => {
+      mapInstance.resize();
+    });
+
+    new mapboxgl.Marker({ color: '#3B82F6' })
+      .setLngLat([resolvedHub.longitude, resolvedHub.latitude])
+      .setPopup(new mapboxgl.Popup().setHTML(`<strong>${resolvedHub.name}</strong><br/>${resolvedHub.address}`))
+      .addTo(mapInstance);
+
+    mapRef.current = mapInstance;
+
+    return () => {
+      mapInstance.remove();
+      mapRef.current = null;
+    };
+  }, [appointment?._id, mapContainer, resolvedHub?.name, resolvedHub?.latitude, resolvedHub?.longitude]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
         return 'text-green-600 bg-green-100';
       case 'pending':
+      case 'pending_profile':
         return 'text-yellow-600 bg-yellow-100';
       case 'cancelled':
         return 'text-red-600 bg-red-100';
@@ -202,7 +237,7 @@ export default function AppointmentCard({
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(appointment.status)}`}>
                   {getStatusIcon(appointment.status)}
-                  <span className="ml-1 capitalize">{appointment.status}</span>
+                  <span className="ml-1">{appointmentStatusLabel(appointment.status)}</span>
                 </span>
               </div>
 
@@ -237,6 +272,22 @@ export default function AppointmentCard({
                 </div>
               )}
 
+              {isPendingProfile(appointment.status) && (
+                <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex items-start">
+                    <Info className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h4 className="text-sm font-medium text-yellow-800 mb-1">
+                        Action Required: Complete Your Profile
+                      </h4>
+                      <p className="text-sm text-yellow-700">
+                        This appointment is reserved but unconfirmed. Complete your student profile to confirm your registration.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {appointment.status === 'pending' && (
                 <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                   <div className="flex items-start">
@@ -256,6 +307,14 @@ export default function AppointmentCard({
 
               {appointment.status !== 'cancelled' && (
                 <div className="mt-6 flex space-x-3">
+                  {isPendingProfile(appointment.status) && onCompleteProfile && (
+                    <button
+                      onClick={onCompleteProfile}
+                      className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 transition-colors"
+                    >
+                      Complete Profile to Confirm
+                    </button>
+                  )}
                   {appointment.status === 'pending' && (
                     <button
                       onClick={onConfirm}
@@ -273,6 +332,14 @@ export default function AppointmentCard({
                           Confirm Appointment
                         </>
                       )}
+                    </button>
+                  )}
+                  {onReschedule && (
+                    <button
+                      onClick={onReschedule}
+                      className="bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors"
+                    >
+                      Reschedule
                     </button>
                   )}
                   <button
@@ -295,30 +362,6 @@ export default function AppointmentCard({
                 </div>
               )}
 
-              {appointment && appointment.status !== 'cancelled' && (
-                <div className="mt-6 flex flex-col space-y-3">
-                  <button
-                    onClick={onSendSms}
-                    disabled={isSendingSms}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
-                  >
-                    {isSendingSms ? 'Sending SMS...' : 'Send Appointment Info via SMS'}
-                  </button>
-                  {smsError && (
-                    <div className="text-red-600 text-sm">
-                      {typeof smsError === 'object' ? JSON.stringify(smsError) : smsError}
-                    </div>
-                  )}
-                  {smsSuccess && <div className="text-green-600 text-sm">SMS sent! Check your phone. QR code below:</div>}
-                  {qrCodeUrl && (
-                    <div className="mt-2 flex flex-col items-center">
-                      <img src={qrCodeUrl} alt="Appointment QR Code" className="w-32 h-32" />
-                      <span className="text-xs text-gray-500 mt-1">Scan this QR code for your appointment details.</span>
-                    </div>
-                  )}
-                </div>
-              )}
-
               {/* Public Transit Directions */}
               {appointment && publicTransitDirections && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
@@ -327,7 +370,7 @@ export default function AppointmentCard({
                     <h4 className="text-lg font-medium text-gray-900">Public Transit Directions</h4>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                    <p className="text-gray-800 whitespace-pre-wrap">{publicTransitDirections}</p>
+                    <MarkdownContent>{publicTransitDirections}</MarkdownContent>
                   </div>
                 </div>
               )}
@@ -345,16 +388,12 @@ export default function AppointmentCard({
                         Your appointment is scheduled at: <strong>{hubName || user?.closestHub?.name || 'Selected Learning Center'}</strong>
                       </p>
                       {(() => {
-                        // Use the user's closestHub or fall back to a default hub
-                        const hubName = user?.closestHub?.name || HUBS[0].name;
-                        const selectedHub = HUBS.find(hub => hub.name === hubName);
-                        if (!selectedHub || !user.address) return null;
-                        
-                        // Create full address string from user's address
+                        const selectedHub = resolvedHub || findHubByName(appointment.hubName || user?.closestHub?.name);
+                        if (!selectedHub || !user.address?.street) return null;
+
                         const userAddress = `${user.address.street}, ${user.address.city}, ${user.address.state} ${user.address.zipCode}`;
-                        
                         const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(userAddress)}&destination=${encodeURIComponent(selectedHub.address)}`;
-                        
+
                         return (
                           <a
                             href={googleMapsUrl}
@@ -368,18 +407,12 @@ export default function AppointmentCard({
                         );
                       })()}
                     </div>
-                    <div 
-                      id="appointment-map" 
-                      className="w-full h-64 rounded-lg overflow-hidden border border-gray-300"
+                    <div
+                      ref={setMapContainer}
+                      id="appointment-map"
+                      className="w-full h-64 rounded-lg overflow-hidden border border-gray-300 bg-gray-200"
                       style={{ minHeight: '256px' }}
-                    >
-                      <div className="flex items-center justify-center h-full bg-gray-200">
-                        <div className="text-center">
-                          <MapPin className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                          <p className="text-gray-500">Map loading...</p>
-                        </div>
-                      </div>
-                    </div>
+                    />
                   </div>
                 </div>
               )}

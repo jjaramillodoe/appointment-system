@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import Hub from '@/models/Hub';
 import dbConnect from '@/lib/mongodb';
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Insert sample hubs
     const result = await Hub.insertMany(SAMPLE_HUBS);
-    console.log(`✅ Seeded ${result.length} hubs`);
+    logger.debug(`✅ Seeded ${result.length} hubs`);
 
     return NextResponse.json(
       {
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('❌ Seeding error:', error);
+    logger.error('❌ Seeding error:', error);
     return NextResponse.json(
       { error: error.message || 'Seeding failed' },
       { status: 500 }
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('❌ Error checking hubs:', error);
+    logger.error('❌ Error checking hubs:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

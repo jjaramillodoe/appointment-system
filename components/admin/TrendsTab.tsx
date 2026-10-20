@@ -2,10 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { TrendingUp, Calendar, Clock, Target, BarChart3, LineChart } from 'lucide-react';
+import { TrendingUp, Calendar, Clock, Target, BarChart3 } from 'lucide-react';
 
-// Dynamically import Plotly to avoid SSR issues
-const Plot = dynamic(() => import('react-plotly.js'), { ssr: false });
+const Plot = dynamic(() => import('./PlotChart'), { ssr: false });
 
 interface TrendsTabProps {
   data: any;
@@ -35,20 +34,23 @@ export default function TrendsTab({ data, loading, dateRange, selectedHub }: Tre
   }
 
   // Prepare trend data
-  const weeklyData = data.weeklyTrends || [];
-  const dailyData = data.appointmentsByDate || [];
-  const timeData = data.appointmentsByTime || [];
-  const hubData = data.appointmentsByHub || [];
+  const weeklyData = Array.isArray(data.weeklyTrends) ? data.weeklyTrends : [];
+  const dailyData = Array.isArray(data.appointmentsByDate) ? data.appointmentsByDate : [];
+  const timeData = Array.isArray(data.appointmentsByTime) ? data.appointmentsByTime : [];
+  const hubData = Array.isArray(data.appointmentsByHub) ? data.appointmentsByHub : [];
+  const weekdayLabels = weeklyData.map((w: any) => (
+    w._id?.week != null ? `Week ${w._id.week} ${w._id.year || ''}`.trim() : String(w._id || '')
+  ));
 
   // Weekly Trends Line Chart
   const weeklyTrendData: any[] = [{
     type: 'scatter',
     mode: 'lines+markers',
-    x: weeklyData.map((w: any) => `Week ${w._id?.week || w._id} (${w._id?.year || '2025'})`),
+    x: weekdayLabels,
     y: weeklyData.map((w: any) => w.count),
     line: { color: '#3B82F6', width: 4 },
     marker: { size: 10, color: '#3B82F6' },
-    fill: 'tonexty',
+    fill: 'tozeroy',
     fillcolor: 'rgba(59, 130, 246, 0.1)',
     name: 'Appointments'
   }];
@@ -123,15 +125,13 @@ export default function TrendsTab({ data, loading, dateRange, selectedHub }: Tre
   };
 
   // Hub Performance Over Time
-  const hubPerformanceData: any[] = hubData.slice(0, 8).map((hub: any, index: number) => ({
-    type: 'scatter',
-    mode: 'lines+markers',
-    x: weeklyData.map((w: any) => w._id),
-    y: weeklyData.map((w: any) => Math.floor(Math.random() * 10) + 1), // Mock data
-    line: { color: `hsl(${index * 45}, 70%, 50%)`, width: 2 },
-    marker: { size: 6 },
-    name: hub._id || 'Unknown Hub'
-  }));
+  const hubPerformanceData: any[] = [{
+    type: 'bar',
+    x: hubData.map((hub: any) => hub._id || 'Unknown'),
+    y: hubData.map((hub: any) => hub.total || 0),
+    marker: { color: '#3B82F6' },
+    name: 'Appointments',
+  }];
 
   const hubPerformanceLayout: any = {
     title: 'Hub Performance Trends',
@@ -154,8 +154,10 @@ export default function TrendsTab({ data, loading, dateRange, selectedHub }: Tre
     if (weeklyData.length < 2) return [];
     
     const recentWeeks = weeklyData.slice(-2);
-    const trend = recentWeeks[1]?.count - recentWeeks[0]?.count;
-    const percentageChange = ((trend / recentWeeks[0]?.count) * 100).toFixed(1);
+    const previous = recentWeeks[0]?.count || 0;
+    const current = recentWeeks[1]?.count || 0;
+    const trend = current - previous;
+    const percentageChange = previous ? ((trend / previous) * 100).toFixed(1) : '0.0';
     
     return [
       {

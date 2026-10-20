@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState } from 'react';
 import { Settings, Save, RefreshCw, Database, Bell, Clock, Users, Shield } from 'lucide-react';
 
@@ -30,7 +32,7 @@ export default function SettingsTab({ settings, setSettings, onSave }: SettingsT
         alert('Settings saved successfully!');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
+      logger.error('Error saving settings:', error);
       alert('Failed to save settings. Please try again.');
     } finally {
       setSaving(false);
@@ -54,7 +56,7 @@ export default function SettingsTab({ settings, setSettings, onSave }: SettingsT
         alert('Failed to create backup. Please try again.');
       }
     } catch (error) {
-      console.error('Backup error:', error);
+      logger.error('Backup error:', error);
       alert('Failed to create backup. Please try again.');
     }
   };
@@ -76,7 +78,7 @@ export default function SettingsTab({ settings, setSettings, onSave }: SettingsT
         alert('Failed to clear cache. Please try again.');
       }
     } catch (error) {
-      console.error('Cache clear error:', error);
+      logger.error('Cache clear error:', error);
       alert('Failed to clear cache. Please try again.');
     }
   };
@@ -315,6 +317,51 @@ export default function SettingsTab({ settings, setSettings, onSave }: SettingsT
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                     <p className="text-sm text-gray-500 mt-1">Maximum number of appointments a user can have at once</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Booking window (days)</label>
+                    <input
+                      type="number"
+                      value={settings.appointments?.bookingWindowDays || 7}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        appointments: { ...settings.appointments, bookingWindowDays: parseInt(e.target.value) }
+                      })}
+                      min="1"
+                      max="30"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Require profile before confirm</label>
+                      <p className="text-sm text-gray-500">Keep new bookings in pending_profile until intake is complete</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.appointments?.requireProfileBeforeConfirm ?? true}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        appointments: { ...settings.appointments, requireProfileBeforeConfirm: e.target.checked }
+                      })}
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700">Program quotas</label>
+                      <p className="text-sm text-gray-500">Optional ESL vs BE/HSE caps per slot</p>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={settings.appointments?.programQuotasEnabled || false}
+                      onChange={(e) => setSettings({
+                        ...settings,
+                        appointments: { ...settings.appointments, programQuotasEnabled: e.target.checked }
+                      })}
+                    />
                   </div>
                 </div>
               </div>

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
@@ -25,7 +26,7 @@ export async function GET(
 
     return NextResponse.json({ blackoutDate });
   } catch (error: any) {
-    console.error('Get blackout date error:', error);
+    logger.error('Get blackout date error:', error);
     return NextResponse.json(
       { error: 'Failed to get blackout date' },
       { status: 500 }
@@ -89,7 +90,7 @@ export async function PUT(
       blackoutDate,
     });
   } catch (error: any) {
-    console.error('Update blackout date error:', error);
+    logger.error('Update blackout date error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to update blackout date' },
       { status: 500 }
@@ -137,7 +138,7 @@ export async function DELETE(
       message: 'Blackout date deleted',
     });
   } catch (error: any) {
-    console.error('Delete blackout date error:', error);
+    logger.error('Delete blackout date error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to delete blackout date' },
       { status: 500 }

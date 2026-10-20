@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Activity, AlertCircle, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react';
@@ -51,7 +53,7 @@ export default function AuditLogsPage() {
   });
 
   const actions = ['create', 'update', 'delete', 'login', 'logout', 'export', 'send', 'bulk_action'];
-  const resourceTypes = ['user', 'appointment', 'hub', 'template', 'reminder', 'blackout', 'communication', 'settings', 'schedule', 'other'];
+  const resourceTypes = ['user', 'appointment', 'hub', 'template', 'reminder', 'blackout', 'communication', 'settings', 'schedule', 'school', 'class', 'other'];
 
   useEffect(() => {
     if (!isSuperAdmin) return;
@@ -84,7 +86,7 @@ export default function AuditLogsPage() {
         setPages(data.pagination.pages);
       }
     } catch (err) {
-      console.error('Failed to load audit logs:', err);
+      logger.error('Failed to load audit logs:', err);
     } finally {
       setLoading(false);
     }

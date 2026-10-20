@@ -1,9 +1,14 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import AppointmentsTab from '@/components/admin/AppointmentsTab';
+import IntakeQueue from '@/components/admin/IntakeQueue';
+import WaitlistPanel from '@/components/admin/WaitlistPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubFilter } from '@/contexts/HubFilterContext';
+import { hubCalendarToday } from '@/lib/slotDateTime';
 
 export default function AppointmentsPage() {
   const { token, isAdmin } = useAuth();
@@ -11,7 +16,8 @@ export default function AppointmentsPage() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [appointmentStats, setAppointmentStats] = useState<any>(null);
   const [appointmentPagination, setAppointmentPagination] = useState({ page: 1, total: 0, pages: 0 });
-  const [appointmentFilters, setAppointmentFilters] = useState({ search: '', status: '', startDate: '', endDate: '' });
+  const today = hubCalendarToday();
+  const [appointmentFilters, setAppointmentFilters] = useState({ search: '', status: '', startDate: today, endDate: today });
   const [selectedAppointments, setSelectedAppointments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -55,10 +61,10 @@ export default function AppointmentsPage() {
         setAppointmentStats(data.stats || []);
         setAppointmentPagination(data.pagination || { page: 1, total: 0, pages: 0 });
       } else {
-        console.error('Failed to load appointments:', response.status);
+        logger.error('Failed to load appointments:', response.status);
       }
     } catch (error) {
-      console.error('Error loading appointments:', error);
+      logger.error('Error loading appointments:', error);
     } finally {
       setLoading(false);
     }
@@ -74,28 +80,31 @@ export default function AppointmentsPage() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading appointments...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <AppointmentsTab 
-      appointments={appointments} 
-      stats={appointmentStats} 
-      pagination={appointmentPagination} 
-      filters={appointmentFilters} 
-      setFilters={setAppointmentFilters} 
-      selectedAppointments={selectedAppointments} 
-      setSelectedAppointments={setSelectedAppointments} 
-      onRefresh={loadAppointments} 
-      token={token}
-    />
+    <div className="space-y-6">
+      <IntakeQueue
+        token={token}
+        hubName={selectedHub && selectedHub !== 'all' ? selectedHub : undefined}
+        onRefreshParent={loadAppointments}
+      />
+      <WaitlistPanel token={token} hubName={selectedHub && selectedHub !== 'all' ? selectedHub : undefined} />
+      {loading ? (
+        <div className="flex items-center justify-center h-40">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+        </div>
+      ) : (
+      <AppointmentsTab
+        appointments={appointments}
+        stats={appointmentStats}
+        pagination={appointmentPagination}
+        filters={appointmentFilters}
+        setFilters={setAppointmentFilters}
+        selectedAppointments={selectedAppointments}
+        setSelectedAppointments={setSelectedAppointments}
+        onRefresh={loadAppointments}
+        token={token}
+      />
+      )}
+    </div>
   );
 } 

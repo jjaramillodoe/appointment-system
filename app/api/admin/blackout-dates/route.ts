@@ -1,8 +1,10 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
 import BlackoutDate from '@/models/BlackoutDate';
 import { AdminUser } from '@/lib/adminPermissions';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ blackoutDates });
   } catch (error: any) {
-    console.error('Get blackout dates error:', error);
+    logger.error('Get blackout dates error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to get blackout dates' },
       { status: 500 }
@@ -100,13 +102,25 @@ export async function POST(request: NextRequest) {
 
     await blackoutDate.save();
 
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: adminUser.email,
+      adminName: adminUser.email,
+      action: 'create',
+      resourceType: 'blackout',
+      resourceId: String(blackoutDate._id),
+      description: `Created blackout ${title} on ${date}`,
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
+    });
+
     return NextResponse.json({
       success: true,
       message: 'Blackout date created',
       blackoutDate,
     }, { status: 201 });
   } catch (error: any) {
-    console.error('Create blackout date error:', error);
+    logger.error('Create blackout date error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to create blackout date' },
       { status: 500 }

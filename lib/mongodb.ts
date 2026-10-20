@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 export {};
 
 import mongoose from 'mongoose';
@@ -44,11 +45,11 @@ async function dbConnect() {
     }
 
     cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      console.log('✅ MongoDB connected successfully');
+      logger.debug('✅ MongoDB connected successfully');
       return mongoose;
     }).catch((error) => {
-      console.error('❌ MongoDB connection error:', error.message);
-      console.error('Connection URI format:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials
+      logger.error('❌ MongoDB connection error:', error.message);
+      logger.error('Connection URI format:', MONGODB_URI.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')); // Hide credentials
       throw error;
     });
   }
@@ -59,15 +60,15 @@ async function dbConnect() {
     cached.promise = null;
     // Provide helpful error messages
     if (e.code === 'ECONNREFUSED' || e.message?.includes('ECONNREFUSED')) {
-      console.error('❌ MongoDB Connection Refused');
-      console.error('   Possible causes:');
-      console.error('   1. MongoDB server is not running');
-      console.error('   2. Network connectivity issues');
-      console.error('   3. Firewall blocking connection');
-      console.error('   4. Incorrect connection string');
+      logger.error('❌ MongoDB Connection Refused');
+      logger.error('   Possible causes:');
+      logger.error('   1. MongoDB server is not running');
+      logger.error('   2. Network connectivity issues');
+      logger.error('   3. Firewall blocking connection');
+      logger.error('   4. Incorrect connection string');
       if (MONGODB_URI.includes('mongodb+srv://')) {
-        console.error('   5. DNS resolution issue (SRV records)');
-        console.error('   6. MongoDB Atlas IP whitelist restrictions');
+        logger.error('   5. DNS resolution issue (SRV records)');
+        logger.error('   6. MongoDB Atlas IP whitelist restrictions');
       }
     }
     throw e;

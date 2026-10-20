@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SettingsTab from '@/components/admin/SettingsTab';
@@ -35,10 +37,10 @@ export default function SettingsPage() {
         const data = await response.json();
         setSettings(data);
       } else {
-        console.error('Failed to load settings:', response.status);
+        logger.error('Failed to load settings:', response.status);
       }
     } catch (error) {
-      console.error('Error loading settings:', error);
+      logger.error('Error loading settings:', error);
     } finally {
       setLoading(false);
     }
@@ -61,11 +63,11 @@ export default function SettingsPage() {
         setSettings(newSettings);
         return true;
       } else {
-        console.error('Failed to update settings:', response.status);
+        logger.error('Failed to update settings:', response.status);
         return false;
       }
     } catch (error) {
-      console.error('Error updating settings:', error);
+      logger.error('Error updating settings:', error);
       return false;
     }
   };

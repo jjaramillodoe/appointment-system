@@ -1,9 +1,15 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { resolveRequestedHub } from '@/lib/adminUserAccess';
 import Appointment from '@/models/Appointment';
 import AppointmentSlot from '@/models/AppointmentSlot';
-import User from '@/models/User';
+import { logAuditEvent, getClientIpAddress, getUserAgent } from '@/lib/auditLogger';
+import { APPOINTMENT_STATUS } from '@/lib/appointmentStatus';
+import { freeAppointmentSeat } from '@/lib/appointmentLifecycle';
+import { notifyStudent } from '@/lib/studentNotifications';
+import { utcDayBounds } from '@/lib/slotDateTime';
 
 // GET - Get all appointments with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -21,12 +27,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
-    // Apply hub filter for regular admins (super admins see everything)
-    const hubFilter = getHubFilter(adminUser);
-    if (hubFilter === null) {
-      return NextResponse.json({ error: 'No hub access' }, { status: 403 });
-    }
-
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '20');
@@ -38,39 +38,42 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'appointmentDate';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    // Build search filter - start with hub filter
-    const searchFilter: any = { ...hubFilter };
+    const hubScope = await resolveRequestedHub(adminUser, hubName);
+    if (hubScope.error) {
+      return NextResponse.json({ error: hubScope.error }, { status: 403 });
+    }
+
+    const conditions: Record<string, unknown>[] = [];
+    if (Object.keys(hubScope.appointmentFilter).length > 0) {
+      conditions.push(hubScope.appointmentFilter);
+    }
 
     if (search) {
-      searchFilter.$or = [
-        { userName: { $regex: search, $options: 'i' } },
-        { userEmail: { $regex: search, $options: 'i' } },
-        { hubName: { $regex: search, $options: 'i' } }
-      ];
+      conditions.push({
+        $or: [
+          { userName: { $regex: search, $options: 'i' } },
+          { userEmail: { $regex: search, $options: 'i' } },
+          { hubName: { $regex: search, $options: 'i' } },
+        ],
+      });
     }
 
-    // Build hub filter
-    if (hubName) {
-      searchFilter.hubName = hubName;
-    }
-
-    // Build status filter
     if (status) {
-      searchFilter.status = status;
+      conditions.push({ status });
     }
 
-    // Build date filter - using appointmentDate
     if (startDate || endDate) {
-      searchFilter.appointmentDate = {};
+      const appointmentDate: Record<string, Date> = {};
       if (startDate) {
-        searchFilter.appointmentDate.$gte = new Date(startDate);
+        appointmentDate.$gte = utcDayBounds(startDate).start;
       }
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        searchFilter.appointmentDate.$lte = end;
+        appointmentDate.$lt = utcDayBounds(endDate).end;
       }
+      conditions.push({ appointmentDate });
     }
+
+    const searchFilter = conditions.length ? { $and: conditions } : {};
 
     // Calculate skip for pagination
     const skip = (page - 1) * limit;
@@ -83,9 +86,8 @@ export async function GET(request: NextRequest) {
       sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // Get appointments with pagination and populate user details
     const appointments = await Appointment.find(searchFilter)
-      .populate('userId', 'firstName lastName email')
+      .populate('userId', 'firstName lastName email phone profileCompleted programInterests')
       .sort(sort)
       .skip(skip)
       .limit(limit)
@@ -115,6 +117,11 @@ export async function GET(request: NextRequest) {
         },
         status: apt.status,
         notes: apt.notes || '',
+        adminNotes: apt.adminNotes || '',
+        classInterest: apt.classInterest || '',
+        timePreference: apt.timePreference || '',
+        profileCompleted: Boolean(apt.userId?.profileCompleted),
+        phone: apt.userId?.phone || '',
         createdAt: apt.createdAt,
       };
     });
@@ -182,7 +189,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Appointments API error:', error);
+    logger.error('Appointments API error:', error);
     return NextResponse.json(
       { error: 'Failed to get appointments', details: error.message },
       { status: 500 }
@@ -202,7 +209,7 @@ export async function PUT(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
-    if (!isAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -223,14 +230,61 @@ export async function PUT(request: NextRequest) {
     if (notes !== undefined) updateData.notes = notes;
     if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
 
-    // Update appointments
+    const scope = await resolveRequestedHub(adminUser, null);
+    if (scope.error) {
+      return NextResponse.json({ error: scope.error }, { status: 403 });
+    }
+
+    const scopedFilter: Record<string, unknown> = { _id: { $in: appointmentIds } };
+    if (Object.keys(scope.appointmentFilter).length) {
+      scopedFilter.$and = [scope.appointmentFilter];
+    }
+
+    const current = await Appointment.find(scopedFilter);
+    if (current.length === 0) {
+      return NextResponse.json({ error: 'No matching appointments in your hub' }, { status: 403 });
+    }
+
     const result = await Appointment.updateMany(
-      { _id: { $in: appointmentIds } },
+      { _id: { $in: current.map((apt) => apt._id) } },
       { $set: updateData }
     );
 
-    // Get updated appointments
-    const updatedAppointments = await Appointment.find({ _id: { $in: appointmentIds } });
+    if (status === APPOINTMENT_STATUS.NO_SHOW || status === APPOINTMENT_STATUS.CANCELLED) {
+      for (const apt of current) {
+        if (apt.status !== status) {
+          await freeAppointmentSeat(apt);
+        }
+      }
+    }
+
+    if (status === APPOINTMENT_STATUS.NO_SHOW) {
+      for (const apt of current) {
+        if (apt.userId) {
+          await notifyStudent({
+            userId: String(apt.userId),
+            title: 'No asistió / We missed you',
+            message: `Lo marcaron como ausente en ${apt.hubName || 'su centro'}. Puede reservar otra cita desde su panel. / You were marked as a no-show for ${apt.hubName || 'your site'}. You can book a new appointment from your dashboard.`,
+            hubName: apt.hubName,
+            appointmentId: String(apt._id),
+            type: 'no_show',
+          });
+        }
+      }
+    }
+
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: adminUser.email,
+      adminName: adminUser.email,
+      action: 'update',
+      resourceType: 'appointment',
+      description: `Updated ${result.modifiedCount} appointment(s) to ${status || 'notes'}`,
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
+    });
+
+    const updatedAppointments = await Appointment.find({ _id: { $in: current.map((apt) => apt._id) } });
 
     return NextResponse.json({
       message: `Updated ${result.modifiedCount} appointment(s)`,
@@ -238,7 +292,7 @@ export async function PUT(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('Update appointments error:', error);
+    logger.error('Update appointments error:', error);
     return NextResponse.json(
       { error: 'Failed to update appointments', details: error.message },
       { status: 500 }
@@ -258,7 +312,7 @@ export async function DELETE(request: NextRequest) {
 
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
-    if (!isAdmin(adminUser)) {
+    if (!isAdmin(adminUser) || !adminUser) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
@@ -269,8 +323,17 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Appointment IDs array is required' }, { status: 400 });
     }
 
-    // Get appointments before deletion
-    const appointments = await Appointment.find({ _id: { $in: appointmentIds } });
+    const scope = await resolveRequestedHub(adminUser, null);
+    if (scope.error) {
+      return NextResponse.json({ error: scope.error }, { status: 403 });
+    }
+
+    const scopedFilter: Record<string, unknown> = { _id: { $in: appointmentIds } };
+    if (Object.keys(scope.appointmentFilter).length) {
+      scopedFilter.$and = [scope.appointmentFilter];
+    }
+
+    const appointments = await Appointment.find(scopedFilter);
 
     // Update appointment slot capacities
     for (const appointment of appointments) {
@@ -289,15 +352,25 @@ export async function DELETE(request: NextRequest) {
       }
     }
 
-    // Delete appointments
-    const result = await Appointment.deleteMany({ _id: { $in: appointmentIds } });
+    const result = await Appointment.deleteMany({ _id: { $in: appointments.map((apt) => apt._id) } });
+
+    await logAuditEvent({
+      adminId: adminUser.userId,
+      adminEmail: adminUser.email,
+      adminName: adminUser.email,
+      action: 'delete',
+      resourceType: 'appointment',
+      description: `Deleted ${result.deletedCount} appointment(s)`,
+      ipAddress: getClientIpAddress(request),
+      userAgent: getUserAgent(request),
+    });
 
     return NextResponse.json({
       message: `Deleted ${result.deletedCount} appointment(s)`
     });
 
   } catch (error: any) {
-    console.error('Delete appointments error:', error);
+    logger.error('Delete appointments error:', error);
     return NextResponse.json(
       { error: 'Failed to delete appointments', details: error.message },
       { status: 500 }
