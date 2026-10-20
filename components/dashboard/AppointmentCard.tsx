@@ -15,7 +15,9 @@ import { format } from 'date-fns';
 import { HUBS, findHubByName, type Hub } from '@/utils/hubMatching';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { appointmentStatusLabel, isPendingProfile } from '@/lib/appointmentStatus';
+import { isPendingProfile } from '@/lib/appointmentStatus';
+import { useI18n } from '@/contexts/I18nContext';
+import { dateFnsLocale, statusLabel } from '@/lib/i18n/labels';
 import MarkdownContent from '@/components/MarkdownContent';
 
 interface Appointment {
@@ -89,6 +91,9 @@ export default function AppointmentCard({
   qrCodeUrl,
   scheduleForm
 }: AppointmentCardProps) {
+  const { t, locale } = useI18n();
+  const copy = t.dashboard.appointmentCard;
+  const common = t.dashboard.common;
   const [hubName, setHubName] = useState<string>('');
   const [resolvedHub, setResolvedHub] = useState<Hub | null>(null);
   const [publicTransitDirections, setPublicTransitDirections] = useState<string>('');
@@ -194,7 +199,7 @@ export default function AppointmentCard({
               <CalendarIcon className="h-6 w-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-white">
-              Your Appointment
+              {copy.title}
             </h2>
           </div>
           {!appointment && (
@@ -203,7 +208,7 @@ export default function AppointmentCard({
               className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium hover:bg-gray-50 transition-colors"
             >
               <Plus className="h-4 w-4 mr-2 inline" />
-              Schedule Appointment
+              {copy.schedule}
             </button>
           )}
         </div>
@@ -211,16 +216,16 @@ export default function AppointmentCard({
 
       <div className="p-6">
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6" role="alert">
             {error}
           </div>
         )}
 
         {showConfirmationSuccess && (
-          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6" role="status">
             <div className="flex items-center">
               <CheckCircle className="h-5 w-5 mr-2" />
-              Appointment confirmed successfully! The learning center has been notified.
+              {copy.confirmedSuccess}
             </div>
           </div>
         )}
@@ -232,12 +237,12 @@ export default function AppointmentCard({
                 <div className="flex items-center">
                   <CalendarIcon className="h-5 w-5 text-blue-600 mr-2" />
                   <span className="text-lg font-medium text-gray-900">
-                    Adult Education Intake
+                    {copy.intake}
                   </span>
                 </div>
                 <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center ${getStatusColor(appointment.status)}`}>
                   {getStatusIcon(appointment.status)}
-                  <span className="ml-1">{appointmentStatusLabel(appointment.status)}</span>
+                  <span className="ml-1">{statusLabel(t, appointment.status)}</span>
                 </span>
               </div>
 
@@ -245,11 +250,11 @@ export default function AppointmentCard({
                 <div className="flex items-center">
                   <CalendarIcon className="h-4 w-4 text-gray-500 mr-3" />
                   <div>
-                    <span className="text-sm text-gray-500">Date</span>
+                    <span className="text-sm text-gray-500">{common.date}</span>
                     <p className="text-gray-900 font-medium">
                       {(() => { 
                         const d = appointment && appointment.appointmentDate ? parseToLocalDate(appointment.appointmentDate) : null; 
-                        return d ? format(d, 'EEEE, MMMM dd, yyyy') : 'N/A'; 
+                        return d ? format(d, 'PPPP', { locale: dateFnsLocale(locale) }) : common.notAvailable; 
                       })()}
                     </p>
                   </div>
@@ -257,9 +262,9 @@ export default function AppointmentCard({
                 <div className="flex items-center">
                   <Clock className="h-4 w-4 text-gray-500 mr-3" />
                   <div>
-                    <span className="text-sm text-gray-500">Time</span>
+                    <span className="text-sm text-gray-500">{common.time}</span>
                     <p className="text-gray-900 font-medium">
-                      {appointment?.appointmentTime ? formatTime(appointment.appointmentTime) : 'Time not available'}
+                      {appointment?.appointmentTime ? formatTime(appointment.appointmentTime) : common.timeNotAvailable}
                     </p>
                   </div>
                 </div>
@@ -267,7 +272,7 @@ export default function AppointmentCard({
 
               {appointment.notes && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
-                  <span className="text-sm text-gray-500">Notes</span>
+                  <span className="text-sm text-gray-500">{common.notes}</span>
                   <p className="text-gray-900 mt-1">{appointment.notes}</p>
                 </div>
               )}
@@ -278,10 +283,10 @@ export default function AppointmentCard({
                     <Info className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <h4 className="text-sm font-medium text-yellow-800 mb-1">
-                        Action Required: Complete Your Profile
+                        {copy.profileActionTitle}
                       </h4>
                       <p className="text-sm text-yellow-700">
-                        This appointment is reserved but unconfirmed. Complete your student profile to confirm your registration.
+                        {copy.profileActionText}
                       </p>
                     </div>
                   </div>
@@ -294,11 +299,10 @@ export default function AppointmentCard({
                     <Info className="h-5 w-5 text-yellow-600 mr-3 mt-0.5 flex-shrink-0" />
                     <div>
                       <h4 className="text-sm font-medium text-yellow-800 mb-1">
-                        Action Required: Confirm Your Appointment
+                        {copy.confirmActionTitle}
                       </h4>
                       <p className="text-sm text-yellow-700">
-                        Please confirm your appointment to let the learning center know you will attend. 
-                        This helps ensure proper preparation and reduces wait times.
+                        {copy.confirmActionText}
                       </p>
                     </div>
                   </div>
@@ -312,7 +316,7 @@ export default function AppointmentCard({
                       onClick={onCompleteProfile}
                       className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 transition-colors"
                     >
-                      Complete Profile to Confirm
+                      {copy.completeToConfirm}
                     </button>
                   )}
                   {appointment.status === 'pending' && (
@@ -324,12 +328,12 @@ export default function AppointmentCard({
                       {isConfirming ? (
                         <>
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
-                          Confirming...
+                          {copy.confirming}
                         </>
                       ) : (
                         <>
                           <CheckCircle className="h-4 w-4 mr-2 inline" />
-                          Confirm Appointment
+                          {copy.confirm}
                         </>
                       )}
                     </button>
@@ -339,7 +343,7 @@ export default function AppointmentCard({
                       onClick={onReschedule}
                       className="bg-primary-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-primary-700 transition-colors"
                     >
-                      Reschedule
+                      {copy.reschedule}
                     </button>
                   )}
                   <button
@@ -350,12 +354,12 @@ export default function AppointmentCard({
                     {isCancelling ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2 inline"></div>
-                        Cancelling...
+                        {copy.cancelling}
                       </>
                     ) : (
                       <>
                         <XCircle className="h-4 w-4 mr-2 inline" />
-                        Cancel Appointment
+                        {copy.cancel}
                       </>
                     )}
                   </button>
@@ -367,7 +371,7 @@ export default function AppointmentCard({
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="flex items-center mb-3">
                     <MapPin className="h-5 w-5 text-green-600 mr-2" />
-                    <h4 className="text-lg font-medium text-gray-900">Public Transit Directions</h4>
+                    <h4 className="text-lg font-medium text-gray-900">{copy.transit}</h4>
                   </div>
                   <div className="bg-green-50 rounded-lg p-4 border border-green-200">
                     <MarkdownContent>{publicTransitDirections}</MarkdownContent>
@@ -380,12 +384,12 @@ export default function AppointmentCard({
                 <div className="mt-6 pt-4 border-t border-gray-200">
                   <div className="flex items-center mb-3">
                     <MapPin className="h-5 w-5 text-blue-600 mr-2" />
-                    <h4 className="text-lg font-medium text-gray-900">Location</h4>
+                    <h4 className="text-lg font-medium text-gray-900">{common.location}</h4>
                   </div>
                   <div className="bg-gray-100 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm text-gray-600">
-                        Your appointment is scheduled at: <strong>{hubName || user?.closestHub?.name || 'Selected Learning Center'}</strong>
+                        {copy.scheduledAt} <strong>{hubName || user?.closestHub?.name || copy.selectedCenter}</strong>
                       </p>
                       {(() => {
                         const selectedHub = resolvedHub || findHubByName(appointment.hubName || user?.closestHub?.name);
@@ -402,7 +406,7 @@ export default function AppointmentCard({
                             className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                           >
                             <Navigation className="h-4 w-4 mr-1.5" />
-                            Get Directions
+                            {copy.directions}
                           </a>
                         );
                       })()}
@@ -421,14 +425,14 @@ export default function AppointmentCard({
         ) : (
           <div className="flex flex-col items-center justify-center py-12">
             <CalendarIcon className="h-16 w-16 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No Appointment Scheduled</h3>
-            <p className="text-gray-600 mb-6 text-center">Schedule your adult education intake appointment to get started.</p>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">{copy.noneTitle}</h3>
+            <p className="text-gray-600 mb-6 text-center">{copy.noneText}</p>
             <button
               onClick={onScheduleClick}
               className="bg-primary-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-primary-700 transition-colors"
             >
               <Plus className="h-4 w-4 mr-2 inline" />
-              Schedule Appointment
+              {copy.schedule}
             </button>
           </div>
         )}

@@ -9,7 +9,9 @@ import {
   Clock 
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { appointmentStatusLabel, isPendingProfile } from '@/lib/appointmentStatus';
+import { isPendingProfile } from '@/lib/appointmentStatus';
+import { useI18n } from '@/contexts/I18nContext';
+import { dateFnsLocale, statusLabel } from '@/lib/i18n/labels';
 import StudentWaitlistCard from './StudentWaitlistCard';
 
 interface Appointment {
@@ -78,6 +80,11 @@ export default function AppointmentsTab({
   hubConfigs,
   user
 }: AppointmentsTabProps) {
+  const { t, locale } = useI18n();
+  const copy = t.dashboard.appointmentsTab;
+  const cardCopy = t.dashboard.appointmentCard;
+  const common = t.dashboard.common;
+  const dateLocale = dateFnsLocale(locale);
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -114,14 +121,14 @@ export default function AppointmentsTab({
               <CalendarIcon className="h-6 w-6 text-white" />
             </div>
             <h2 className="text-xl font-semibold text-white">
-              My Appointments
+              {copy.title}
             </h2>
           </div>
         </div>
         
         <div className="p-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-6" role="alert">
               <p className="text-red-600 text-sm">{error}</p>
             </div>
           )}
@@ -132,43 +139,43 @@ export default function AppointmentsTab({
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-blue-900">
-                      Upcoming Appointment
+                      {copy.upcoming}
                     </h3>
                     <span className={`px-3 py-1 rounded-full text-sm font-medium border flex items-center ${getStatusColor(appointment.status)}`}>
                       {getStatusIcon(appointment.status)}
-                      <span className="ml-1">{appointmentStatusLabel(appointment.status)}</span>
+                      <span className="ml-1">{statusLabel(t, appointment.status)}</span>
                     </span>
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <span className="text-sm text-blue-600 font-medium">Date</span>
+                      <span className="text-sm text-blue-600 font-medium">{common.date}</span>
                       <p className="text-blue-900 font-semibold mt-1">
                         {(() => { 
                           const d = parseToLocalDate(appointment.appointmentDate); 
-                          return d ? format(d, 'EEEE, MMMM do, yyyy') : appointment.appointmentDate; 
+                          return d ? format(d, 'PPPP', { locale: dateLocale }) : appointment.appointmentDate; 
                         })()}
                       </p>
                     </div>
                     
                     <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <span className="text-sm text-blue-600 font-medium">Time</span>
+                      <span className="text-sm text-blue-600 font-medium">{common.time}</span>
                       <p className="text-blue-900 font-semibold mt-1">
-                        {appointment?.appointmentTime ? formatTime(appointment.appointmentTime) : 'Time not available'}
+                        {appointment?.appointmentTime ? formatTime(appointment.appointmentTime) : common.timeNotAvailable}
                       </p>
                     </div>
                     
                     <div className="bg-white rounded-lg p-3 border border-blue-200">
-                      <span className="text-sm text-blue-600 font-medium">Location</span>
+                      <span className="text-sm text-blue-600 font-medium">{common.location}</span>
                       <p className="text-blue-900 font-semibold mt-1">
-                        {appointment.hubName || 'Learning Center'}
+                        {appointment.hubName || common.learningCenter}
                       </p>
                     </div>
                   </div>
                   
                   {appointment.notes && (
                     <div className="mt-4 bg-white rounded-lg p-3 border border-blue-200">
-                      <span className="text-sm text-blue-600 font-medium">Notes</span>
+                      <span className="text-sm text-blue-600 font-medium">{common.notes}</span>
                       <p className="text-blue-900 mt-1">{appointment.notes}</p>
                     </div>
                   )}
@@ -181,7 +188,7 @@ export default function AppointmentsTab({
                     onClick={() => window.location.assign('/dashboard?tab=profile')}
                     className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center"
                   >
-                    Complete Profile to Confirm
+                    {cardCopy.completeToConfirm}
                   </button>
                 ) : (
                   <button
@@ -192,12 +199,12 @@ export default function AppointmentsTab({
                     {isConfirming ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Confirming...
+                        {cardCopy.confirming}
                       </>
                     ) : (
                       <>
                         <CheckCircle className="h-4 w-4 mr-2" />
-                        {appointment.status === 'confirmed' ? 'Confirmed' : 'Confirm Attendance'}
+                        {appointment.status === 'confirmed' ? copy.confirmed : copy.confirmAttendance}
                       </>
                     )}
                   </button>
@@ -208,7 +215,7 @@ export default function AppointmentsTab({
                     onClick={onReschedule}
                     className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-lg font-medium"
                   >
-                    Reschedule
+                    {cardCopy.reschedule}
                   </button>
                 )}
                 <button
@@ -219,12 +226,12 @@ export default function AppointmentsTab({
                   {isCancelling ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Cancelling...
+                      {cardCopy.cancelling}
                     </>
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Cancel Appointment
+                      {cardCopy.cancel}
                     </>
                   )}
                 </button>
@@ -233,14 +240,14 @@ export default function AppointmentsTab({
           ) : (
             <div className="text-center py-12">
               <CalendarIcon className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Appointments</h3>
-              <p className="text-gray-600 mb-6">You don't have any appointments scheduled yet.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">{copy.noneTitle}</h3>
+              <p className="text-gray-600 mb-6">{copy.noneText}</p>
               <button
                 onClick={onScheduleClick}
                 className="bg-primary-600 hover:bg-primary-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center mx-auto"
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Schedule Appointment
+                {cardCopy.schedule}
               </button>
             </div>
           )}
@@ -249,20 +256,20 @@ export default function AppointmentsTab({
 
       {history.length > 0 && (
         <div className="mt-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Appointment history</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{copy.history}</h3>
           <div className="space-y-3">
             {history.map((item) => (
               <div key={item._id} className="flex items-center justify-between rounded-lg border border-gray-100 p-3">
                 <div>
-                  <p className="font-medium text-gray-900">{item.hubName || 'Learning center'}</p>
+                  <p className="font-medium text-gray-900">{item.hubName || common.learningCenter}</p>
                   <p className="text-sm text-gray-600">
                     {(() => {
                       const d = parseToLocalDate(item.appointmentDate);
-                      return d ? format(d, 'MMM d, yyyy') : '';
+                      return d ? format(d, 'PP', { locale: dateLocale }) : '';
                     })()} · {formatTime(item.appointmentTime)}
                   </p>
                 </div>
-                <span className="text-sm text-gray-500">{appointmentStatusLabel(item.status)}</span>
+                <span className="text-sm text-gray-500">{statusLabel(t, item.status)}</span>
               </div>
             ))}
           </div>

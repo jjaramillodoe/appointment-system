@@ -7,7 +7,8 @@ import { FileDown, Printer } from 'lucide-react';
 import { format } from 'date-fns';
 import { downloadAppointmentPdf } from '@/lib/appointmentPdf';
 import { downloadAppointmentIcs } from '@/lib/appointmentIcs';
-import { appointmentStatusLabel } from '@/lib/appointmentStatus';
+import { useI18n } from '@/contexts/I18nContext';
+import { dateFnsLocale, statusLabel } from '@/lib/i18n/labels';
 import { findHubByName } from '@/utils/hubMatching';
 
 interface AppointmentPrintCardProps {
@@ -40,8 +41,10 @@ export default function AppointmentPrintCard({
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState('');
 
+  const { t, locale } = useI18n();
+  const copy = t.dashboard.printCard;
   const date = parseToLocalDate(appointment.appointmentDate);
-  const dateLabel = date ? format(date, 'EEEE, MMMM d, yyyy') : 'Date to be confirmed';
+  const dateLabel = date ? format(date, 'PPPP', { locale: dateFnsLocale(locale) }) : copy.dateTbc;
   const timeLabel = formatTime(appointment.appointmentTime);
   const hub = findHubByName(appointment.hubName || user.closestHub?.name);
 
@@ -63,7 +66,7 @@ export default function AppointmentPrintCard({
       });
     } catch (err) {
       logger.error(err);
-      setError('Could not create the PDF. Please try again.');
+      setError(copy.failed);
     } finally {
       setIsDownloading(false);
     }
@@ -76,19 +79,17 @@ export default function AppointmentPrintCard({
           <div className="bg-white/20 rounded-full p-2 mr-3">
             <Printer className="h-5 w-5 text-white" />
           </div>
-          <h2 className="text-lg font-semibold text-white">Print Appointment</h2>
+          <h2 className="text-lg font-semibold text-white">{copy.title}</h2>
         </div>
       </div>
       <div className="p-6 space-y-4">
-        <p className="text-sm text-gray-600">
-          Save a PDF with your appointment time, learning center, and transit directions. You can print it or keep it on your phone.
-        </p>
+        <p className="text-sm text-gray-600">{copy.intro}</p>
         <div className="rounded-lg bg-gray-50 border border-gray-200 p-3 text-sm">
           <p className="font-medium text-gray-900">{dateLabel}</p>
           <p className="text-gray-700">{timeLabel}</p>
-          <p className="text-gray-500 mt-1">{appointmentStatusLabel(appointment.status)}</p>
+          <p className="text-gray-500 mt-1">{statusLabel(t, appointment.status)}</p>
         </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
+        {error && <p className="text-sm text-red-600" role="alert">{error}</p>}
         <button
           type="button"
           onClick={handleDownload}
@@ -96,7 +97,7 @@ export default function AppointmentPrintCard({
           className="w-full inline-flex items-center justify-center gap-2 bg-primary-600 hover:bg-primary-700 text-white px-4 py-2.5 rounded-lg font-medium transition-colors disabled:opacity-50"
         >
           <FileDown className="h-4 w-4" />
-          {isDownloading ? 'Preparing PDF...' : 'Download PDF'}
+          {isDownloading ? copy.preparing : copy.download}
         </button>
         <button
           type="button"
@@ -108,7 +109,7 @@ export default function AppointmentPrintCard({
           })}
           className="w-full inline-flex items-center justify-center gap-2 border border-primary-200 bg-white text-primary-800 px-4 py-2.5 rounded-lg font-medium hover:bg-primary-50"
         >
-          Add to calendar
+          {copy.addToCalendar}
         </button>
       </div>
     </div>
