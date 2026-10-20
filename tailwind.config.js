@@ -79,6 +79,15 @@ module.exports = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      backgroundImage: {
+        // NYC DOE / District 79 Adult Education — navy + gold mesh over soft cool base
+        'd79-mesh':
+          'radial-gradient(ellipse 120% 70% at 50% -25%, rgba(0, 102, 204, 0.14), transparent 55%), radial-gradient(ellipse 90% 60% at 100% 20%, rgba(255, 215, 0, 0.1), transparent 50%), radial-gradient(ellipse 70% 50% at 0% 85%, rgba(0, 61, 122, 0.08), transparent 45%), linear-gradient(165deg, #f8fafc 0%, #eef4ff 42%, #fffbf0 100%)',
+      },
+      boxShadow: {
+        'd79-card': '0 4px 24px -4px rgba(0, 41, 82, 0.12), 0 0 0 1px rgba(0, 102, 204, 0.06)',
+        'd79-hero': '0 25px 50px -12px rgba(0, 41, 82, 0.18), 0 0 0 1px rgba(255, 215, 0, 0.15)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],

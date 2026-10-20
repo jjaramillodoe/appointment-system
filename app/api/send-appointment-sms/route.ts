@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import QRCode from 'qrcode';
 import axios from 'axios';
 
@@ -6,6 +7,9 @@ const BREVO_API_KEY = process.env.BREVO_API_KEY;
 const BREVO_SMS_URL = 'https://api.brevo.com/v3/transactionalSMS/sms';
 
 export async function POST(request: NextRequest) {
+  const blocked = blockOutsideDevelopment();
+  if (blocked) return blocked;
+
   try {
     const body = await request.json();
     const { phone, appointment } = body;

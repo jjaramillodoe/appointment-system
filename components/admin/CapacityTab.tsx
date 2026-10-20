@@ -53,28 +53,43 @@ export default function CapacityTab({
   }, [selectedHub, selectedDate]);
 
   const loadOptimizedAvailability = async () => {
-    if (!selectedHub || !selectedDate) return;
-    
+    if (!selectedHub || selectedHub === 'all' || !selectedDate) {
+      setOptimizedData(null);
+      return;
+    }
+
     setLoading(true);
     try {
       // Find hub ID
       const hubData = await fetch('/api/admin/hubs').then(res => res.json());
       const hub = hubData.find((h: any) => h.name === selectedHub);
-      
+
       if (!hub) {
         console.error('Hub not found:', selectedHub);
+        setOptimizedData(null);
         return;
       }
 
-      const response = await fetch(`/api/availability?hubId=${hub._id}&date=${selectedDate}`);
+      const response = await fetch(`/api/admin/slot-capacities?hubName=${encodeURIComponent(selectedHub)}&date=${selectedDate}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data) {
-          setOptimizedData(data.data);
-          console.log('✅ Loaded optimized availability:', data.data);
-        }
+        const slotCapacities = await response.json();
+        // Transform the data to match table format
+        const slots = Object.entries(slotCapacities).map(([time, slot]: [string, any]) => ({
+          time,
+          capacity: slot.capacity,
+          booked: slot.bookedCount,
+          available: slot.capacity - slot.bookedCount,
+          isActive: slot.isActive
+        }));
+        const transformedData = {
+          hubName: selectedHub,
+          date: selectedDate,
+          slots
+        };
+        setOptimizedData(transformedData);
+        console.log('✅ Loaded capacity data:', transformedData);
       } else {
-        console.error('Failed to load optimized availability:', response.status);
+        console.error('Failed to load capacity data:', response.status);
       }
     } catch (error) {
       console.error('Error loading optimized availability:', error);
@@ -213,6 +228,17 @@ export default function CapacityTab({
           </div>
         </CardContent>
       </Card>
+
+      {/* Message when "all" is selected */}
+      {(selectedHub === 'all' || !selectedHub) && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Select a Hub</AlertTitle>
+          <AlertDescription>
+            Please use the hub filter at the top to select a specific learning center to view its capacity.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Capacity Overview */}
       {optimizedData && (

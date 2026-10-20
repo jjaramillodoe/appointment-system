@@ -4,14 +4,14 @@ import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions'
 
 // Import models
 import '@/models/User';
-import '@/models/AppointmentOptimized';
+import '@/models/Appointment';
 import '@/models/AppointmentSlot';
 import '@/models/HubConfig';
 import '@/models/Hub';
 
 import mongoose from 'mongoose';
 const User = mongoose.models.User;
-const AppointmentOptimized = mongoose.models.AppointmentOptimized;
+const Appointment = mongoose.models.Appointment;
 const AppointmentSlot = mongoose.models.AppointmentSlot;
 const HubConfig = mongoose.models.HubConfig;
 const Hub = mongoose.models.Hub;
@@ -28,13 +28,21 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
+    console.log('Analytics - Admin User:', {
+      adminUser,
+      isAdminCheck: isAdmin(adminUser),
+      token: token.substring(0, 20) + '...'
+    });
+
     if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
 
     // Apply hub filter for regular admins
     const adminHubFilter = getHubFilter(adminUser);
+    console.log('Analytics - Hub Filter:', { adminHubFilter });
+
     if (adminHubFilter === null) {
       return NextResponse.json({ error: 'No hub access' }, { status: 403 });
     }
@@ -44,12 +52,12 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
     const hubName = searchParams.get('hubName');
 
-    // Build date filter for AppointmentOptimized (uses date field, not appointmentDate)
+    // Build date filter for Appointment (uses appointmentDate field)
     const dateFilter: any = {};
     if (startDate && endDate) {
-      dateFilter.date = {
-        $gte: startDate,
-        $lte: endDate
+      dateFilter.appointmentDate = {
+        $gte: new Date(startDate),
+        $lte: new Date(endDate)
       };
     }
 
@@ -68,7 +76,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get appointment statistics
-    const appointmentStats = await AppointmentOptimized.aggregate([
+    const appointmentStats = await Appointment.aggregate([
       { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $group: {
@@ -79,10 +87,10 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get total appointments
-    const totalAppointments = await AppointmentOptimized.countDocuments({ ...dateFilter, ...appointmentHubFilter });
+    const totalAppointments = await Appointment.countDocuments({ ...dateFilter, ...appointmentHubFilter });
 
     // Get appointments by hub (populate hub name from hubId)
-    const appointmentsByHub = await AppointmentOptimized.aggregate([
+    const appointmentsByHub = await Appointment.aggregate([
       { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $lookup: {
@@ -106,30 +114,25 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get appointments by time slot
-    const appointmentsByTime = await AppointmentOptimized.aggregate([
+    const appointmentsByTime = await Appointment.aggregate([
       { $match: { ...dateFilter, ...appointmentHubFilter } },
       {
         $group: {
-          _id: '$time',
+          _id: '$appointmentTime',
           count: { $sum: 1 }
         }
       },
       { $sort: { _id: 1 } }
     ]);
 
-    // Get weekly trends (last 8 weeks) - convert date string to Date object
-    const weeklyTrends = await AppointmentOptimized.aggregate([
+    // Get weekly trends (last 8 weeks)
+    const weeklyTrends = await Appointment.aggregate([
       { $match: { ...dateFilter, ...appointmentHubFilter } },
-      {
-        $addFields: {
-          dateObj: { $dateFromString: { dateString: '$date' } }
-        }
-      },
       {
         $group: {
           _id: {
-            year: { $year: '$dateObj' },
-            week: { $week: '$dateObj' }
+            year: { $year: '$appointmentDate' },
+            week: { $week: '$appointmentDate' }
           },
           count: { $sum: 1 }
         }
@@ -165,7 +168,7 @@ export async function GET(request: NextRequest) {
     if (isFilteringBySpecificHub || isHubAdminViewingTheirHub) {
       // Get user IDs from appointments in the filtered hub(s)
       // This ensures we only show demographics for users who have appointments in that hub
-      const appointmentUserIds = await AppointmentOptimized.distinct('userId', { ...dateFilter, ...appointmentHubFilter });
+      const appointmentUserIds = await Appointment.distinct('userId', { ...dateFilter, ...appointmentHubFilter });
       if (appointmentUserIds.length > 0) {
         userFilter._id = { $in: appointmentUserIds };
       } else {
@@ -240,7 +243,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     // Get recent activity (last 10 appointments)
-    const recentAppointments = await AppointmentOptimized.find({ ...dateFilter, ...appointmentHubFilter })
+    const recentAppointments = await Appointment.find({ ...dateFilter, ...appointmentHubFilter })
       .populate('userId', 'firstName lastName email')
       .populate('hubId', 'name')
       .sort({ createdAt: -1 })
@@ -248,10 +251,14 @@ export async function GET(request: NextRequest) {
 
     // Get today's appointments
     const today = new Date();
-    const todayStr = today.toISOString().split('T')[0]; // YYYY-MM-DD format
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
 
-    const todaysAppointments = await AppointmentOptimized.find({
-      date: todayStr,
+    const todaysAppointments = await Appointment.find({
+      appointmentDate: {
+        $gte: todayStart,
+        $lt: todayEnd
+      },
       ...appointmentHubFilter
     })
       .populate('userId', 'firstName lastName email')

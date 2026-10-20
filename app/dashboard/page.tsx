@@ -21,6 +21,7 @@ import {
   AppointmentCard,
   ScheduleAppointmentModal,
   AddressEditModal,
+  ProfileCompletionBanner,
   type TabType,
   type User,
   type Appointment,
@@ -660,36 +661,9 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveProfile = async () => {
-    setIsUpdatingProfile(true);
-    const token = localStorage.getItem('token');
-
-    try {
-      const response = await fetch('/api/auth/update-profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify(profileForm),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        setIsEditingProfile(false);
-        showSuccess('Profile updated successfully!');
-      } else {
-        const errorData = await response.json();
-        showError(errorData.error || 'Failed to update profile');
-      }
-    } catch (error) {
-      console.error('Profile update error:', error);
-      showError('Failed to update profile');
-    } finally {
-      setIsUpdatingProfile(false);
-    }
+  const handleSaveProfile = (updatedUser: any) => {
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const handleCancelProfileEdit = () => {
@@ -807,14 +781,59 @@ export default function DashboardPage() {
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
+            {/* Profile Completion Banner */}
+            {user && (() => {
+              // Match the same field counting as ProfileCompletionDashboard
+              const requiredFields = [
+                user.firstName,
+                user.lastName,
+                user.email,
+                user.phone,
+                user.preferredLanguage,
+              ];
+              const optionalFields = [
+                // Personal Details
+                user.dateOfBirth,
+                user.sex,
+                user.heardFrom,
+                user.additionalLanguages?.length ? user.additionalLanguages : null,
+                // Education & Employment
+                user.educationLevel,
+                user.employmentStatus,
+                user.employerName,
+                user.jobTitle,
+                user.schoolInterest,
+                user.programInterests?.length ? user.programInterests : null,
+                user.barriersToLearning?.length ? user.barriersToLearning : null,
+                // Emergency Contact
+                user.emergencyContact?.name,
+                user.emergencyContact?.relationship,
+                user.emergencyContact?.phone,
+                // Address Information
+                user.address?.street,
+                user.homeAddress?.street,
+              ];
+              const totalFields = 5 + 16; // 5 required + 16 optional
+              const completedFields = requiredFields.filter(f => f).length + optionalFields.filter(f => f).length;
+              const completionPercentage = Math.round((completedFields / totalFields) * 100);
+
+              return (
+                <ProfileCompletionBanner
+                  completionPercentage={completionPercentage}
+                  onNavigateToProfile={() => setActiveTab('profile')}
+                />
+              );
+            })()}
+
             {/* Stats Cards */}
-            <StatsCards 
-              user={user} 
-              appointment={appointment} 
-              parseToLocalDate={parseToLocalDate} 
+            <StatsCards
+              user={user}
+              appointment={appointment}
+              parseToLocalDate={parseToLocalDate}
+              appointmentHubName={appointment?.hubName}
             />
 
             {/* Main Dashboard Content */}

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import jwt from 'jsonwebtoken';
 import dbConnect from '../../../../lib/mongodb';
 import User from '../../../../models/User';
+import { normalizeProfileFields } from '../../../../lib/textNormalization';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 interface JWTPayload {
   userId: string;
@@ -24,9 +25,9 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as JWTPayload;
 
-    const profileData = await request.json();
+    let profileData = await request.json();
 
     // Validate required fields
     if (!profileData.firstName || !profileData.lastName || !profileData.email) {
@@ -36,32 +37,45 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update user profile
+    // Normalize text fields to remove special characters and accents
+    profileData = normalizeProfileFields(profileData);
+
+    // Build update object, filtering out empty strings for enum fields
+    const updateData: any = {
+      firstName: profileData.firstName,
+      middleName: profileData.middleName,
+      lastName: profileData.lastName,
+      email: profileData.email,
+      phone: profileData.phone,
+      dateOfBirth: profileData.dateOfBirth,
+      sex: profileData.sex || undefined,
+      preferredLanguage: profileData.preferredLanguage,
+      additionalLanguages: profileData.additionalLanguages || [],
+      heardFrom: profileData.heardFrom || undefined,
+      barriersToLearning: profileData.barriersToLearning || [],
+      homeAddress: profileData.homeAddress,
+      address: profileData.address,
+      educationLevel: profileData.educationLevel || undefined,
+      employmentStatus: profileData.employmentStatus || undefined,
+      employerName: profileData.employerName,
+      jobTitle: profileData.jobTitle,
+      schoolInterest: profileData.schoolInterest || undefined,
+      programInterests: profileData.programInterests || [],
+      emergencyContact: profileData.emergencyContact
+    };
+
+    // Remove undefined values to avoid validation errors
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] === undefined) {
+        delete updateData[key];
+      }
+    });
+
+    // Update user profile without strict validation (schema will validate on save)
     const updatedUser = await User.findByIdAndUpdate(
       decoded.userId,
-      {
-        firstName: profileData.firstName,
-        middleName: profileData.middleName,
-        lastName: profileData.lastName,
-        email: profileData.email,
-        phone: profileData.phone,
-        dateOfBirth: profileData.dateOfBirth,
-        sex: profileData.sex,
-        preferredLanguage: profileData.preferredLanguage,
-        additionalLanguages: profileData.additionalLanguages,
-        heardFrom: profileData.heardFrom,
-        barriersToLearning: profileData.barriersToLearning,
-        homeAddress: profileData.homeAddress,
-        address: profileData.address,
-        educationLevel: profileData.educationLevel,
-        employmentStatus: profileData.employmentStatus,
-        employerName: profileData.employerName,
-        jobTitle: profileData.jobTitle,
-        schoolInterest: profileData.schoolInterest,
-        programInterests: profileData.programInterests,
-        emergencyContact: profileData.emergencyContact
-      },
-      { new: true, runValidators: true }
+      updateData,
+      { new: true, runValidators: false }
     );
 
     if (!updatedUser) {

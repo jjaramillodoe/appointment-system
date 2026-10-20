@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { UserCircle, Edit, XCircle, Save } from 'lucide-react';
 import { format } from 'date-fns';
+import ProfileCompletionDashboard from './ProfileCompletionDashboard';
 
 interface User {
   firstName: string;
@@ -204,18 +205,30 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
     }
   };
 
+  const handleEditSection = (section: string) => {
+    setIsEditingProfile(true);
+  };
+
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-      <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
-              <UserCircle className="h-6 w-6 text-white" />
+    <div className="space-y-6">
+      {/* Profile Completion Dashboard */}
+      <ProfileCompletionDashboard
+        user={user}
+        onEditSection={handleEditSection}
+      />
+
+      {/* Profile Form Section */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 rounded-full p-2 mr-3">
+                <UserCircle className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-xl font-semibold text-white">
+                Profile Information
+              </h2>
             </div>
-            <h2 className="text-xl font-semibold text-white">
-              Profile Information
-            </h2>
-          </div>
           <button
             onClick={() => isEditingProfile ? handleCancelProfileEdit() : setIsEditingProfile(true)}
             className="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center"
@@ -477,6 +490,103 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
               )}
             </div>
           </div>
+
+          {/* School and Program Information */}
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <h4 className="text-md font-medium text-gray-800 mb-4">School and Program Interests</h4>
+
+            {/* School Interest Dropdown */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">School Interest</label>
+              {isEditingProfile ? (
+                <select
+                  value={profileForm.schoolInterest}
+                  onChange={(e) => setProfileForm(prev => ({ ...prev, schoolInterest: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select a school</option>
+                  <option value="School 1">School 1</option>
+                  <option value="School 2">School 2</option>
+                  <option value="School 3">School 3</option>
+                  <option value="School 4">School 4</option>
+                  <option value="School 5">School 5</option>
+                  <option value="School 6">School 6</option>
+                  <option value="School 7">School 7</option>
+                  <option value="School 8">School 8</option>
+                </select>
+              ) : (
+                <p className="text-gray-900 py-2">{user.schoolInterest || 'Not specified'}</p>
+              )}
+            </div>
+
+            {/* Program Interests Checkboxes */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Program Interests (Select all that apply)</label>
+              {isEditingProfile ? (
+                <div className="space-y-2">
+                  {['Adult Basic Education', 'ESL', 'CTE'].map(program => (
+                    <label key={program} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={profileForm.programInterests.includes(program)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setProfileForm(prev => ({
+                              ...prev,
+                              programInterests: [...prev.programInterests, program]
+                            }));
+                          } else {
+                            setProfileForm(prev => ({
+                              ...prev,
+                              programInterests: prev.programInterests.filter(p => p !== program)
+                            }));
+                          }
+                        }}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="ml-2 text-gray-700">{program}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-900 py-2">{user.programInterests?.length ? user.programInterests.join(', ') : 'None selected'}</p>
+              )}
+            </div>
+
+            {/* Barriers to Learning Checkboxes */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-3">Barriers to Learning (Select all that apply)</label>
+              {isEditingProfile ? (
+                <div className="space-y-2">
+                  {['Language', 'Literacy', 'Technology', 'Transportation', 'Other'].map(barrier => (
+                    <label key={barrier} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={profileForm.barriersToLearning.includes(barrier)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setProfileForm(prev => ({
+                              ...prev,
+                              barriersToLearning: [...prev.barriersToLearning, barrier]
+                            }));
+                          } else {
+                            setProfileForm(prev => ({
+                              ...prev,
+                              barriersToLearning: prev.barriersToLearning.filter(b => b !== barrier)
+                            }));
+                          }
+                        }}
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                      />
+                      <span className="ml-2 text-gray-700">{barrier}</span>
+                    </label>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-900 py-2">{user.barriersToLearning?.length ? user.barriersToLearning.join(', ') : 'None selected'}</p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Address Information */}
@@ -724,6 +834,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 } 

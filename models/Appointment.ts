@@ -3,12 +3,18 @@ import mongoose from 'mongoose';
 export interface IAppointment extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
   appointmentDate: Date;
-  appointmentTime: string;
-  hubName: string;
+  appointmentTime?: string;
+  hubName?: string;
+  hubId?: mongoose.Types.ObjectId;
+  slotId?: string;
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
   notes: string;
   adminNotes?: string;
   intakeType: 'adult-education';
+  classInterest?: 'ESL' | 'BE/HSE';
+  timePreference?: 'Morning' | 'Evening' | 'Saturday';
+  confirmationToken?: string;
+  preferredLanguage?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -25,7 +31,7 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
   },
   appointmentTime: {
     type: String,
-    required: [true, 'Appointment time is required'],
+    required: false,
     enum: [
       '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
       '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
@@ -35,7 +41,16 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
   },
   hubName: {
     type: String,
-    required: [true, 'Hub name is required'],
+    required: false,
+  },
+  hubId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Hub',
+    required: false,
+  },
+  slotId: {
+    type: String,
+    required: false,
   },
   status: {
     type: String,
@@ -57,11 +72,29 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
     enum: ['adult-education'],
     default: 'adult-education',
   },
+  classInterest: {
+    type: String,
+    enum: ['ESL', 'BE/HSE'],
+    required: false,
+  },
+  timePreference: {
+    type: String,
+    enum: ['Morning', 'Evening', 'Saturday'],
+    required: false,
+  },
+  confirmationToken: {
+    type: String,
+    required: false,
+  },
+  preferredLanguage: {
+    type: String,
+    required: false,
+  },
 }, {
   timestamps: true,
 });
 
-// Ensure only one appointment per user
-appointmentSchema.index({ userId: 1 }, { unique: true });
+// Index for userId (no longer unique - can have multiple appointments)
+appointmentSchema.index({ userId: 1 });
 
 export default mongoose.models.Appointment || mongoose.model<IAppointment>('Appointment', appointmentSchema); 

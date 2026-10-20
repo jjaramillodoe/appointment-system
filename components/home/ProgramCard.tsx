@@ -58,7 +58,7 @@ export default function ProgramCard({
               className="flex items-center text-sm text-gray-600 group-hover:text-gray-700 transition-all duration-300 transform group-hover:translate-x-1"
               style={{ transitionDelay: `${index * 50}ms` }}
             >
-              <CheckCircle className="h-5 w-5 text-green-500 mr-3 flex-shrink-0 transform group-hover:scale-110 transition-transform duration-300" />
+              <CheckCircle className="h-5 w-5 text-primary-600 mr-3 flex-shrink-0 transform group-hover:scale-110 transition-transform duration-300" />
               <span>{feature}</span>
             </li>
           ))}

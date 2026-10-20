@@ -54,7 +54,7 @@ export default function CTASection({
 
   return (
     <div ref={sectionRef} className={`mb-20 ${className}`}>
-      <div className={`relative card text-center overflow-hidden border-2 border-primary-200 bg-gradient-to-br from-primary-50 via-white to-primary-50 transition-all duration-1000 ${
+      <div className={`relative card text-center overflow-hidden border-2 border-primary-300/80 bg-gradient-to-br from-primary-100/90 via-white to-yellow-50/90 shadow-d79-card transition-all duration-1000 ${
         isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
       }`}>
         {/* Animated background decoration */}
@@ -69,7 +69,7 @@ export default function CTASection({
         </div>
 
         <div className="relative z-10">
-          <h3 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4 bg-gradient-to-r from-primary-700 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
+          <h3 className="text-3xl sm:text-4xl font-bold mb-4 bg-gradient-to-r from-primary-900 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
             {title}
           </h3>
           <p className="text-lg text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed px-4">

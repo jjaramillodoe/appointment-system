@@ -1,17 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
-
-// Helper function to verify JWT token
-function verifyToken(token: string) {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string; isAdmin: boolean };
-  } catch (error) {
-    return null;
-  }
-}
+import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
 
 // POST - Create database backup
 export async function POST(request: NextRequest) {
@@ -27,8 +16,8 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const decoded = verifyToken(token);
-    if (!decoded || !decoded.isAdmin) {
+    const decoded = await verifyAdminToken(token);
+    if (!decoded || !isAdmin(decoded)) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }

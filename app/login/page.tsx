@@ -3,12 +3,20 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GraduationCap, LogIn, ArrowLeft } from 'lucide-react';
+import { GraduationCap, LogIn, ArrowLeft, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 
 interface LoginForm {
   email: string;
   password: string;
+  rememberMe: boolean;
+}
+
+interface ValidationState {
+  email: { isValid: boolean; message: string };
+  password: { isValid: boolean; strength: 'weak' | 'medium' | 'strong'; message: string };
 }
 
 export default function LoginPage() {
@@ -16,9 +24,15 @@ export default function LoginPage() {
   const { login, isAuthenticated, isAdmin } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<LoginForm>({
     email: '',
     password: '',
+    rememberMe: false,
+  });
+  const [validation, setValidation] = useState<ValidationState>({
+    email: { isValid: false, message: '' },
+    password: { isValid: false, strength: 'weak', message: '' },
   });
 
   // Redirect if already logged in
@@ -32,23 +46,86 @@ export default function LoginPage() {
     }
   }, [isAuthenticated, isAdmin, router]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+  // Validate email format
+  const validateEmail = (email: string): { isValid: boolean; message: string } => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      return { isValid: false, message: '' };
+    }
+    if (!emailRegex.test(email)) {
+      return { isValid: false, message: 'Please enter a valid email address' };
+    }
+    return { isValid: true, message: 'Email looks good' };
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Validate password strength
+  const validatePassword = (
+    password: string
+  ): { isValid: boolean; strength: 'weak' | 'medium' | 'strong'; message: string } => {
+    if (!password) {
+      return { isValid: false, strength: 'weak', message: '' };
+    }
+    if (password.length < 6) {
+      return { isValid: false, strength: 'weak', message: 'Password must be at least 6 characters' };
+    }
+    if (password.length < 8) {
+      return { isValid: true, strength: 'medium', message: 'Medium strength' };
+    }
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasNumbers = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*]/.test(password);
+    if (hasUpperCase && hasNumbers && hasSpecialChar) {
+      return { isValid: true, strength: 'strong', message: 'Strong password' };
+    }
+    return { isValid: true, strength: 'medium', message: 'Medium strength' };
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value, type, checked } = e.target;
+    const inputValue = type === 'checkbox' ? checked : value;
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: inputValue,
+    }));
+
+    // Validate in real-time
+    if (name === 'email') {
+      setValidation(prev => ({
+        ...prev,
+        email: validateEmail(value),
+      }));
+    } else if (name === 'password') {
+      setValidation(prev => ({
+        ...prev,
+        password: validatePassword(value),
+      }));
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError('');
+
+    // Validate before submit
+    if (!validation.email.isValid || !validation.password.isValid) {
+      setError('Please fix the errors above before signing in');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
       const success = await login(formData.email, formData.password);
-      
+
       if (success) {
+        // Save email if remember me is checked
+        if (formData.rememberMe) {
+          localStorage.setItem('rememberedEmail', formData.email);
+        } else {
+          localStorage.removeItem('rememberedEmail');
+        }
+
         // Redirect based on user role
         if (isAdmin) {
           router.push('/admin/dashboard');
@@ -56,107 +133,240 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       } else {
-        setError('Login failed. Please check your credentials.');
+        setError('Invalid email or password. Please try again.');
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed');
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Load remembered email on mount
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setFormData(prev => ({
+        ...prev,
+        email: rememberedEmail,
+        rememberMe: true,
+      }));
+      setValidation(prev => ({
+        ...prev,
+        email: validateEmail(rememberedEmail),
+      }));
+    }
+  }, []);
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12">
-      <div className="max-w-md mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <Link
-            href="/"
-            className="inline-flex items-center text-primary-600 hover:text-primary-700 mb-4"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Link>
-          <div className="flex justify-center items-center mb-4">
-            <GraduationCap className="h-8 w-8 text-primary-600" />
-            <h1 className="ml-2 text-3xl font-bold text-gray-900">
-              Sign In
-            </h1>
-          </div>
-          <p className="text-gray-600">
-            Welcome back! Sign in to your account
-          </p>
-        </div>
+    <div className="relative flex min-h-screen flex-col bg-d79-mesh">
+      <div
+        className="h-1.5 w-full bg-gradient-to-r from-primary-900 via-yellow-500 to-primary-900"
+        aria-hidden
+      />
+      <Header />
+      <main className="flex flex-1 flex-col py-10 sm:py-12">
+        <div className="mx-auto w-full max-w-md px-4 sm:px-6 lg:px-8">
+          <div className="mb-8 text-center">
+            <Link
+              href="/"
+              className="group mb-6 inline-flex items-center text-sm font-semibold text-primary-800 transition-colors hover:text-primary-600"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
+              Back to Home
+            </Link>
 
-        {/* Login Form */}
-        <div className="card">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                {error}
+            <div className="mx-auto rounded-3xl border border-primary-200/70 bg-white/80 px-6 py-8 shadow-d79-hero backdrop-blur-md sm:px-10">
+              <p className="mb-4 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-primary-200/80 bg-primary-50/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-800">
+                <span className="text-yellow-700">District 79</span>
+                <span className="text-primary-400" aria-hidden>
+                  ·
+                </span>
+                <span>Adult Education</span>
+              </p>
+              <div className="mb-4 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+                <div className="relative">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-br from-primary-400/25 to-yellow-400/30 blur-xl" />
+                  <GraduationCap className="relative h-12 w-12 text-primary-700" />
+                </div>
+                <h1 className="text-3xl font-bold text-primary-900 sm:text-4xl">
+                  <span className="bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
+                    Sign in
+                  </span>
+                </h1>
               </div>
-            )}
-
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email Address
-              </label>
-              <input
-                type="email"
-                id="email"
-                name="email"
-                value={formData.email}
-                onChange={handleInputChange}
-                required
-                className="input-field"
-                placeholder="Enter your email"
-              />
+              <p className="text-lg text-primary-900/80">Welcome back — access your account and appointments.</p>
             </div>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-                className="input-field"
-                placeholder="Enter your password"
-              />
-            </div>
+          <div className="rounded-2xl border border-primary-200/70 bg-white/90 p-6 shadow-d79-card backdrop-blur-sm sm:p-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <div
+                  className="rounded-xl border border-red-200 bg-red-50/95 px-4 py-3 text-sm text-red-800"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              )}
 
-            <div className="flex items-center justify-between pt-6">
-              <Link
-                href="/register"
-                className="text-primary-600 hover:text-primary-700 text-sm"
-              >
-                Don't have an account? Register
-              </Link>
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="btn-primary flex items-center"
-              >
-                {isLoading ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Signing In...
-                  </>
-                ) : (
-                  <>
-                    <LogIn className="h-4 w-4 mr-2" />
-                    Sign In
-                  </>
+              {/* Email Field */}
+              <div>
+                <label htmlFor="email" className="mb-2 block text-sm font-medium text-primary-900/90">
+                  Email address
+                </label>
+                <div className="relative">
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                    className={`input-field pr-10 ${
+                      formData.email && (validation.email.isValid ? 'border-green-500' : 'border-red-500')
+                    }`}
+                    placeholder="Enter your email"
+                    autoComplete="email"
+                  />
+                  {formData.email && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {validation.email.isValid ? (
+                        <CheckCircle className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-5 w-5 text-red-500" />
+                      )}
+                    </div>
+                  )}
+                </div>
+                {formData.email && validation.email.message && (
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      validation.email.isValid ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {validation.email.message}
+                  </p>
                 )}
-              </button>
-            </div>
-          </form>
+              </div>
+
+              {/* Password Field */}
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <label htmlFor="password" className="block text-sm font-medium text-primary-900/90">
+                    Password
+                  </label>
+                  {formData.password && (
+                    <span
+                      className={`text-xs font-semibold ${
+                        validation.password.strength === 'strong'
+                          ? 'text-green-600'
+                          : validation.password.strength === 'medium'
+                            ? 'text-yellow-600'
+                            : 'text-red-600'
+                      }`}
+                    >
+                      {validation.password.strength.charAt(0).toUpperCase() +
+                        validation.password.strength.slice(1)}{' '}
+                      strength
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    required
+                    className={`input-field pr-10 ${
+                      formData.password && (validation.password.isValid ? 'border-green-500' : 'border-red-500')
+                    }`}
+                    placeholder="Enter your password"
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-600 hover:text-primary-700"
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  >
+                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                  </button>
+                </div>
+
+                {/* Password Strength Bar */}
+                {formData.password && (
+                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
+                    <div
+                      className={`h-full transition-all ${
+                        validation.password.strength === 'strong'
+                          ? 'w-full bg-green-500'
+                          : validation.password.strength === 'medium'
+                            ? 'w-2/3 bg-yellow-500'
+                            : 'w-1/3 bg-red-500'
+                      }`}
+                    />
+                  </div>
+                )}
+
+                {formData.password && validation.password.message && (
+                  <p
+                    className={`mt-1 text-xs font-medium ${
+                      validation.password.isValid ? 'text-green-600' : 'text-red-600'
+                    }`}
+                  >
+                    {validation.password.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Remember Me Checkbox */}
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="rememberMe"
+                  name="rememberMe"
+                  checked={formData.rememberMe}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                />
+                <label htmlFor="rememberMe" className="ml-2 text-sm text-primary-700">
+                  Remember this email for next time
+                </label>
+              </div>
+
+              <div className="flex flex-col gap-4 border-t border-primary-100/80 pt-6 sm:flex-row sm:items-center sm:justify-between">
+                <Link
+                  href="/register"
+                  className="text-center text-sm font-semibold text-primary-700 underline decoration-yellow-500/80 underline-offset-2 transition hover:text-primary-600 sm:text-left"
+                >
+                  Don&apos;t have an account? Register
+                </Link>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-primary-700 to-primary-600 px-6 py-2.5 font-semibold text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:w-auto"
+                >
+                  {isLoading ? (
+                    <>
+                      <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      Signing in…
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign in
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      </main>
+      <Footer />
     </div>
   );
 } 

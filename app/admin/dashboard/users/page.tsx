@@ -24,10 +24,10 @@ export default function UsersPage() {
   }, [selectedHub]);
 
   useEffect(() => {
-    if (token) {
+    if (token && userPagination) {
       loadUsers();
     }
-  }, [token, userPagination.page, userFilters]);
+  }, [token, userPagination?.page, userFilters]);
 
   const loadUsers = async () => {
     try {

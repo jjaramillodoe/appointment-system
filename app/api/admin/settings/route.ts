@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 // Helper function to verify JWT token
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },

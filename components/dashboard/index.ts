@@ -10,6 +10,8 @@ export { default as PersonalInfoCard } from './PersonalInfoCard';
 // Tab Content Components
 export { default as ProfileTab } from './ProfileTab';
 export { default as AppointmentsTab } from './AppointmentsTab';
+export { default as ProfileCompletionDashboard } from './ProfileCompletionDashboard';
+export { default as ProfileCompletionBanner } from './ProfileCompletionBanner';
 
 // Appointment Components
 export { default as AppointmentCard } from './AppointmentCard';

@@ -1,18 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin, getHubFilter } from '@/lib/adminPermissions';
-
-// Import models
-import '@/models/User';
-import '@/models/AppointmentOptimized';
-import '@/models/AppointmentSlot';
-import '@/models/Hub';
-
-import mongoose from 'mongoose';
-const User = mongoose.models.User;
-const AppointmentOptimized = mongoose.models.AppointmentOptimized;
-const AppointmentSlot = mongoose.models.AppointmentSlot;
-const Hub = mongoose.models.Hub;
+import Appointment from '@/models/Appointment';
+import AppointmentSlot from '@/models/AppointmentSlot';
+import User from '@/models/User';
 
 // GET - Get all appointments with filtering and pagination
 export async function GET(request: NextRequest) {
@@ -25,7 +16,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -49,27 +40,18 @@ export async function GET(request: NextRequest) {
 
     // Build search filter - start with hub filter
     const searchFilter: any = { ...hubFilter };
-    
+
     if (search) {
-      // Since we're using hubId reference, we need to find hub by name first
-      let hubIds: string[] = [];
-      if (search) {
-        const hubs = await Hub.find({ name: { $regex: search, $options: 'i' } });
-        hubIds = hubs.map(hub => hub._id.toString());
-      }
-      
       searchFilter.$or = [
-        { notes: { $regex: search, $options: 'i' } },
-        { hubId: { $in: hubIds } }
+        { userName: { $regex: search, $options: 'i' } },
+        { userEmail: { $regex: search, $options: 'i' } },
+        { hubName: { $regex: search, $options: 'i' } }
       ];
     }
 
-    // Build hub filter - need to convert hubName to hubId
+    // Build hub filter
     if (hubName) {
-      const hub = await Hub.findOne({ name: hubName });
-      if (hub) {
-        searchFilter.hubId = hub._id;
-      }
+      searchFilter.hubName = hubName;
     }
 
     // Build status filter
@@ -77,42 +59,71 @@ export async function GET(request: NextRequest) {
       searchFilter.status = status;
     }
 
-    // Build date filter - using 'date' field and comparing as strings
-    if (startDate && endDate) {
-      searchFilter.date = {
-        $gte: startDate,
-        $lte: endDate
-      };
-    } else if (startDate) {
-      searchFilter.date = { $gte: startDate };
-    } else if (endDate) {
-      searchFilter.date = { $lte: endDate };
+    // Build date filter - using appointmentDate
+    if (startDate || endDate) {
+      searchFilter.appointmentDate = {};
+      if (startDate) {
+        searchFilter.appointmentDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        searchFilter.appointmentDate.$lte = end;
+      }
     }
 
     // Calculate skip for pagination
     const skip = (page - 1) * limit;
 
-    // Build sort object - adjust field names
+    // Build sort object
     const sort: any = {};
     if (sortBy === 'appointmentDate') {
-      sort['date'] = sortOrder === 'desc' ? -1 : 1;
+      sort['appointmentDate'] = sortOrder === 'desc' ? -1 : 1;
     } else {
       sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // Get appointments with pagination and user details
-    const appointments = await AppointmentOptimized.find(searchFilter)
-      .populate('userId', 'firstName lastName email phone')
-      .populate('hubId', 'name')
+    // Get appointments with pagination and populate user details
+    const appointments = await Appointment.find(searchFilter)
+      .populate('userId', 'firstName lastName email')
       .sort(sort)
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .lean();
+
+    // Format appointments to match component expectations
+    const formattedAppointments = appointments.map((apt: any) => {
+      // Format date as YYYY-MM-DD string for the component
+      let dateStr = '';
+      if (apt.appointmentDate) {
+        const d = new Date(apt.appointmentDate);
+        dateStr = d.toISOString().split('T')[0]; // YYYY-MM-DD format
+      }
+
+      return {
+        _id: apt._id,
+        userId: {
+          _id: apt.userId?._id,
+          firstName: apt.userId?.firstName || '',
+          lastName: apt.userId?.lastName || '',
+          email: apt.userId?.email || 'unknown@example.com',
+        },
+        date: dateStr, // Component expects 'date' as YYYY-MM-DD string
+        time: apt.appointmentTime, // Component expects 'time' not 'appointmentTime'
+        hubId: {
+          name: apt.hubName || 'Unknown Hub',
+        },
+        status: apt.status,
+        notes: apt.notes || '',
+        createdAt: apt.createdAt,
+      };
+    });
 
     // Get total count for pagination
-    const totalAppointments = await AppointmentOptimized.countDocuments(searchFilter);
+    const totalAppointments = await Appointment.countDocuments(searchFilter);
 
     // Get appointment statistics
-    const appointmentStats = await AppointmentOptimized.aggregate([
+    const appointmentStats = await Appointment.aggregate([
       { $match: searchFilter },
       {
         $group: {
@@ -122,22 +133,9 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    // Get appointments by hub - using $lookup to get hub name
-    const appointmentsByHub = await AppointmentOptimized.aggregate([
+    // Get appointments by hub
+    const appointmentsByHub = await Appointment.aggregate([
       { $match: searchFilter },
-      {
-        $lookup: {
-          from: 'hubs',
-          localField: 'hubId',
-          foreignField: '_id',
-          as: 'hub'
-        }
-      },
-      {
-        $addFields: {
-          hubName: { $arrayElemAt: ['$hub.name', 0] }
-        }
-      },
       {
         $group: {
           _id: '$hubName',
@@ -150,21 +148,20 @@ export async function GET(request: NextRequest) {
       }
     ]);
 
-    // Get appointments by date (last 30 days) - using string date field
+    // Get appointments by date (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const thirtyDaysAgoStr = thirtyDaysAgo.toISOString().split('T')[0]; // YYYY-MM-DD
 
-    const appointmentsByDate = await AppointmentOptimized.aggregate([
-      { 
-        $match: { 
+    const appointmentsByDate = await Appointment.aggregate([
+      {
+        $match: {
           ...searchFilter,
-          date: { $gte: thirtyDaysAgoStr }
-        } 
+          appointmentDate: { $gte: thirtyDaysAgo }
+        }
       },
       {
         $group: {
-          _id: '$date',
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$appointmentDate' } },
           count: { $sum: 1 }
         }
       },
@@ -172,7 +169,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     return NextResponse.json({
-      appointments,
+      appointments: formattedAppointments,
       pagination: {
         page,
         limit,
@@ -204,7 +201,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -227,15 +224,13 @@ export async function PUT(request: NextRequest) {
     if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
 
     // Update appointments
-    const result = await AppointmentOptimized.updateMany(
+    const result = await Appointment.updateMany(
       { _id: { $in: appointmentIds } },
       { $set: updateData }
     );
 
     // Get updated appointments
-    const updatedAppointments = await AppointmentOptimized.find({ _id: { $in: appointmentIds } })
-      .populate('userId', 'firstName lastName email phone')
-      .populate('hubId', 'name');
+    const updatedAppointments = await Appointment.find({ _id: { $in: appointmentIds } });
 
     return NextResponse.json({
       message: `Updated ${result.modifiedCount} appointment(s)`,
@@ -262,7 +257,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
     }
@@ -274,26 +269,28 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Appointment IDs array is required' }, { status: 400 });
     }
 
-    // Get appointments before deletion to update slot capacities
-    const appointments = await AppointmentOptimized.find({ _id: { $in: appointmentIds } })
-      .populate('hubId', 'name');
+    // Get appointments before deletion
+    const appointments = await Appointment.find({ _id: { $in: appointmentIds } });
 
     // Update appointment slot capacities
     for (const appointment of appointments) {
       const appointmentSlot = await AppointmentSlot.findOne({
-        hubName: appointment.hubId?.name,
-        date: appointment.date,
-        time: appointment.time
+        hubName: appointment.hubName,
+        date: {
+          $gte: new Date(appointment.appointmentDate.toDateString()),
+          $lt: new Date(new Date(appointment.appointmentDate).setDate(appointment.appointmentDate.getDate() + 1))
+        },
+        time: appointment.appointmentTime
       });
 
       if (appointmentSlot) {
-        appointmentSlot.cancelBooking();
+        appointmentSlot.bookedCount = Math.max(0, appointmentSlot.bookedCount - 1);
         await appointmentSlot.save();
       }
     }
 
     // Delete appointments
-    const result = await AppointmentOptimized.deleteMany({ _id: { $in: appointmentIds } });
+    const result = await Appointment.deleteMany({ _id: { $in: appointmentIds } });
 
     return NextResponse.json({
       message: `Deleted ${result.deletedCount} appointment(s)`

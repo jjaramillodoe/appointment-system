@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { UserPlus, LogIn, Sparkles } from 'lucide-react';
+import { UserPlus, LogIn } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 interface HeroSectionProps {
@@ -19,22 +19,27 @@ interface HeroSectionProps {
   };
   logoPath?: string;
   logoAlt?: string;
+  /** Path under `/public` (e.g. `/hero-graduation.jpg`) */
+  backgroundImageSrc?: string;
+  backgroundImageAlt?: string;
 }
 
 export default function HeroSection({
-  title = "Transform Your Future with",
-  subtitle = "Adult Education",
-  description = "Take the first step towards your educational and career goals. Our comprehensive adult education programs help you build essential skills, learn English, and prepare for new opportunities. Start your journey today!",
+  title = 'Transform Your Future with',
+  subtitle = 'Adult Education',
+  description = 'Take the first step towards your educational and career goals. Our comprehensive adult education programs help you build essential skills, learn English, and prepare for new opportunities. Start your journey today!',
   primaryCTA = {
-    text: "Start Your Journey",
-    href: "/register"
+    text: 'Start Your Journey',
+    href: '/register',
   },
   secondaryCTA = {
-    text: "Sign In",
-    href: "/login"
+    text: 'Sign In',
+    href: '/login',
   },
-  logoPath = "/logo.png",
-  logoAlt = "Adult Education Logo Large"
+  logoPath = '/logo.png',
+  logoAlt = 'Adult Education Logo Large',
+  backgroundImageSrc = '/hero-graduation.jpg',
+  backgroundImageAlt = 'Graduates celebrating at commencement',
 }: HeroSectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
@@ -44,65 +49,89 @@ export default function HeroSection({
   }, []);
 
   return (
-    <div 
+    <div
       ref={sectionRef}
-      className={`flex flex-col items-center text-center mb-16 transition-all duration-1000 ${
-        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      className={`relative w-full transition-all duration-1000 ${
+        isVisible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
       }`}
     >
-      {/* Logo with animation */}
-      <div className="relative mb-6">
-        <div className="absolute inset-0 bg-primary-200 rounded-full blur-xl opacity-30 animate-pulse"></div>
+      <div className="relative min-h-[420px] w-full overflow-hidden sm:min-h-[500px]">
         <Image
-          src={logoPath}
-          alt={logoAlt}
-          width={96}
-          height={96}
-          className="relative h-24 w-24 rounded-full shadow-2xl border-2 border-primary-200 bg-white transform hover:scale-110 transition-transform duration-300"
+          src={backgroundImageSrc}
+          alt={backgroundImageAlt}
+          fill
           priority
+          className="object-cover object-[center_30%] sm:object-center"
+          sizes="100vw"
         />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-primary-900/88 via-primary-800/72 to-primary-900/90"
+          aria-hidden
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-t from-primary-900/55 via-transparent to-yellow-500/10"
+          aria-hidden
+        />
+
+        <div className="relative z-10 mx-auto flex min-h-[420px] w-full max-w-7xl flex-col items-center justify-center px-4 py-14 text-center sm:min-h-[500px] sm:px-6 sm:py-20 lg:px-8">
+          <p className="mb-6 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-white/25 bg-black/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white/95 shadow-sm backdrop-blur-sm sm:text-sm">
+            <span className="text-yellow-200">NYC Public Schools</span>
+            <span className="hidden text-white/40 sm:inline" aria-hidden>
+              ·
+            </span>
+            <span>District 79</span>
+            <span className="hidden text-white/40 sm:inline" aria-hidden>
+              ·
+            </span>
+            <span className="text-white">Adult Education</span>
+          </p>
+
+          <div className="relative mb-6">
+            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/20 to-yellow-300/20 blur-2xl" />
+            <Image
+              src={logoPath}
+              alt={logoAlt}
+              width={96}
+              height={96}
+              className="relative h-24 w-24 rounded-full border-2 border-yellow-300/90 bg-white/95 shadow-xl ring-4 ring-white/20 transition-transform duration-300 hover:scale-105"
+              priority
+            />
+          </div>
+
+          <h1 className="mb-6 max-w-4xl text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl">
+            <span className="mb-2 block text-white drop-shadow-sm">{title}</span>
+            <span className="block bg-gradient-to-r from-yellow-200 via-yellow-100 to-amber-200 bg-clip-text text-transparent drop-shadow-sm animate-gradient">
+              {subtitle}
+            </span>
+          </h1>
+
+          <p className="mb-10 max-w-3xl px-1 text-lg leading-relaxed text-white/90 sm:text-xl">
+            {description}
+          </p>
+
+          <div className="flex w-full max-w-lg flex-col justify-center gap-4 sm:max-w-none sm:flex-row sm:gap-6">
+            <Link
+              href={primaryCTA.href}
+              className="group relative flex items-center justify-center overflow-hidden rounded-xl bg-gradient-to-r from-primary-600 to-primary-500 px-10 py-4 text-lg font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl"
+              aria-label={primaryCTA.text}
+            >
+              <span className="absolute inset-0 bg-gradient-to-r from-yellow-500/90 to-yellow-400/80 opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+              <span className="relative flex items-center">
+                <UserPlus className="mr-3 h-6 w-6 transition-transform duration-300 group-hover:rotate-12" />
+                {primaryCTA.text}
+              </span>
+            </Link>
+            <Link
+              href={secondaryCTA.href}
+              className="group flex items-center justify-center rounded-xl border-2 border-white/50 bg-white/10 px-10 py-4 text-lg font-semibold text-white shadow-md backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-yellow-200 hover:bg-white/20"
+              aria-label={secondaryCTA.text}
+            >
+              <LogIn className="mr-3 h-6 w-6 transition-transform duration-300 group-hover:translate-x-1" />
+              {secondaryCTA.text}
+            </Link>
+          </div>
+        </div>
       </div>
-
-      {/* Title with gradient effect */}
-      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 mb-6 tracking-tight">
-        <span className="block mb-2">{title}</span>
-        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-primary-500 to-yellow-600 animate-gradient">
-          {subtitle}
-        </span>
-      </h1>
-
-      {/* Description */}
-      <p className="text-lg sm:text-xl text-gray-600 mb-10 max-w-3xl leading-relaxed px-4">
-        {description}
-      </p>
-
-      {/* CTAs with enhanced hover effects */}
-      <div className="flex flex-col sm:flex-row justify-center space-y-4 sm:space-y-0 sm:space-x-6">
-        <Link
-          href={primaryCTA.href}
-          className="group relative btn-primary text-lg px-10 py-4 flex items-center justify-center shadow-lg hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300 overflow-hidden"
-          aria-label={primaryCTA.text}
-        >
-          <span className="absolute inset-0 bg-gradient-to-r from-primary-700 to-primary-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
-          <span className="relative flex items-center">
-            <UserPlus className="h-6 w-6 mr-3 group-hover:rotate-12 transition-transform duration-300" />
-            {primaryCTA.text}
-          </span>
-        </Link>
-        <Link
-          href={secondaryCTA.href}
-          className="group btn-secondary text-lg px-10 py-4 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-1 transition-all duration-300 border-2 hover:border-primary-300"
-          aria-label={secondaryCTA.text}
-        >
-          <LogIn className="h-6 w-6 mr-3 group-hover:translate-x-1 transition-transform duration-300" />
-          {secondaryCTA.text}
-        </Link>
-      </div>
-
-      {/* Decorative elements - hidden on mobile for better performance */}
-      <div className="hidden lg:block absolute top-20 left-10 w-20 h-20 bg-primary-200 rounded-full opacity-20 blur-2xl animate-blob pointer-events-none"></div>
-      <div className="hidden lg:block absolute top-40 right-10 w-32 h-32 bg-yellow-300 rounded-full opacity-20 blur-3xl animate-blob animation-delay-2000 pointer-events-none"></div>
     </div>
   );
 }
-

@@ -29,22 +29,23 @@ export default function TabNavigation({ activeTab, setActiveTab }: TabNavigation
   ];
 
   return (
-    <div className="border-b border-gray-200">
+    <div className="bg-white border-b-2 border-primary-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="-mb-px flex space-x-8">
+        <nav className="flex space-x-1">
           {tabs.map((tab) => {
             const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                className={`py-4 px-4 rounded-t-lg font-semibold text-sm transition-all flex items-center gap-2 ${
+                  isActive
+                    ? 'bg-primary-50 text-primary-700 border-b-4 border-primary-600'
+                    : 'text-primary-600 hover:text-primary-700 hover:bg-primary-50'
                 }`}
               >
-                <Icon className="h-4 w-4 inline mr-2" />
+                <Icon className="h-5 w-5" />
                 {tab.label}
               </button>
             );

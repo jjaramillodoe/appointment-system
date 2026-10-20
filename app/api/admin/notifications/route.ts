@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },
@@ -183,7 +183,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    const adminUser = verifyAdminToken(token);
+    const adminUser = await verifyAdminToken(token);
     if (!isAdmin(adminUser)) {
       return NextResponse.json(
         { error: 'Admin access required' },

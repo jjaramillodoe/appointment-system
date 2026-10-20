@@ -1,7 +1,9 @@
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
+import dbConnect from '@/lib/mongodb';
+import User from '@/models/User';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+import { getJwtSecret } from '@/lib/jwtSecret';
 
 export interface AdminUser {
   userId: string;
@@ -12,15 +14,32 @@ export interface AdminUser {
 }
 
 /**
- * Verify JWT token and extract admin information
+ * Verify JWT token, then load the user's current permissions from the database.
+ * Role flags in the token are ignored so demotions and deletions take effect immediately.
  */
-export function verifyAdminToken(token: string): AdminUser | null {
+export async function verifyAdminToken(token: string): Promise<AdminUser | null> {
+  let decoded: AdminUser;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AdminUser;
-    return decoded;
+    decoded = jwt.verify(token, getJwtSecret()) as AdminUser;
   } catch (error) {
     return null;
   }
+
+  if (!decoded?.userId || !mongoose.isValidObjectId(decoded.userId)) return null;
+
+  await dbConnect();
+  const user = await User.findById(decoded.userId)
+    .select('email isAdmin isSuperAdmin assignedHub')
+    .lean();
+  if (!user) return null;
+
+  return {
+    userId: String(user._id),
+    email: user.email,
+    isAdmin: user.isAdmin === true,
+    isSuperAdmin: user.isSuperAdmin === true,
+    assignedHub: user.assignedHub ? String(user.assignedHub) : null,
+  };
 }
 
 /**

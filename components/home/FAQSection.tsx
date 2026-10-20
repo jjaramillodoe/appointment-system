@@ -50,9 +50,14 @@ export default function FAQSection({
 
   return (
     <div className={`mb-20 ${className}`}>
-      <h3 className="text-3xl font-bold text-gray-900 text-center mb-12">
-        {title}
-      </h3>
+      <div className="mb-12 text-center">
+        <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary-700">
+          Get answers
+        </p>
+        <h3 className="inline-block border-b-4 border-yellow-500 pb-2 text-3xl font-bold text-primary-900">
+          {title}
+        </h3>
+      </div>
       <div className="max-w-3xl mx-auto space-y-4">
         {faqs.map((faq, index) => (
           <FAQItem

@@ -5,7 +5,7 @@ import { Mail, Phone, MapPin, Shield, FileText } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white py-12 mt-16 border-t-4 border-primary-500">
+    <footer className="bg-gradient-to-br from-primary-900 via-primary-800 to-primary-900 text-white py-12 mt-16 border-t-4 border-yellow-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid md:grid-cols-3 gap-8 mb-8">
           {/* About Section */}

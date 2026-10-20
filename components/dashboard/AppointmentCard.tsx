@@ -1,18 +1,19 @@
 'use client';
 
-import { useState } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  Plus, 
-  CheckCircle, 
-  XCircle, 
-  Info, 
-  MapPin, 
-  Navigation 
+import { useState, useEffect } from 'react';
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  Plus,
+  CheckCircle,
+  XCircle,
+  Info,
+  MapPin,
+  Navigation
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { HUBS } from '@/utils/hubMatching';
+import mapboxgl from 'mapbox-gl';
 
 interface Appointment {
   _id: string;
@@ -22,6 +23,7 @@ interface Appointment {
   notes: string;
   intakeType: string;
   hubName?: string;
+  hubId?: string;
 }
 
 interface User {
@@ -78,6 +80,50 @@ export default function AppointmentCard({
   map,
   scheduleForm
 }: AppointmentCardProps) {
+  const [hubName, setHubName] = useState<string>('');
+  const [hubLocation, setHubLocation] = useState<any>(null);
+  const [publicTransitDirections, setPublicTransitDirections] = useState<string>('');
+  const [mapInitialized, setMapInitialized] = useState(false);
+
+  // Initialize map when appointment changes
+  useEffect(() => {
+    if (!appointment || (!appointment.hubId && !appointment.hubName)) return;
+
+    // Find hub from HUBS list by name
+    const hub = HUBS.find(h => h.name === (appointment.hubName || scheduleForm?.selectedHub));
+
+    if (hub) {
+      setHubName(hub.name);
+      setHubLocation(hub);
+      setPublicTransitDirections(hub.publicTransitDirections || '');
+
+      // Initialize Mapbox map
+      const mapContainer = document.getElementById('appointment-map');
+      if (mapContainer && !mapInitialized) {
+        try {
+          if (mapboxgl.accessToken) {
+            const mapInstance = new mapboxgl.Map({
+              container: mapContainer,
+              style: 'mapbox://styles/mapbox/streets-v12',
+              center: [hub.longitude, hub.latitude],
+              zoom: 13,
+            });
+
+            // Add marker for hub
+            new mapboxgl.Marker({ color: '#3B82F6' })
+              .setLngLat([hub.longitude, hub.latitude])
+              .setPopup(new mapboxgl.Popup().setHTML(`<strong>${hub.name}</strong><br/>${hub.address}`))
+              .addTo(mapInstance);
+
+            setMapInitialized(true);
+          }
+        } catch (err) {
+          console.warn('Map initialization error:', err);
+        }
+      }
+    }
+  }, [appointment, mapInitialized]);
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'confirmed':
@@ -273,6 +319,19 @@ export default function AppointmentCard({
                 </div>
               )}
 
+              {/* Public Transit Directions */}
+              {appointment && publicTransitDirections && (
+                <div className="mt-6 pt-4 border-t border-gray-200">
+                  <div className="flex items-center mb-3">
+                    <MapPin className="h-5 w-5 text-green-600 mr-2" />
+                    <h4 className="text-lg font-medium text-gray-900">Public Transit Directions</h4>
+                  </div>
+                  <div className="bg-green-50 rounded-lg p-4 border border-green-200">
+                    <p className="text-gray-800 whitespace-pre-wrap">{publicTransitDirections}</p>
+                  </div>
+                </div>
+              )}
+
               {/* Map Section */}
               {appointment && (
                 <div className="mt-6 pt-4 border-t border-gray-200">
@@ -283,7 +342,7 @@ export default function AppointmentCard({
                   <div className="bg-gray-100 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm text-gray-600">
-                        Your appointment is scheduled at: <strong>{scheduleForm.selectedHub || 'Selected Learning Center'}</strong>
+                        Your appointment is scheduled at: <strong>{hubName || user?.closestHub?.name || 'Selected Learning Center'}</strong>
                       </p>
                       {(() => {
                         // Use the user's closestHub or fall back to a default hub

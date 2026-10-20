@@ -95,12 +95,12 @@ export default function StatisticsSection({
         return (
           <div
             key={index}
-            className={`text-center p-6 rounded-xl bg-white/60 backdrop-blur-sm border border-primary-100 hover:border-primary-300 hover:shadow-lg transform hover:-translate-y-1 transition-all duration-300 ${
+            className={`text-center rounded-xl border border-primary-100/90 bg-white/85 p-6 shadow-d79-card backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-primary-300 hover:shadow-lg border-l-4 border-l-yellow-500 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
             }`}
             style={{ transitionDelay: `${index * 100}ms` }}
           >
-            <div className="text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-600 via-primary-500 to-yellow-600 mb-2">
+            <div className="text-4xl lg:text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 mb-2">
               {displayValue}
             </div>
             <div className="text-gray-600 font-medium">{stat.label}</div>
