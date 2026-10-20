@@ -15,6 +15,8 @@ export interface IAppointment extends mongoose.Document {
   timePreference?: 'Morning' | 'Evening' | 'Saturday';
   confirmationToken?: string;
   preferredLanguage?: string;
+  checkedInAt?: Date;
+  completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -65,6 +67,13 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
   adminNotes: {
     type: String,
     trim: true,
+  },
+  // Front-desk timestamps
+  checkedInAt: {
+    type: Date,
+  },
+  completedAt: {
+    type: Date,
   },
   intakeType: {
     type: String,

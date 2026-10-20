@@ -6,7 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   BarChart3, Users, Calendar, CalendarDays, Activity,
-  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History, Database, School, BookOpen
+  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History, Database, School, BookOpen, ClipboardCheck
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { HubFilterProvider } from '@/contexts/HubFilterContext';
@@ -64,6 +64,7 @@ export default function AdminDashboardLayout({
 
 
   const navigation = [
+    { name: 'Today', href: '/admin/dashboard/today', icon: ClipboardCheck, current: pathname === '/admin/dashboard/today' },
     { name: 'Analytics', href: '/admin/dashboard', icon: BarChart3, current: pathname === '/admin/dashboard' },
     { name: 'Users', href: '/admin/dashboard/users', icon: Users, current: pathname === '/admin/dashboard/users' },
     { name: 'Appointments', href: '/admin/dashboard/appointments', icon: Calendar, current: pathname === '/admin/dashboard/appointments' },
