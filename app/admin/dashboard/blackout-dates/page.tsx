@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Calendar, Plus, Trash2, Edit2, X, AlertCircle, CheckCircle, Loader } from 'lucide-react';
@@ -80,7 +82,7 @@ export default function BlackoutDatesPage() {
       }
     } catch (err) {
       setError('Failed to load blackout dates');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -165,7 +167,7 @@ export default function BlackoutDatesPage() {
       }
     } catch (err) {
       setError('An error occurred');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSaving(false);
     }
@@ -191,7 +193,7 @@ export default function BlackoutDatesPage() {
       }
     } catch (err) {
       setError('An error occurred');
-      console.error(err);
+      logger.error(err);
     } finally {
       setDeleting(false);
     }

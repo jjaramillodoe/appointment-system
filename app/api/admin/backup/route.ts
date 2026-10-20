@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     const backupId = `backup_${Date.now()}`;
     const backupTimestamp = new Date().toISOString();
     
-    console.log(`Backup initiated by admin ${decoded.email} at ${backupTimestamp}`);
+    logger.info('Backup initiated', { timestamp: backupTimestamp });
     
     // Simulate backup process time
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -54,7 +55,7 @@ export async function POST(request: NextRequest) {
       backup: backupInfo
     });
   } catch (error: any) {
-    console.error('Backup error:', error);
+    logger.error('Backup error:', error);
     return NextResponse.json(
       { error: 'Failed to create backup', details: error.message },
       { status: 500 }

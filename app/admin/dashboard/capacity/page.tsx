@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState } from 'react';
 import CapacityTab from '@/components/admin/CapacityTab';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +15,9 @@ export default function CapacityPage() {
   const loadSlotCapacities = async (hubName: string, date: string) => {
     try {
       // Get hub ID first
-      const hubsResponse = await fetch('/api/admin/hubs');
+      const hubsResponse = await fetch('/api/admin/hubs', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       const hubs = await hubsResponse.json();
       const hub = hubs.find((h: any) => h.name === hubName);
       
@@ -43,7 +47,7 @@ export default function CapacityPage() {
         }));
       }
     } catch (error) {
-      console.error('Error loading slot capacities:', error);
+      logger.error('Error loading slot capacities:', error);
     }
   };
 

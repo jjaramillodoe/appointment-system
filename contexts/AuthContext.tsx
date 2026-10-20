@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -29,6 +31,18 @@ interface User {
   isAdmin: boolean;
   isSuperAdmin?: boolean;
   assignedHub?: string | null;
+  profileCompleted?: boolean;
+  emergencyContact?: {
+    name?: string;
+    relationship?: string;
+    phone?: string;
+  };
+  homeAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+  };
 }
 
 interface AuthContextType {
@@ -103,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      logger.error('Auth check failed:', error);
       // Don't clear localStorage on network errors, just set loading to false
       setLoading(false);
     } finally {
@@ -123,8 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Login successful:', data);
-        
+
         // Set localStorage first
         localStorage.setItem('token', data.token);
         localStorage.setItem('user', JSON.stringify(data.user));
@@ -139,7 +152,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error(errorData.error || 'Login failed');
       }
     } catch (error) {
-      console.error('Login error:', error);
+      logger.error('Login error:', error);
       return false;
     }
   };
@@ -157,19 +170,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     checkAuth();
   }, []);
-
-  // Add debug logging
-  useEffect(() => {
-    console.log('AuthContext Debug:', {
-      user: user?.email,
-      isAuthenticated: !!user && !!token,
-      isAdmin: user?.isAdmin || false,
-      isSuperAdmin: user?.isSuperAdmin || false,
-      assignedHub: user?.assignedHub || null,
-      loading,
-      hasToken: !!token
-    });
-  }, [user, loading, token]);
 
   const value: AuthContextType = {
     user,

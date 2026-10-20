@@ -1,19 +1,36 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
-import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Check, X, ToggleLeft, ToggleRight, Building2 } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, RefreshCw, Check, X, ToggleLeft, ToggleRight, Building2, Pencil } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { useHubFilter } from '@/contexts/HubFilterContext';
+import { DAY_OFF_CATEGORIES, buildDayOffReason, splitDayOffReason } from '@/lib/dayOffReason';
+
+interface DayOffInfo {
+  isOff: boolean;
+  reason?: string;
+}
 
 interface DayOffStatus {
   [hubName: string]: {
-    [date: string]: boolean;
+    [date: string]: DayOffInfo;
   };
 }
 
@@ -24,6 +41,9 @@ export default function SchedulePage() {
   const [daysOff, setDaysOff] = useState<DayOffStatus>({});
   const [loading, setLoading] = useState(false);
   const [updateStatus, setUpdateStatus] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [reasonDialog, setReasonDialog] = useState<{ date: string; existingReason?: string } | null>(null);
+  const [reasonCategory, setReasonCategory] = useState<string>(DAY_OFF_CATEGORIES[0].value);
+  const [reasonDetails, setReasonDetails] = useState('');
 
   // Hub filter is now managed by HubFilterContext
 
@@ -50,7 +70,7 @@ export default function SchedulePage() {
       const hub = hubsData.find((h: any) => h.name === selectedHub);
       
       if (!hub) {
-        console.error('Hub not found:', selectedHub);
+        logger.error('Hub not found:', selectedHub);
         return;
       }
 
@@ -64,18 +84,21 @@ export default function SchedulePage() {
       }
 
       // Check availability for each day
-      const dayOffData: { [date: string]: boolean } = {};
+      const dayOffData: { [date: string]: DayOffInfo } = {};
       
       for (const date of weekDates) {
         try {
           const response = await fetch(`/api/availability?hubId=${hub._id}&date=${date}`);
           if (response.ok) {
             const data = await response.json();
-            dayOffData[date] = data.data?.isDayOff || false;
+            dayOffData[date] = {
+              isOff: data.data?.isDayOff || false,
+              reason: data.data?.dayOffReason || '',
+            };
           }
         } catch (error) {
-          console.error(`Error checking day off status for ${date}:`, error);
-          dayOffData[date] = false;
+          logger.error(`Error checking day off status for ${date}:`, error);
+          dayOffData[date] = { isOff: false };
         }
       }
 
@@ -84,7 +107,7 @@ export default function SchedulePage() {
         [selectedHub]: dayOffData
       }));
     } catch (error) {
-      console.error('Error loading day off status:', error);
+      logger.error('Error loading day off status:', error);
       setUpdateStatus({
         message: 'Failed to load schedule data',
         type: 'error'
@@ -95,14 +118,20 @@ export default function SchedulePage() {
     }
   };
 
-  const toggleDayOff = async (date: string) => {
+  const openReasonDialog = (date: string, existingReason?: string) => {
+    const parsed = splitDayOffReason(existingReason);
+    setReasonCategory(parsed.category);
+    setReasonDetails(parsed.details);
+    setReasonDialog({ date, existingReason });
+  };
+
+  const updateDay = async (date: string, action: 'markDayOff' | 'markDayOpen', reason?: string) => {
     if (!selectedHub || selectedHub === 'all') return;
 
     setLoading(true);
     setUpdateStatus({ message: 'Updating...', type: 'info' });
 
     try {
-      // Get hub ID
       const hubsResponse = await fetch('/api/admin/hubs', {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -116,18 +145,17 @@ export default function SchedulePage() {
         throw new Error('Hub not found');
       }
 
-      const isCurrentlyOff = daysOff[selectedHub]?.[date] || false;
-      const action = isCurrentlyOff ? 'markDayOpen' : 'markDayOff';
-
       const response = await fetch('/api/availability', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          action: action,
+          action,
           hubId: hub._id,
-          date: date
+          date,
+          reason,
         })
       });
 
@@ -136,21 +164,24 @@ export default function SchedulePage() {
         throw new Error(error.error || `Failed to ${action}`);
       }
 
-      // Update local state
+      const isNowOff = action === 'markDayOff';
       setDaysOff(prev => ({
         ...prev,
         [selectedHub]: {
           ...prev[selectedHub],
-          [date]: !isCurrentlyOff
+          [date]: {
+            isOff: isNowOff,
+            reason: isNowOff ? reason : '',
+          }
         }
       }));
 
       setUpdateStatus({
-        message: isCurrentlyOff ? 'Day marked as open!' : 'Day marked as off!',
+        message: isNowOff ? 'Day marked as off!' : 'Day marked as open!',
         type: 'success'
       });
     } catch (error: any) {
-      console.error('Error toggling day off:', error);
+      logger.error('Error updating day off:', error);
       setUpdateStatus({
         message: `Error: ${error.message}`,
         type: 'error'
@@ -159,6 +190,34 @@ export default function SchedulePage() {
       setLoading(false);
       setTimeout(() => setUpdateStatus(null), 3000);
     }
+  };
+
+  const toggleDayOff = async (date: string) => {
+    if (!selectedHub || selectedHub === 'all') return;
+
+    const isCurrentlyOff = daysOff[selectedHub]?.[date]?.isOff || false;
+    if (isCurrentlyOff) {
+      await updateDay(date, 'markDayOpen');
+      return;
+    }
+
+    openReasonDialog(date);
+  };
+
+  const saveDayOffReason = async () => {
+    if (!reasonDialog) return;
+    if (reasonCategory === 'Other' && !reasonDetails.trim()) {
+      setUpdateStatus({
+        message: 'Please add a short description for this closed day.',
+        type: 'error',
+      });
+      setTimeout(() => setUpdateStatus(null), 3000);
+      return;
+    }
+
+    const reason = buildDayOffReason(reasonCategory, reasonDetails);
+    setReasonDialog(null);
+    await updateDay(reasonDialog.date, 'markDayOff', reason);
   };
 
   const navigateWeek = (direction: 'prev' | 'next') => {
@@ -207,7 +266,7 @@ export default function SchedulePage() {
             </div>
             <Button
               onClick={loadDayOffStatus}
-              disabled={loading || !selectedHub}
+              disabled={loading || !selectedHub || selectedHub === 'all'}
               variant="outline"
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
@@ -250,7 +309,7 @@ export default function SchedulePage() {
       </Card>
 
       {/* Schedule Calendar */}
-      {selectedHub && (
+      {selectedHub && selectedHub !== 'all' && (
         <Card>
           <CardHeader>
             {/* Week Navigation */}
@@ -284,7 +343,9 @@ export default function SchedulePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4">
               {weekDates.map((date) => {
                 const dateStr = format(date, 'yyyy-MM-dd');
-                const isOff = daysOff[selectedHub]?.[dateStr] || false;
+                const dayInfo = daysOff[selectedHub]?.[dateStr];
+                const isOff = dayInfo?.isOff || false;
+                const reason = dayInfo?.reason;
                 const isToday = format(date, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
                 
                 return (
@@ -308,7 +369,7 @@ export default function SchedulePage() {
                       </div>
 
                       {/* Status Indicator */}
-                      <div className="text-center mb-4">
+                      <div className="text-center mb-3">
                         <Badge 
                           variant={isOff ? 'destructive' : 'default'}
                           className="flex items-center justify-center gap-1 w-full"
@@ -327,8 +388,14 @@ export default function SchedulePage() {
                         </Badge>
                       </div>
 
+                      {isOff && reason && (
+                        <p className="mb-3 text-center text-xs leading-snug text-red-700" title={reason}>
+                          {reason}
+                        </p>
+                      )}
+
                       {/* Toggle Button */}
-                      <div className="text-center">
+                      <div className="space-y-2 text-center">
                         <Button
                           onClick={() => toggleDayOff(dateStr)}
                           disabled={loading}
@@ -348,6 +415,18 @@ export default function SchedulePage() {
                             </>
                           )}
                         </Button>
+                        {isOff && (
+                          <Button
+                            onClick={() => openReasonDialog(dateStr, reason)}
+                            disabled={loading}
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-1" />
+                            Edit reason
+                          </Button>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
@@ -376,15 +455,71 @@ export default function SchedulePage() {
         </Card>
       )}
 
-      {!selectedHub && (
+      {(!selectedHub || selectedHub === 'all') && (
         <Card>
           <CardContent className="text-center py-12">
             <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
             <CardTitle className="text-lg mb-2">Select a Learning Center</CardTitle>
-            <CardDescription>Choose a hub from the dropdown above to manage its schedule.</CardDescription>
+            <CardDescription>Choose a specific hub from the top filter to manage its schedule and closed-day reasons.</CardDescription>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!reasonDialog} onOpenChange={(open) => { if (!open) setReasonDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {reasonDialog?.existingReason ? 'Update closed-day reason' : 'Mark this day off'}
+            </DialogTitle>
+            <DialogDescription>
+              Students will see this reason instead of a missing day. Use a short note like a holiday or staff training.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="day-off-category">Reason</Label>
+              <select
+                id="day-off-category"
+                value={reasonCategory}
+                onChange={(event) => setReasonCategory(event.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {DAY_OFF_CATEGORIES.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="day-off-details">
+                {reasonCategory === 'Other' ? 'Description (required)' : 'Details (optional)'}
+              </Label>
+              <Textarea
+                id="day-off-details"
+                value={reasonDetails}
+                onChange={(event) => setReasonDetails(event.target.value)}
+                maxLength={200}
+                placeholder={
+                  reasonCategory === 'Holiday'
+                    ? 'e.g. Labor Day'
+                    : reasonCategory === 'Other'
+                    ? 'Why is this day closed?'
+                    : 'Add a short note students will see'
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReasonDialog(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveDayOffReason} disabled={loading}>
+              Save closed day
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 } 

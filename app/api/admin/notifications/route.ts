@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin, isSuperAdmin, getHubFilter } from '@/lib/adminPermissions';
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
       stats
     });
   } catch (error: any) {
-    console.error('Get notifications error:', error);
+    logger.error('Get notifications error:', error);
     return NextResponse.json(
       { error: 'Failed to fetch notifications', details: error.message },
       { status: 500 }
@@ -161,7 +162,7 @@ export async function POST(request: NextRequest) {
       notification
     });
   } catch (error: any) {
-    console.error('Update notification error:', error);
+    logger.error('Update notification error:', error);
     return NextResponse.json(
       { error: 'Failed to update notification', details: error.message },
       { status: 500 }
@@ -210,7 +211,7 @@ export async function PUT(request: NextRequest) {
       { status: 400 }
     );
   } catch (error: any) {
-    console.error('Mark all read error:', error);
+    logger.error('Mark all read error:', error);
     return NextResponse.json(
       { error: 'Failed to mark notifications as read', details: error.message },
       { status: 500 }

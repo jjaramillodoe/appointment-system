@@ -37,6 +37,7 @@ const notificationSchema = new mongoose.Schema<INotification>({
 // Index for efficient queries
 notificationSchema.index({ read: 1, createdAt: -1 });
 notificationSchema.index({ type: 1, hubName: 1 });
+notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
 
 if (mongoose.models.Notification) {
   delete mongoose.models.Notification;

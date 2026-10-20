@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
     // 4. Clear browser caches (via headers)
     
     // For now, we'll simulate cache clearing
-    console.log(`Cache clear initiated by admin ${adminEmail} at ${new Date().toISOString()}`);
+    logger.info('Cache clear initiated');
     
     // Simulate cache clearing process time
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
       cache: cacheInfo
     });
   } catch (error: any) {
-    console.error('Cache clear error:', error);
+    logger.error('Cache clear error:', error);
     return NextResponse.json(
       { error: 'Failed to clear cache', details: error.message },
       { status: 500 }

@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import Appointment from '@/models/Appointment';
@@ -129,9 +130,9 @@ export async function GET(request: NextRequest) {
     const appointmentTimes = [
       '9:00 AM', '10:00 AM', '11:00 AM', '2:00 PM', '3:00 PM', '4:00 PM'
     ];
-    const classInterests = ['ESL', 'BE/HSE'];
-    const timePreferences = ['Morning', 'Evening', 'Saturday'];
-    const statuses = ['confirmed', 'pending', 'cancelled', 'completed'];
+    const classInterests = ['ESL', 'BE/HSE'] as const;
+    const timePreferences = ['Morning', 'Evening', 'Saturday'] as const;
+    const statuses = ['confirmed', 'pending', 'cancelled', 'completed'] as const;
 
     let appointmentIndex = 0;
     for (let i = 0; i < 15; i++) {
@@ -176,7 +177,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Seed demo error:', error);
+    logger.error('Seed demo error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to seed demo data' },
       { status: 500 }

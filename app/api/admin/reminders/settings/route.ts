@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ settings });
   } catch (error: any) {
-    console.error('Get reminder settings error:', error);
+    logger.error('Get reminder settings error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to get settings' },
       { status: 500 }
@@ -100,7 +101,7 @@ export async function PUT(request: NextRequest) {
       settings,
     });
   } catch (error: any) {
-    console.error('Update reminder settings error:', error);
+    logger.error('Update reminder settings error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to update settings' },
       { status: 500 }

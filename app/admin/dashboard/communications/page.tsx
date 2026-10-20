@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mail, Plus, Send, Loader, AlertCircle, CheckCircle, Eye, X } from 'lucide-react';
@@ -8,6 +10,7 @@ interface Template {
   _id: string;
   name: string;
   subject: string;
+  body?: string;
   description?: string;
 }
 
@@ -24,7 +27,7 @@ interface BulkCommFormData {
 }
 
 export default function BulkCommunicationPage() {
-  const { token, isSuperAdmin } = useAuth();
+  const { token, isAdmin, isSuperAdmin } = useAuth();
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -62,9 +65,9 @@ export default function BulkCommunicationPage() {
   const hubs = ['Washington Heights', 'Upper West Side', 'Harlem', 'Midtown', 'Downtown'];
 
   useEffect(() => {
-    if (!isSuperAdmin) return;
+    if (!isAdmin) return;
     loadTemplates();
-  }, [token, isSuperAdmin]);
+  }, [token, isAdmin]);
 
   const loadTemplates = async () => {
     try {
@@ -79,7 +82,7 @@ export default function BulkCommunicationPage() {
       }
     } catch (err) {
       setError('Failed to load templates');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -92,7 +95,7 @@ export default function BulkCommunicationPage() {
         ...prev,
         templateId,
         subject: template.subject,
-        body: template.subject, // Would need full body from API
+        body: template.body || template.subject,
       }));
     }
   };
@@ -128,7 +131,7 @@ export default function BulkCommunicationPage() {
       }
     } catch (err) {
       setError('An error occurred');
-      console.error(err);
+      logger.error(err);
     }
   };
 
@@ -173,18 +176,18 @@ export default function BulkCommunicationPage() {
       }
     } catch (err) {
       setError('An error occurred');
-      console.error(err);
+      logger.error(err);
     } finally {
       setSending(false);
     }
   };
 
-  if (!isSuperAdmin) {
+  if (!isAdmin) {
     return (
       <div className="text-center py-12">
         <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-gray-900">Access Denied</h2>
-        <p className="text-gray-600">Only super admins can access this page</p>
+        <p className="text-gray-600">Admin access is required</p>
       </div>
     );
   }
@@ -196,13 +199,18 @@ export default function BulkCommunicationPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
             <Mail className="h-8 w-8 text-blue-600" />
-            Bulk Communications
+            {isSuperAdmin ? 'Bulk Communications' : 'Hub messages'}
           </h1>
-          <p className="text-gray-600 mt-1">Send emails to users based on specific criteria</p>
+          <p className="text-gray-600 mt-1">
+            {isSuperAdmin
+              ? 'Send emails to users based on specific criteria'
+              : 'Send a message to students at your assigned hub'}
+          </p>
         </div>
         <button
           onClick={() => setShowTemplateModal(true)}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          hidden={!isSuperAdmin}
         >
           <Plus className="h-5 w-5" />
           New Template

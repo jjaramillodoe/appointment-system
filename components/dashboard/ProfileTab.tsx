@@ -1,5 +1,7 @@
 'use client';
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { UserCircle, Edit, XCircle, Save } from 'lucide-react';
 import { format } from 'date-fns';
@@ -18,10 +20,10 @@ interface User {
   heardFrom: string;
   barriersToLearning: string[];
   homeAddress?: {
-    street: string;
-    city: string;
-    state: string;
-    zipCode: string;
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
   };
   address: {
     street: string;
@@ -36,9 +38,9 @@ interface User {
   schoolInterest?: string;
   programInterests?: string[];
   emergencyContact?: {
-    name: string;
-    relationship: string;
-    phone: string;
+    name?: string;
+    relationship?: string;
+    phone?: string;
   };
 }
 
@@ -155,7 +157,7 @@ export default function ProfileTab({ user, onProfileUpdate, showSuccess, showErr
         showError(errorData.error || 'Failed to update profile');
       }
     } catch (error) {
-      console.error('Profile update error:', error);
+      logger.error('Profile update error:', error);
       showError('Failed to update profile');
     } finally {
       setIsUpdatingProfile(false);

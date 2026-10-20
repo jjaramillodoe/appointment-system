@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyAdminToken, isAdmin, isSuperAdmin } from '@/lib/adminPermissions';
 
 export async function GET(request: NextRequest) {
@@ -17,14 +18,12 @@ export async function GET(request: NextRequest) {
     }
 
     const token = authHeader.substring(7);
-    console.log('Debug - Token:', token.substring(0, 30) + '...');
 
     const adminUser = await verifyAdminToken(token);
-    console.log('Debug - Verified User:', adminUser);
 
     if (!adminUser) {
       return NextResponse.json(
-        { error: 'Failed to verify token', token: token.substring(0, 30) + '...' },
+        { error: 'Failed to verify token' },
         { status: 401 }
       );
     }
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Debug error:', error);
+    logger.error('Debug error:', error);
     return NextResponse.json(
       { error: error.message },
       { status: 500 }

@@ -1,11 +1,10 @@
 'use client';
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format, addDays } from 'date-fns';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
-import { HUBS } from '@/utils/hubMatching';
 import { useToast } from '@/hooks/useToast';
 import { ToastContainer } from '@/components/Toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,17 +15,23 @@ import {
   TabNavigation,
   StatsCards,
   PersonalInfoCard,
+  AppointmentPrintCard,
   ProfileTab,
   AppointmentsTab,
   AppointmentCard,
   ScheduleAppointmentModal,
   AddressEditModal,
   ProfileCompletionBanner,
+  PendingProfileBanner,
   type TabType,
   type User,
   type Appointment,
   type ScheduleForm
 } from '@/components/dashboard';
+import { DASHBOARD_CONTENT_CLASS } from '@/components/dashboard/shell';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { APPOINTMENT_STATUS, isPendingProfile } from '@/lib/appointmentStatus';
+import { toAppointmentClock } from '@/lib/appointmentTime';
 
 type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
@@ -75,10 +80,19 @@ export default function DashboardPage() {
   const { user: authUser, token, isAuthenticated, loading: authLoading } = useAuth();
   const [user, setUser] = useState<User | null>(null);
   const [appointment, setAppointment] = useState<Appointment | null>(null);
+  const [appointmentHistory, setAppointmentHistory] = useState<Appointment[]>([]);
+  const [isRescheduling, setIsRescheduling] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   
   // Tab management
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+
+  useEffect(() => {
+    const tab = new URLSearchParams(window.location.search).get('tab');
+    if (tab === 'profile' || tab === 'appointments' || tab === 'dashboard') {
+      setActiveTab(tab);
+    }
+  }, []);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -141,8 +155,8 @@ export default function DashboardPage() {
   const [calendarValue, setCalendarValue] = useState<Value>(new Date());
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [isDayOff, setIsDayOff] = useState(false);
+  const [dayOffReason, setDayOffReason] = useState('');
   const [hubConfigs, setHubConfigs] = useState<any[]>([]);
-  const [map, setMap] = useState<mapboxgl.Map | null>(null);
   const [isEditingAddress, setIsEditingAddress] = useState(false);
   const [addressForm, setAddressForm] = useState({
     street: '',
@@ -151,10 +165,6 @@ export default function DashboardPage() {
     zipCode: ''
   });
   const [isUpdatingAddress, setIsUpdatingAddress] = useState(false);
-  const [isSendingSms, setIsSendingSms] = useState(false);
-  const [smsError, setSmsError] = useState('');
-  const [smsSuccess, setSmsSuccess] = useState(false);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [showConfirmationSuccess, setShowConfirmationSuccess] = useState(false);
 
@@ -182,7 +192,7 @@ export default function DashboardPage() {
       
       return timeStr;
     } catch (error) {
-      console.warn('Error formatting time:', time, error);
+      logger.warn('Error formatting time:', time, error);
       return 'Time not available';
     }
   };
@@ -206,7 +216,7 @@ export default function DashboardPage() {
       
       return `${hour.toString().padStart(2, '0')}:${minutes}`;
     } catch (error) {
-      console.warn('Error converting time to 24-hour format:', time12h, error);
+      logger.warn('Error converting time to 24-hour format:', time12h, error);
       return time12h;
     }
   };
@@ -217,41 +227,27 @@ export default function DashboardPage() {
     if (authLoading) return; // Wait for auth to load
 
     if (!token || !authUser) {
-      console.log('❌ No authentication found, redirecting to login');
       router.push('/login');
       return;
     }
 
-    console.log('👤 User loaded from AuthContext:', authUser.email);
     setUser(authUser);
 
-    // Fetch user's appointment
-    console.log('🔍 Fetching appointment with token:', token ? 'Present' : 'Missing');
     fetch('/api/appointments', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
     })
-      .then(response => {
-        console.log('📡 API Response status:', response.status);
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        console.log('✅ API Response data:', data);
-        if (data.appointment) {
-          console.log('📅 Appointment found:', data.appointment);
-          setAppointment(data.appointment);
-        } else {
-          console.log('📝 No appointment found for user');
-          setAppointment(null);
-        }
+        setAppointment(data.appointment || null);
+        setAppointmentHistory(data.history || []);
       })
       .catch(error => {
-        console.error('❌ Error fetching appointment:', error);
+        logger.error('❌ Error fetching appointment:', error);
         setAppointment(null);
       })
       .finally(() => {
-        console.log('🏁 Setting loading to false');
         setIsLoading(false);
       });
 
@@ -309,22 +305,25 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  // Fetch hub configs on mount - Updated to use new Hub API
+  // Student dashboard uses the public hubs list, not the admin API.
   useEffect(() => {
-    fetch('/api/admin/hubs')
+    fetch('/api/hubs')
       .then(res => res.json())
-      .then(hubs => {
-        // Convert hub data to match expected format
-        const hubConfigs = hubs.map((hub: any) => ({
+      .then(data => {
+        const hubs = Array.isArray(data) ? data : data.hubs;
+        if (!Array.isArray(hubs)) {
+          throw new Error(data.error || 'Failed to load hubs');
+        }
+
+        setHubConfigs(hubs.map((hub: any) => ({
           hubName: hub.name,
           _id: hub._id,
           defaultSlots: hub.defaultSlots || [],
-          daysOff: [], // Will be fetched from HubSchedule
-          customSlots: {} // Will be fetched from HubSchedule
-        }));
-        setHubConfigs(hubConfigs);
+          daysOff: [],
+          customSlots: {}
+        })));
       })
-      .catch(error => console.error('Error fetching hubs:', error));
+      .catch(error => logger.error('Error fetching hubs:', error));
   }, []);
 
   // Update available slots when hub or date changes - Updated to use optimized API
@@ -332,6 +331,7 @@ export default function DashboardPage() {
     if (!scheduleForm.selectedHub || !scheduleForm.appointmentDate) {
       setAvailableSlots([]);
       setIsDayOff(false);
+      setDayOffReason('');
       return;
     }
 
@@ -340,109 +340,66 @@ export default function DashboardPage() {
         // Find hub ID from hub name
         const selectedHubConfig = hubConfigs.find(cfg => cfg.hubName === scheduleForm.selectedHub);
         if (!selectedHubConfig?._id) {
-          console.warn('Hub ID not found for:', scheduleForm.selectedHub);
+          logger.warn('Hub ID not found for:', scheduleForm.selectedHub);
           return;
         }
 
         const response = await fetch(`/api/availability?hubId=${selectedHubConfig._id}&date=${scheduleForm.appointmentDate}`);
         if (response.ok) {
           const data = await response.json();
-          console.log('✅ Optimized availability data:', data);
-          
+
           if (data.success && data.data) {
             setIsDayOff(data.data.isDayOff);
+            setDayOffReason(data.data.dayOffReason || '');
             if (data.data.isDayOff) {
               setAvailableSlots([]);
             } else {
               // Convert slots to time strings and filter available ones
+              const currentClock = toAppointmentClock(scheduleForm.appointmentTime);
               const availableTimes = data.data.slots
-                .filter((slot: any) => slot.available > 0)
-                .map((slot: any) => slot.time);
+                .filter((slot: any) => (
+                  slot.available > 0
+                  || (isRescheduling && toAppointmentClock(slot.time) === currentClock)
+                ))
+                .map((slot: any) => toAppointmentClock(slot.time));
               setAvailableSlots(availableTimes);
             }
           }
         } else {
-          console.error('Failed to fetch optimized availability:', response.status);
+          logger.error('Failed to fetch optimized availability:', response.status);
         }
       } catch (error) {
-        console.error('Error fetching optimized availability:', error);
+        logger.error('Error fetching optimized availability:', error);
       }
     };
 
     fetchOptimizedAvailability();
-  }, [scheduleForm.selectedHub, scheduleForm.appointmentDate, hubConfigs]);
+  }, [scheduleForm.selectedHub, scheduleForm.appointmentDate, scheduleForm.appointmentTime, hubConfigs, isRescheduling]);
 
   // Update selectedHub when user data is loaded or when schedule form is opened
   useEffect(() => {
+    if (isRescheduling) return;
     if (user?.closestHub?.name && (!scheduleForm.selectedHub || showScheduleForm)) {
       setScheduleForm(prev => ({
         ...prev,
         selectedHub: user.closestHub!.name
       }));
     }
-  }, [user, scheduleForm.selectedHub, showScheduleForm]);
+  }, [user, scheduleForm.selectedHub, showScheduleForm, isRescheduling]);
 
-  // Initialize map when appointment is available
-  useEffect(() => {
-    if (!appointment) return;
-
-    // Set your Mapbox access token here
-    // You'll need to get a free token from https://account.mapbox.com/
-    mapboxgl.accessToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || 'pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example';
-
-    if (!mapboxgl.accessToken || mapboxgl.accessToken.includes('example')) {
-      console.warn('Mapbox token not configured properly');
-      return;
-    }
-
-    // Find the hub for this appointment
-    const hubName = user?.closestHub?.name || HUBS[0].name;
-    const selectedHub = HUBS.find(hub => hub.name === hubName);
-    
-    if (!selectedHub) {
-      console.warn('Hub not found for map initialization');
-      return;
-    }
-
-    // Wait for the map container to be in the DOM
-    const mapContainer = document.getElementById('appointment-map');
-    if (!mapContainer) {
-      console.warn('Map container not found');
-      return;
-    }
-
-    try {
-      // Initialize map
-      const mapInstance = new mapboxgl.Map({
-        container: 'appointment-map',
-        style: 'mapbox://styles/mapbox/streets-v11',
-        center: [selectedHub.longitude, selectedHub.latitude],
-        zoom: 14
+  const openReschedule = () => {
+    if (appointment) {
+      const d = parseToLocalDate(appointment.appointmentDate);
+      setScheduleForm({
+        appointmentDate: d ? format(d, 'yyyy-MM-dd') : '',
+        appointmentTime: appointment.appointmentTime || '',
+        notes: appointment.notes || '',
+        selectedHub: appointment.hubName || user?.closestHub?.name || '',
       });
-
-      // Add marker for the hub
-      new mapboxgl.Marker({ color: '#3B82F6' })
-        .setLngLat([selectedHub.longitude, selectedHub.latitude])
-        .setPopup(new mapboxgl.Popup().setHTML(`
-          <div class="p-2">
-            <h3 class="font-semibold">${selectedHub.name}</h3>
-            <p class="text-sm text-gray-600">${selectedHub.address}</p>
-          </div>
-        `))
-        .addTo(mapInstance);
-
-      setMap(mapInstance);
-
-      // Cleanup function
-      return () => {
-        if (mapInstance) {
-          mapInstance.remove();
-        }
-      };
-    } catch (error) {
-      console.error('Error initializing map:', error);
     }
-  }, [appointment, user]);
+    setIsRescheduling(true);
+    setShowScheduleForm(true);
+  };
 
   // Event Handlers
   const handleScheduleAppointment = async (e: React.FormEvent) => {
@@ -450,14 +407,8 @@ export default function DashboardPage() {
     setIsScheduling(true);
     setError('');
 
-    console.log('🚀 Starting appointment booking process...');
-    console.log('📋 Schedule form data:', scheduleForm);
-
     const token = localStorage.getItem('token');
     const userData = localStorage.getItem('user');
-
-    console.log('👤 User data from localStorage:', userData ? 'Present' : 'Missing');
-    console.log('🔐 Token from localStorage:', token ? 'Present' : 'Missing');
 
     if (!token || !userData) {
       setError('Authentication required');
@@ -467,19 +418,12 @@ export default function DashboardPage() {
 
     try {
       const parsedUser = JSON.parse(userData);
-      console.log('🧑 Parsed user:', { id: parsedUser.id || parsedUser._id, email: parsedUser.email, name: parsedUser.name || `${parsedUser.firstName} ${parsedUser.lastName}` });
 
-      // Find hub ID
-      console.log('🏢 Looking for hub:', scheduleForm.selectedHub);
-      console.log('🏢 Available hubs:', hubConfigs.map(h => h.hubName));
-      
       const selectedHubConfig = hubConfigs.find(cfg => cfg.hubName === scheduleForm.selectedHub);
       
       if (!selectedHubConfig?._id) {
         throw new Error('Selected hub not found');
       }
-
-      console.log('🏢 Selected hub config:', selectedHubConfig);
 
       // Convert 12-hour time to 24-hour format for backend
       const time24h = convertTo24Hour(scheduleForm.appointmentTime);
@@ -494,8 +438,6 @@ export default function DashboardPage() {
         intakeType: 'adult-education'
       };
 
-      console.log('📤 Sending booking request with data:', bookingData);
-
       const response = await fetch('/api/availability', {
         method: 'POST',
         headers: {
@@ -505,12 +447,25 @@ export default function DashboardPage() {
         body: JSON.stringify(bookingData),
       });
 
-      console.log('📡 Booking response status:', response.status);
-
       const data = await response.json();
-      console.log('📋 Booking response data:', data);
 
       if (!response.ok) {
+        if (String(data.error || '').toLowerCase().includes('fully booked') || response.status === 409) {
+          const join = window.confirm('That window is full. Join the waitlist for this site?');
+          if (join) {
+            await fetch('/api/waitlist', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({ hubId: selectedHubConfig._id }),
+            });
+            showSuccess('You are on the waitlist. We will email you if a seat opens.');
+            setShowScheduleForm(false);
+            return;
+          }
+        }
         throw new Error(data.error || 'Failed to schedule appointment');
       }
 
@@ -518,14 +473,12 @@ export default function DashboardPage() {
         throw new Error(data.error || 'Booking failed');
       }
 
-      console.log('✅ Booking successful, updating local state...');
-
       // Update local appointment state with proper typing
       const newAppointment: Appointment = {
         _id: data.appointmentId || 'temp-id',
         appointmentDate: scheduleForm.appointmentDate,
-        appointmentTime: scheduleForm.appointmentTime, // Keep original format for display
-        status: 'confirmed' as const,
+        appointmentTime: scheduleForm.appointmentTime,
+        status: (data.status || APPOINTMENT_STATUS.CONFIRMED) as Appointment['status'],
         notes: scheduleForm.notes,
         intakeType: 'adult-education',
         hubName: scheduleForm.selectedHub
@@ -537,11 +490,10 @@ export default function DashboardPage() {
       
       // Show success message
       setError('');
-      console.log('✅ Appointment scheduled successfully using optimized API');
       showSuccess('Appointment scheduled successfully!');
 
     } catch (err: any) {
-      console.error('❌ Booking error:', err);
+      logger.error('❌ Booking error:', err);
       setError(err.message || 'Failed to schedule appointment');
       showError(err.message || 'Failed to schedule appointment');
     } finally {
@@ -576,8 +528,7 @@ export default function DashboardPage() {
       }
 
       setAppointment(null);
-      console.log('✅ Appointment cancelled and permanently deleted from system');
-      
+
       // Show success toast
       setError('');
       showSuccess('Your appointment has been successfully cancelled and removed from your dashboard.', 6000);
@@ -595,26 +546,68 @@ export default function DashboardPage() {
     setError('');
 
     try {
-      // For the optimized system, we'll just update the local state
-      // In a full implementation, you'd call an API to update the appointment status
+      const authToken = token || localStorage.getItem('token');
+      const response = await fetch('/api/appointments/confirm', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to confirm appointment');
       if (appointment) {
-        const updatedAppointment: Appointment = {
-          ...appointment,
-          status: 'confirmed' as 'confirmed'
-        };
-        setAppointment(updatedAppointment);
-        setError('');
-        setShowConfirmationSuccess(true);
-        // Hide success message after 5 seconds
-        setTimeout(() => setShowConfirmationSuccess(false), 5000);
-        console.log('✅ Appointment confirmed successfully');
-        showSuccess('Appointment confirmed successfully!');
+        setAppointment({ ...appointment, status: 'confirmed' });
       }
+      setShowConfirmationSuccess(true);
+      setTimeout(() => setShowConfirmationSuccess(false), 5000);
+      showSuccess('Appointment confirmed successfully!');
     } catch (err: any) {
       setError(err.message || 'Failed to confirm appointment');
       showError(err.message || 'Failed to confirm appointment');
     } finally {
       setIsConfirming(false);
+    }
+  };
+
+  const handleRescheduleAppointment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!isRescheduling) {
+      await handleScheduleAppointment(event);
+      return;
+    }
+
+    setIsScheduling(true);
+    setError('');
+    try {
+      const selectedHubConfig = hubConfigs.find((cfg) => cfg.hubName === scheduleForm.selectedHub);
+      if (!selectedHubConfig?._id) throw new Error('Selected hub not found');
+      const authToken = token || localStorage.getItem('token');
+      const response = await fetch('/api/appointments/reschedule', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({
+          hubId: selectedHubConfig._id,
+          date: scheduleForm.appointmentDate,
+          time: scheduleForm.appointmentTime,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to reschedule');
+      setAppointment({
+        ...(appointment as Appointment),
+        appointmentDate: scheduleForm.appointmentDate,
+        appointmentTime: scheduleForm.appointmentTime,
+        hubName: scheduleForm.selectedHub,
+      });
+      setShowScheduleForm(false);
+      setIsRescheduling(false);
+      showSuccess('Appointment rescheduled.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to reschedule');
+      showError(err.message || 'Failed to reschedule');
+    } finally {
+      setIsScheduling(false);
     }
   };
 
@@ -661,9 +654,21 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSaveProfile = (updatedUser: any) => {
+  const handleSaveProfile = async (updatedUser: any) => {
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
+
+    if (token) {
+      try {
+        const response = await fetch('/api/appointments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await response.json();
+        setAppointment(data.appointment || null);
+      } catch (error) {
+        logger.error('Error refreshing appointment after profile update:', error);
+      }
+    }
   };
 
   const handleCancelProfileEdit = () => {
@@ -709,48 +714,6 @@ export default function DashboardPage() {
     }
   };
 
-  const handleSendSms = async () => {
-    if (!appointment) return;
-
-    setIsSendingSms(true);
-    setSmsError('');
-    setSmsSuccess(false);
-
-    const token = localStorage.getItem('token');
-
-    try {
-      const response = await fetch('/api/send-appointment-sms', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          appointmentId: appointment._id,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSmsSuccess(true);
-        if (data.qrCodeUrl) {
-          setQrCodeUrl(data.qrCodeUrl);
-        }
-        showSuccess('SMS sent successfully! Check your phone.');
-      } else {
-        setSmsError(data.error || 'Failed to send SMS');
-        showError(data.error || 'Failed to send SMS');
-      }
-    } catch (error) {
-      console.error('SMS error:', error);
-      setSmsError('Failed to send SMS');
-      showError('Failed to send SMS');
-    } finally {
-      setIsSendingSms(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -781,52 +744,25 @@ export default function DashboardPage() {
       <TabNavigation activeTab={activeTab} setActiveTab={setActiveTab} />
 
       {/* Main Content */}
-      <main className="max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className={`${DASHBOARD_CONTENT_CLASS} py-8`}>
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
-            {/* Profile Completion Banner */}
-            {user && (() => {
-              // Match the same field counting as ProfileCompletionDashboard
-              const requiredFields = [
-                user.firstName,
-                user.lastName,
-                user.email,
-                user.phone,
-                user.preferredLanguage,
-              ];
-              const optionalFields = [
-                // Personal Details
-                user.dateOfBirth,
-                user.sex,
-                user.heardFrom,
-                user.additionalLanguages?.length ? user.additionalLanguages : null,
-                // Education & Employment
-                user.educationLevel,
-                user.employmentStatus,
-                user.employerName,
-                user.jobTitle,
-                user.schoolInterest,
-                user.programInterests?.length ? user.programInterests : null,
-                user.barriersToLearning?.length ? user.barriersToLearning : null,
-                // Emergency Contact
-                user.emergencyContact?.name,
-                user.emergencyContact?.relationship,
-                user.emergencyContact?.phone,
-                // Address Information
-                user.address?.street,
-                user.homeAddress?.street,
-              ];
-              const totalFields = 5 + 16; // 5 required + 16 optional
-              const completedFields = requiredFields.filter(f => f).length + optionalFields.filter(f => f).length;
-              const completionPercentage = Math.round((completedFields / totalFields) * 100);
+            {isPendingProfile(appointment?.status) && (
+              <PendingProfileBanner
+                appointmentDate={appointment?.appointmentDate}
+                appointmentTime={appointment?.appointmentTime}
+                parseToLocalDate={parseToLocalDate}
+                formatTime={formatTime}
+                onCompleteProfile={() => setActiveTab('profile')}
+              />
+            )}
 
-              return (
-                <ProfileCompletionBanner
-                  completionPercentage={completionPercentage}
-                  onNavigateToProfile={() => setActiveTab('profile')}
-                />
-              );
-            })()}
+            {user && (
+              <ProfileCompletionBanner
+                completionPercentage={calculateProfileCompletion(user).percentage}
+                onNavigateToProfile={() => setActiveTab('profile')}
+              />
+            )}
 
             {/* Stats Cards */}
             <StatsCards
@@ -839,11 +775,19 @@ export default function DashboardPage() {
             {/* Main Dashboard Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Left Column - Personal Info */}
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 space-y-8">
                 <PersonalInfoCard 
                   user={user} 
                   onEditAddress={() => setIsEditingAddress(true)} 
                 />
+                {appointment && (
+                  <AppointmentPrintCard
+                    appointment={appointment}
+                    user={user}
+                    parseToLocalDate={parseToLocalDate}
+                    formatTime={formatTime}
+                  />
+                )}
               </div>
 
               {/* Right Column - Appointment */}
@@ -853,19 +797,15 @@ export default function DashboardPage() {
                   user={user}
                   onScheduleClick={() => setShowScheduleForm(true)}
                   onConfirm={handleConfirmAppointment}
+                  onCompleteProfile={() => setActiveTab('profile')}
                   onCancel={handleCancelAppointment}
+                  onReschedule={openReschedule}
                   isConfirming={isConfirming}
                   isCancelling={isCancelling}
                   error={error}
                   showConfirmationSuccess={showConfirmationSuccess}
                   parseToLocalDate={parseToLocalDate}
                   formatTime={formatTime}
-                  isSendingSms={isSendingSms}
-                  onSendSms={handleSendSms}
-                  smsError={smsError}
-                  smsSuccess={smsSuccess}
-                  qrCodeUrl={qrCodeUrl}
-                  map={map}
                   scheduleForm={scheduleForm}
                 />
               </div>
@@ -885,7 +825,9 @@ export default function DashboardPage() {
         {activeTab === 'appointments' && (
           <AppointmentsTab
             appointment={appointment}
+            history={appointmentHistory}
             onScheduleClick={() => setShowScheduleForm(true)}
+            onReschedule={openReschedule}
             onConfirm={handleConfirmAppointment}
             onCancel={handleCancelAppointment}
             isConfirming={isConfirming}
@@ -896,10 +838,14 @@ export default function DashboardPage() {
             showScheduleForm={showScheduleForm}
             scheduleForm={scheduleForm}
             setScheduleForm={setScheduleForm}
-            onSubmitSchedule={handleScheduleAppointment}
-            onCloseSchedule={() => setShowScheduleForm(false)}
+            onSubmitSchedule={handleRescheduleAppointment}
+            onCloseSchedule={() => {
+              setShowScheduleForm(false);
+              setIsRescheduling(false);
+            }}
             isScheduling={isScheduling}
             isDayOff={isDayOff}
+            dayOffReason={dayOffReason}
             availableSlots={availableSlots}
             hubConfigs={hubConfigs}
             user={user}
@@ -910,16 +856,21 @@ export default function DashboardPage() {
       {/* Modals */}
       <ScheduleAppointmentModal
         isOpen={showScheduleForm}
-        onClose={() => setShowScheduleForm(false)}
+        onClose={() => {
+          setShowScheduleForm(false);
+          setIsRescheduling(false);
+        }}
         scheduleForm={scheduleForm}
         setScheduleForm={setScheduleForm}
-        onSubmit={handleScheduleAppointment}
+        onSubmit={handleRescheduleAppointment}
         isScheduling={isScheduling}
         error={error}
         isDayOff={isDayOff}
+        dayOffReason={dayOffReason}
         availableSlots={availableSlots}
         user={user}
         hubConfigs={hubConfigs}
+        isRescheduling={isRescheduling}
       />
 
       <AddressEditModal

@@ -1,10 +1,12 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useRouter, usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   BarChart3, Users, Calendar, CalendarDays, Activity,
-  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History
+  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History, Database, School, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { HubFilterProvider } from '@/contexts/HubFilterContext';
@@ -35,21 +37,21 @@ export default function AdminDashboardLayout({
           });
           if (response.ok) {
             const hubs = await response.json();
-            // Match hub by _id (MongoDB ObjectId as string)
-            const hub = hubs.find((h: any) => {
-              // Handle both string and ObjectId formats
-              const hubId = h._id?.toString() || h._id;
-              const assignedId = assignedHub.toString();
-              return hubId === assignedId;
-            });
+            const assignedId = assignedHub.toString();
+            const hub = Array.isArray(hubs)
+              ? hubs.find((h: any) => {
+                  const hubId = h._id?.toString() || h._id;
+                  return hubId === assignedId;
+                }) || (hubs.length === 1 ? hubs[0] : null)
+              : null;
             if (hub) {
               setHubName(hub.name);
             } else {
-              console.warn('Hub not found for ID:', assignedHub);
+              logger.warn('Hub not found for ID:', assignedHub);
             }
           }
         } catch (error) {
-          console.error('Error fetching hub name:', error);
+          logger.error('Error fetching hub name:', error);
         }
       } else {
         setHubName(null);
@@ -65,15 +67,16 @@ export default function AdminDashboardLayout({
     { name: 'Analytics', href: '/admin/dashboard', icon: BarChart3, current: pathname === '/admin/dashboard' },
     { name: 'Users', href: '/admin/dashboard/users', icon: Users, current: pathname === '/admin/dashboard/users' },
     { name: 'Appointments', href: '/admin/dashboard/appointments', icon: Calendar, current: pathname === '/admin/dashboard/appointments' },
+    { name: 'Schools', href: '/admin/dashboard/schools', icon: School, current: pathname === '/admin/dashboard/schools' },
     { name: 'Hubs', href: '/admin/dashboard/hubs', icon: MapPin, current: pathname === '/admin/dashboard/hubs' },
+    { name: 'Classes', href: '/admin/dashboard/classes', icon: BookOpen, current: pathname === '/admin/dashboard/classes' },
     { name: 'Schedule', href: '/admin/dashboard/schedule', icon: CalendarDays, current: pathname === '/admin/dashboard/schedule' },
     { name: 'Capacity', href: '/admin/dashboard/capacity', icon: Activity, current: pathname === '/admin/dashboard/capacity' },
-    { name: 'Generator', href: '/admin/dashboard/schedule-generator', icon: Zap, current: pathname === '/admin/dashboard/schedule-generator' },
-    // Only show Reminders, Blackout Dates & Communications for super admins
+    { name: 'Messages', href: '/admin/dashboard/communications', icon: Mail, current: pathname === '/admin/dashboard/communications' },
     ...(isSuperAdmin ? [
+      { name: 'Generator', href: '/admin/dashboard/schedule-generator', icon: Zap, current: pathname === '/admin/dashboard/schedule-generator' },
       { name: 'Reminders', href: '/admin/dashboard/reminders', icon: Bell, current: pathname === '/admin/dashboard/reminders' },
       { name: 'Blackout', href: '/admin/dashboard/blackout-dates', icon: Clock, current: pathname === '/admin/dashboard/blackout-dates' },
-      { name: 'Communications', href: '/admin/dashboard/communications', icon: Mail, current: pathname === '/admin/dashboard/communications' },
     ] : []),
     { name: 'Notifications', href: '/admin/dashboard/notifications', icon: Clock, current: pathname === '/admin/dashboard/notifications' },
     { name: 'Reports', href: '/admin/dashboard/reports', icon: FileText, current: pathname === '/admin/dashboard/reports' },
@@ -81,6 +84,7 @@ export default function AdminDashboardLayout({
     ...(isSuperAdmin ? [
       { name: 'Audit Logs', href: '/admin/dashboard/audit-logs', icon: History, current: pathname === '/admin/dashboard/audit-logs' },
       { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings, current: pathname === '/admin/dashboard/settings' },
+      { name: 'Maintenance', href: '/admin/dashboard/maintenance', icon: Database, current: pathname === '/admin/dashboard/maintenance' },
     ] : []),
   ];
 

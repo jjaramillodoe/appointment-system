@@ -5,7 +5,7 @@ export interface IAppointment extends mongoose.Document {
   hubId: mongoose.Types.ObjectId;
   date: string; // YYYY-MM-DD format
   time: string; // 24h format like "09:00"
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'pending_profile' | 'confirmed' | 'cancelled' | 'completed' | 'expired' | 'no_show' | 'arrived';
   notes: string;
   adminNotes?: string;
   intakeType: 'adult-education';
@@ -37,7 +37,7 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
   status: {
     type: String,
     required: [true, 'Status is required'],
-    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
+    enum: ['pending', 'pending_profile', 'confirmed', 'cancelled', 'completed', 'expired', 'no_show', 'arrived'],
     default: 'pending',
   },
   notes: {

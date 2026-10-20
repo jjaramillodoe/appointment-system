@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import AuditLog from '@/models/AuditLog';
 import dbConnect from '@/lib/mongodb';
 
@@ -6,7 +7,7 @@ export interface AuditLogParams {
   adminEmail: string;
   adminName: string;
   action: 'create' | 'update' | 'delete' | 'login' | 'logout' | 'export' | 'send' | 'bulk_action';
-  resourceType: 'user' | 'appointment' | 'hub' | 'template' | 'reminder' | 'blackout' | 'communication' | 'settings' | 'schedule' | 'other';
+  resourceType: 'user' | 'appointment' | 'hub' | 'template' | 'reminder' | 'blackout' | 'communication' | 'settings' | 'schedule' | 'school' | 'class' | 'other';
   resourceId?: string;
   resourceName?: string;
   description: string;
@@ -60,7 +61,7 @@ export async function logAuditEvent(params: AuditLogParams): Promise<void> {
       metadata,
     });
   } catch (error) {
-    console.error('Error logging audit event:', error);
+    logger.error('Error logging audit event:', error);
   }
 }
 

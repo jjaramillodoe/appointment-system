@@ -7,7 +7,7 @@ export interface IAppointment extends mongoose.Document {
   hubName?: string;
   hubId?: mongoose.Types.ObjectId;
   slotId?: string;
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed';
+  status: 'pending' | 'pending_profile' | 'confirmed' | 'cancelled' | 'completed' | 'expired' | 'no_show' | 'arrived';
   notes: string;
   adminNotes?: string;
   intakeType: 'adult-education';
@@ -33,10 +33,10 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
     type: String,
     required: false,
     enum: [
-      '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+      '8:00 AM', '8:30 AM', '9:00 AM', '9:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
       '12:00 PM', '12:30 PM', '1:00 PM', '1:30 PM', '2:00 PM', '2:30 PM',
       '3:00 PM', '3:30 PM', '4:00 PM', '4:30 PM', '5:00 PM', '5:30 PM',
-      '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM'
+      '6:00 PM', '6:30 PM', '7:00 PM', '7:30 PM', '8:00 PM', '8:30 PM', '9:00 PM',
     ],
   },
   hubName: {
@@ -55,7 +55,7 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
   status: {
     type: String,
     required: [true, 'Status is required'],
-    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
+    enum: ['pending', 'pending_profile', 'confirmed', 'cancelled', 'completed', 'expired', 'no_show', 'arrived'],
     default: 'pending',
   },
   notes: {
@@ -97,4 +97,8 @@ const appointmentSchema = new mongoose.Schema<IAppointment>({
 // Index for userId (no longer unique - can have multiple appointments)
 appointmentSchema.index({ userId: 1 });
 
-export default mongoose.models.Appointment || mongoose.model<IAppointment>('Appointment', appointmentSchema); 
+if (mongoose.models.Appointment) {
+  delete mongoose.models.Appointment;
+}
+
+export default mongoose.model<IAppointment>('Appointment', appointmentSchema); 

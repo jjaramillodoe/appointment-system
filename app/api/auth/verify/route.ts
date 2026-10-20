@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
@@ -7,7 +8,13 @@ import { getJwtSecret } from '@/lib/jwtSecret';
 
 function verifyToken(token: string) {
   try {
-    return jwt.verify(token, getJwtSecret()) as { userId: string; email: string; isAdmin: boolean };
+    return jwt.verify(token, getJwtSecret()) as {
+      userId: string;
+      email: string;
+      isAdmin: boolean;
+      isSuperAdmin?: boolean;
+      assignedHub?: string | null;
+    };
   } catch (error) {
     return null;
   }
@@ -58,6 +65,15 @@ export async function GET(request: NextRequest) {
       closestHub: user.closestHub || null,
       createdAt: user.createdAt,
       isAdmin: user.isAdmin || false,
+      isSuperAdmin: user.isSuperAdmin || false,
+      assignedHub: user.assignedHub?.toString() || null,
+      profileCompleted: user.profileCompleted || false,
+      emergencyContact: user.emergencyContact || null,
+      homeAddress: user.homeAddress || null,
+      additionalLanguages: user.additionalLanguages || [],
+      employerName: user.employerName || '',
+      jobTitle: user.jobTitle || '',
+      middleName: user.middleName || '',
     };
 
     return NextResponse.json({
@@ -65,7 +81,7 @@ export async function GET(request: NextRequest) {
       user: userResponse,
     });
   } catch (error: any) {
-    console.error('Token verification error:', error);
+    logger.error('Token verification error:', error);
     return NextResponse.json(
       { error: 'Token verification failed', details: error.message },
       { status: 500 }

@@ -1,4 +1,6 @@
+import { logger } from '@/lib/logger';
 import dbConnect from '@/lib/mongodb';
+import { calendarDateFromValue } from '@/lib/appointmentTime';
 import Report from '@/models/Report';
 import Appointment from '@/models/Appointment';
 import User from '@/models/User';
@@ -46,7 +48,7 @@ export async function generateReportData(reportId: string, type: string, paramet
 
 
   } catch (error) {
-    console.error('Error generating report data:', error);
+    logger.error('Error generating report data:', error);
     await Report.findByIdAndUpdate(reportId, { status: 'failed' });
     throw error;
   }
@@ -77,11 +79,13 @@ async function generateAppointmentReport(parameters: any) {
       completed: appointments.filter(a => a.status === 'completed').length
     },
     byHub: appointments.reduce((acc: any, app) => {
-      acc[app.hubName] = (acc[app.hubName] || 0) + 1;
+      const key = app.hubName || 'Unknown hub';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {}),
     byDate: appointments.reduce((acc: any, app) => {
-      acc[app.appointmentDate] = (acc[app.appointmentDate] || 0) + 1;
+      const key = calendarDateFromValue(app.appointmentDate);
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})
   };
@@ -198,7 +202,8 @@ async function generateDailySummaryReport(parameters: any) {
       completed: appointments.filter(a => a.status === 'completed').length
     },
     byHub: appointments.reduce((acc: any, app) => {
-      acc[app.hubName] = (acc[app.hubName] || 0) + 1;
+      const key = app.hubName || 'Unknown hub';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})
   };
@@ -224,7 +229,7 @@ async function generateWeeklyTrendsReport(parameters: any) {
     const date = new Date(startDate);
     date.setDate(startDate.getDate() + i);
     const dateStr = date.toISOString().split('T')[0];
-    dailyTrends[dateStr] = appointments.filter(a => a.appointmentDate === dateStr).length;
+    dailyTrends[dateStr] = appointments.filter(a => calendarDateFromValue(a.appointmentDate) === dateStr).length;
   }
 
   return { dailyTrends, totalAppointments: appointments.length };

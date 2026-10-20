@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
-import { Users, Search, Filter, Eye, Mail, Phone, MapPin, Calendar, GraduationCap, Briefcase, Edit, Trash2, Key, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Users, Search, Filter, Eye, Mail, Phone, MapPin, Calendar, GraduationCap, Briefcase, Edit, Trash2, Key, Plus } from 'lucide-react';
+import AdminBookModal from '@/components/admin/AdminBookModal';
 import { useHubFilter } from '@/contexts/HubFilterContext';
 import { useToast } from '@/hooks/useToast';
 import Toast from '@/components/Toast';
@@ -9,6 +10,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { getRoleFromFlags, ROLE_LABELS, type AppRole } from '@/lib/userRoles';
+
+interface HubOption {
+  _id: string;
+  name: string;
+  location?: string;
+}
 
 interface UsersTabProps {
   users: any[];
@@ -18,9 +26,41 @@ interface UsersTabProps {
   setFilters: (filters: any) => void;
   onRefresh: () => void;
   onPageChange?: (page: number) => void;
+  isSuperAdmin?: boolean;
+  assignedHubId?: string | null;
+  currentUserId?: string | null;
 }
 
-export default function UsersTab({ users, stats, pagination, filters, setFilters, onRefresh, onPageChange }: UsersTabProps) {
+const EMPTY_CREATE_FORM = {
+  firstName: '',
+  lastName: '',
+  email: '',
+  phone: '',
+  password: '',
+  preferredLanguage: 'English',
+  role: 'user' as AppRole,
+  assignedHub: '',
+  closestHubId: '',
+};
+
+function roleBadgeClass(role: AppRole) {
+  if (role === 'super-admin') return 'bg-purple-100 text-purple-800';
+  if (role === 'hub-admin') return 'bg-blue-100 text-blue-800';
+  return 'bg-gray-100 text-gray-700';
+}
+
+export default function UsersTab({
+  users,
+  stats,
+  pagination,
+  filters,
+  setFilters,
+  onRefresh,
+  onPageChange,
+  isSuperAdmin = false,
+  assignedHubId = null,
+  currentUserId = null,
+}: UsersTabProps) {
   const { selectedHub } = useHubFilter();
   const { toasts, showSuccess, showError } = useToast();
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -28,11 +68,54 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
   const [resettingUser, setResettingUser] = useState<any>(null);
+  const [bookingUser, setBookingUser] = useState<any>(null);
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hubs, setHubs] = useState<HubOption[]>([]);
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    fetch('/api/admin/hubs?activeOnly=true', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        if (Array.isArray(data)) setHubs(data);
+      })
+      .catch(() => {
+        setHubs([]);
+      });
+  }, []);
+
+  const getUserRole = (user: any): AppRole => user.role || getRoleFromFlags(user);
+
+  const canEditUser = (user: any) => {
+    const role = getUserRole(user);
+    if (isSuperAdmin) return true;
+    return role !== 'super-admin';
+  };
+
+  const canDeleteUser = (user: any) => {
+    if (user._id === currentUserId) return false;
+    return isSuperAdmin || getUserRole(user) === 'user';
+  };
+
+  const canResetPassword = (user: any) => {
+    if (isSuperAdmin) return true;
+    return getUserRole(user) === 'user';
+  };
+
+  const assignableRoles: AppRole[] = isSuperAdmin
+    ? ['user', 'hub-admin', 'super-admin']
+    : ['user', 'hub-admin'];
+
+  const actorHubName = hubs.find((hub) => hub._id === assignedHubId)?.name;
 
   const handleUserClick = (user: any) => {
     setSelectedUser(user);
@@ -40,8 +123,71 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
   };
 
   const handleEdit = (user: any) => {
-    setEditingUser({ ...user });
+    const assignedHub =
+      typeof user.assignedHub === 'object' && user.assignedHub?._id
+        ? user.assignedHub._id
+        : user.assignedHub || '';
+    const closestHubId =
+      hubs.find((hub) => hub.name === user.closestHub?.name)?._id || assignedHub || '';
+    setEditingUser({
+      ...user,
+      role: getUserRole(user),
+      assignedHub,
+      closestHubId,
+    });
     setShowEditModal(true);
+  };
+
+  const handleCreateUser = async () => {
+    if (!createForm.firstName || !createForm.lastName || !createForm.email || !createForm.phone || !createForm.password) {
+      showError('First name, last name, email, phone, and password are required');
+      return;
+    }
+    if (createForm.password.length < 6) {
+      showError('Password must be at least 6 characters');
+      return;
+    }
+    const selectedHubId = createForm.assignedHub || createForm.closestHubId || assignedHubId;
+    if (createForm.role !== 'super-admin' && !selectedHubId) {
+      showError('Select the hub this person can view');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          firstName: createForm.firstName,
+          lastName: createForm.lastName,
+          email: createForm.email,
+          phone: createForm.phone,
+          password: createForm.password,
+          preferredLanguage: createForm.preferredLanguage,
+          role: createForm.role,
+          assignedHub: createForm.role === 'hub-admin' ? selectedHubId : undefined,
+          closestHubId: createForm.role === 'super-admin' ? undefined : selectedHubId,
+        }),
+      });
+      const data = await response.json();
+      if (response.ok) {
+        showSuccess('User created successfully');
+        setShowCreateModal(false);
+        setCreateForm(EMPTY_CREATE_FORM);
+        onRefresh();
+      } else {
+        showError(data.error || 'Failed to create user');
+      }
+    } catch (error) {
+      showError('Error creating user');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleDelete = (user: any) => {
@@ -69,7 +215,16 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
         },
         body: JSON.stringify({
           userId: editingUser._id,
-          ...editingUser
+          firstName: editingUser.firstName,
+          lastName: editingUser.lastName,
+          email: editingUser.email,
+          phone: editingUser.phone,
+          educationLevel: editingUser.educationLevel,
+          employmentStatus: editingUser.employmentStatus,
+          preferredLanguage: editingUser.preferredLanguage,
+          role: editingUser.role,
+          assignedHub: editingUser.role === 'hub-admin' ? editingUser.assignedHub || editingUser.closestHubId : undefined,
+          closestHubId: editingUser.role === 'super-admin' ? undefined : (editingUser.closestHubId || editingUser.assignedHub),
         })
       });
 
@@ -169,7 +324,7 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
     if (key === 'hubName') {
       return; // Hub filter is managed globally
     }
-    setFilters({ ...filters, [key]: value, page: 1 });
+    setFilters({ ...filters, [key]: value });
   };
 
   const calculateAge = (dateOfBirth: string) => {
@@ -188,6 +343,28 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
+          <p className="text-gray-600 mt-1">
+            {isSuperAdmin
+              ? 'Create, update, and manage users and roles across all hubs.'
+              : 'Manage users assigned to your hub. You cannot grant super-admin access.'}
+          </p>
+        </div>
+        <Button onClick={() => {
+          setCreateForm({
+            ...EMPTY_CREATE_FORM,
+            assignedHub: assignedHubId || '',
+            closestHubId: assignedHubId || '',
+          });
+          setShowCreateModal(true);
+        }}>
+          <Plus className="h-4 w-4 mr-2" />
+          Add User
+        </Button>
+      </div>
+
       {/* User Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -233,7 +410,7 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
           <Filter className="h-5 w-5 mr-2" />
           Search & Filters
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
             <div className="relative">
@@ -267,6 +444,19 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
               <option value="Bachelor Degree">Bachelor Degree</option>
               <option value="Graduate Degree">Graduate Degree</option>
               <option value="Other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select
+              value={filters?.role || ''}
+              onChange={(e) => handleFilterChange('role', e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">All Roles</option>
+              <option value="user">User</option>
+              <option value="hub-admin">Hub Admin</option>
+              {isSuperAdmin && <option value="super-admin">Super Admin</option>}
             </select>
           </div>
           <div>
@@ -313,6 +503,9 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                   User
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Role
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -347,10 +540,15 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                           {user.firstName} {user.lastName}
                         </div>
                         <div className="text-sm text-gray-500">
-                          Age: {calculateAge(user.dateOfBirth)}
+                          {user.dateOfBirth ? `Age: ${calculateAge(user.dateOfBirth)}` : 'Age unavailable'}
                         </div>
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(getUserRole(user))}`}>
+                      {ROLE_LABELS[getUserRole(user)]}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{user.email}</div>
@@ -396,27 +594,42 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                       >
                         <Eye className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleEdit(user)}
-                        className="text-green-600 hover:text-green-900 flex items-center"
-                        title="Edit User"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleResetPassword(user)}
-                        className="text-orange-600 hover:text-orange-900 flex items-center"
-                        title="Reset Password"
-                      >
-                        <Key className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(user)}
-                        className="text-red-600 hover:text-red-900 flex items-center"
-                        title="Delete User"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {canEditUser(user) && (
+                        <button
+                          onClick={() => handleEdit(user)}
+                          className="text-green-600 hover:text-green-900 flex items-center"
+                          title="Edit User"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                      )}
+                      {getUserRole(user) === 'user' && (
+                        <button
+                          onClick={() => setBookingUser(user)}
+                          className="text-primary-600 hover:text-primary-900 flex items-center"
+                          title="Book appointment"
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </button>
+                      )}
+                      {canResetPassword(user) && (
+                        <button
+                          onClick={() => handleResetPassword(user)}
+                          className="text-orange-600 hover:text-orange-900 flex items-center"
+                          title="Reset Password"
+                        >
+                          <Key className="h-4 w-4" />
+                        </button>
+                      )}
+                      {canDeleteUser(user) && (
+                        <button
+                          onClick={() => handleDelete(user)}
+                          className="text-red-600 hover:text-red-900 flex items-center"
+                          title="Delete User"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -518,7 +731,15 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Age</label>
                     <p className="mt-1 text-sm text-gray-900">
-                      {calculateAge(selectedUser.dateOfBirth)} years old
+                      {selectedUser.dateOfBirth ? `${calculateAge(selectedUser.dateOfBirth)} years old` : 'Not provided'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Role</label>
+                    <p className="mt-1">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${roleBadgeClass(getUserRole(selectedUser))}`}>
+                        {ROLE_LABELS[getUserRole(selectedUser)]}
+                      </span>
                     </p>
                   </div>
                   <div>
@@ -554,7 +775,9 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Address</label>
                   <p className="mt-1 text-sm text-gray-900">
-                    {selectedUser.address.street}, {selectedUser.address.city}, {selectedUser.address.state} {selectedUser.address.zipCode}
+                    {selectedUser.address?.street
+                      ? `${selectedUser.address.street}, ${selectedUser.address.city}, ${selectedUser.address.state} ${selectedUser.address.zipCode}`
+                      : 'Not provided'}
                   </p>
                 </div>
 
@@ -668,56 +891,119 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
                 <div>
                   <label className="block text-sm font-medium mb-1">Education Level</label>
                   <Select
-                    value={editingUser.educationLevel || ''}
+                    value={editingUser.educationLevel || undefined}
                     onValueChange={(value) => setEditingUser({ ...editingUser, educationLevel: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select education level" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="High School">High School</SelectItem>
-                      <SelectItem value="Some College">Some College</SelectItem>
-                      <SelectItem value="Associate Degree">Associate Degree</SelectItem>
-                      <SelectItem value="Bachelor Degree">Bachelor Degree</SelectItem>
-                      <SelectItem value="Graduate Degree">Graduate Degree</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      <SelectItem value="no-hs">No high school</SelectItem>
+                      <SelectItem value="some-hs">Some high school</SelectItem>
+                      <SelectItem value="ged">GED</SelectItem>
+                      <SelectItem value="hs-diploma">High school diploma</SelectItem>
+                      <SelectItem value="some-college">Some college</SelectItem>
+                      <SelectItem value="college-degree">College degree</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Employment Status</label>
                   <Select
-                    value={editingUser.employmentStatus || ''}
+                    value={editingUser.employmentStatus || undefined}
                     onValueChange={(value) => setEditingUser({ ...editingUser, employmentStatus: value })}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Select employment status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Employed">Employed</SelectItem>
-                      <SelectItem value="Unemployed">Unemployed</SelectItem>
-                      <SelectItem value="Student">Student</SelectItem>
-                      <SelectItem value="Retired">Retired</SelectItem>
-                      <SelectItem value="Other">Other</SelectItem>
+                      <SelectItem value="employed">Employed</SelectItem>
+                      <SelectItem value="unemployed">Unemployed</SelectItem>
+                      <SelectItem value="self-employed">Self-employed</SelectItem>
+                      <SelectItem value="student">Student</SelectItem>
+                      <SelectItem value="retired">Retired</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Is Admin</label>
+                <label className="block text-sm font-medium mb-1">Preferred Language</label>
                 <Select
-                  value={editingUser.isAdmin ? 'true' : 'false'}
-                  onValueChange={(value) => setEditingUser({ ...editingUser, isAdmin: value === 'true' })}
+                  value={editingUser.preferredLanguage || 'English'}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, preferredLanguage: value })}
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="false">Regular User</SelectItem>
-                    <SelectItem value="true">Admin</SelectItem>
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Spanish">Spanish</SelectItem>
+                    <SelectItem value="French">French</SelectItem>
+                    <SelectItem value="Arabic">Arabic</SelectItem>
+                    <SelectItem value="Chinese">Chinese</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <Select
+                  value={editingUser.role || 'user'}
+                  onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignableRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {!isSuperAdmin && (
+                  <p className="text-xs text-gray-500 mt-1">Hub admins cannot assign Super Admin.</p>
+                )}
+              </div>
+              {editingUser.role === 'super-admin' ? (
+                <p className="text-sm text-gray-600">Super admins can view every hub.</p>
+              ) : isSuperAdmin ? (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    {editingUser.role === 'hub-admin' ? 'Hub they administer' : 'Home hub'}
+                  </label>
+                  <Select
+                    value={editingUser.closestHubId || editingUser.assignedHub || undefined}
+                    onValueChange={(value) =>
+                      setEditingUser({
+                        ...editingUser,
+                        closestHubId: value,
+                        assignedHub: editingUser.role === 'hub-admin' ? value : editingUser.assignedHub,
+                      })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a hub" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {hubs.map((hub) => (
+                        <SelectItem key={hub._id} value={hub._id}>
+                          {hub.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    This is the site they belong to and the one hub admins can view.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Hub</label>
+                  <Input value={actorHubName || editingUser.closestHub?.name || 'Your assigned hub'} disabled />
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
@@ -782,6 +1068,162 @@ export default function UsersTab({ users, stats, pagination, filters, setFilters
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Add User</DialogTitle>
+            <DialogDescription>
+              Create a new account and assign a role. Hub admins stay limited to their own site.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">First Name</label>
+                <Input
+                  value={createForm.firstName}
+                  onChange={(e) => setCreateForm({ ...createForm, firstName: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Last Name</label>
+                <Input
+                  value={createForm.lastName}
+                  onChange={(e) => setCreateForm({ ...createForm, lastName: e.target.value })}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Email</label>
+              <Input
+                type="email"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Phone</label>
+              <Input
+                value={createForm.phone}
+                onChange={(e) => setCreateForm({ ...createForm, phone: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Temporary Password</label>
+              <Input
+                type="password"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                placeholder="At least 6 characters"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Preferred Language</label>
+                <Select
+                  value={createForm.preferredLanguage}
+                  onValueChange={(value) => setCreateForm({ ...createForm, preferredLanguage: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Spanish">Spanish</SelectItem>
+                    <SelectItem value="French">French</SelectItem>
+                    <SelectItem value="Arabic">Arabic</SelectItem>
+                    <SelectItem value="Chinese">Chinese</SelectItem>
+                    <SelectItem value="Other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Role</label>
+                <Select
+                  value={createForm.role}
+                  onValueChange={(value) => setCreateForm({ ...createForm, role: value as AppRole })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assignableRoles.map((role) => (
+                      <SelectItem key={role} value={role}>
+                        {ROLE_LABELS[role]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            {createForm.role === 'super-admin' ? (
+              <p className="text-sm text-gray-600">Super admins can view every hub. No hub assignment is needed.</p>
+            ) : isSuperAdmin ? (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {createForm.role === 'hub-admin' ? 'Hub they administer' : 'Home hub'}
+                </label>
+                <Select
+                  value={(createForm.assignedHub || createForm.closestHubId) || undefined}
+                  onValueChange={(value) =>
+                    setCreateForm({
+                      ...createForm,
+                      assignedHub: value,
+                      closestHubId: value,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a hub" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {hubs.map((hub) => (
+                      <SelectItem key={hub._id} value={hub._id}>
+                        {hub.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Required. This is the site they will view and the hub admins will manage them under.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium mb-1">Hub</label>
+                <Input value={actorHubName || 'Your assigned hub'} disabled />
+                <p className="text-xs text-gray-500 mt-1">
+                  New accounts stay on your assigned hub.
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateModal(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateUser} disabled={loading}>
+              {loading ? 'Creating...' : 'Create User'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {bookingUser && (
+        <AdminBookModal
+          open={Boolean(bookingUser)}
+          onClose={() => setBookingUser(null)}
+          token={localStorage.getItem('token') || ''}
+          userId={bookingUser._id}
+          studentName={`${bookingUser.firstName || ''} ${bookingUser.lastName || ''}`.trim()}
+          defaultHubId={assignedHubId || undefined}
+          onBooked={() => {
+            showSuccess('Appointment booked');
+            onRefresh();
+          }}
+        />
+      )}
 
       {/* Toast Container */}
       <div className="fixed bottom-4 right-4 z-50 space-y-2">

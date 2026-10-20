@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import { verifyAdminToken, isSuperAdmin as checkSuperAdmin } from '@/lib/adminPermissions';
@@ -76,7 +77,7 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    console.error('Get audit logs error:', error);
+    logger.error('Get audit logs error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch audit logs' },
       { status: 500 }

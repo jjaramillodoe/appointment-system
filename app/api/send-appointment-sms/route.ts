@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { blockOutsideDevelopment } from '@/lib/devOnlyRoute';
 import QRCode from 'qrcode';
@@ -52,7 +53,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     if (error.response) {
       // Log Brevo error details
-      console.error('Brevo SMS API error:', error.response.data);
+      logger.error('Brevo SMS API error:', error.response.data);
       return NextResponse.json({ error: error.response.data, message: error.message }, { status: 500 });
     }
     return NextResponse.json({ error: error.message || 'Failed to send SMS' }, { status: 500 });

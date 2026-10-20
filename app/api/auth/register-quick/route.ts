@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { logger } from '@/lib/logger';
 import { getJwtSecret } from '@/lib/jwtSecret';
 import { enforceRateLimit, RATE_LIMITS } from '@/lib/rateLimit';
+import { NextRequest, NextResponse } from 'next/server';
 import User from '@/models/User';
 import dbConnect from '@/lib/mongodb';
 import jwt from 'jsonwebtoken';
@@ -110,7 +111,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error: any) {
-    console.error('Registration error:', error);
+    logger.error('Registration error:', error);
     return NextResponse.json(
       { error: error.message || 'Registration failed' },
       { status: 500 }

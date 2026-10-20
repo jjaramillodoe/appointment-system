@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 export interface IHub extends mongoose.Document {
   _id: mongoose.Types.ObjectId;
   name: string;
+  schoolId?: mongoose.Types.ObjectId;
   defaultSlots: string[];
   timezone: string;
   location: string;
@@ -18,6 +19,11 @@ const hubSchema = new mongoose.Schema<IHub>({
     required: [true, 'Hub name is required'],
     unique: true,
     trim: true,
+  },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    required: false,
   },
   defaultSlots: {
     type: [String],
@@ -53,6 +59,7 @@ const hubSchema = new mongoose.Schema<IHub>({
 // Note: name field already has unique: true which creates an index automatically
 // Only add index for isActive
 hubSchema.index({ isActive: 1 });
+hubSchema.index({ schoolId: 1, isActive: 1 });
 
 if (mongoose.models.Hub) {
   delete mongoose.models.Hub;

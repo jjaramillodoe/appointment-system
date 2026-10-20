@@ -5,6 +5,7 @@ export interface IHubSchedule extends mongoose.Document {
   date: string; // YYYY-MM-DD format
   slots: string[];
   isDayOff: boolean;
+  dayOffReason?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +30,11 @@ const hubScheduleSchema = new mongoose.Schema<IHubSchedule>({
     type: Boolean,
     required: [true, 'Day off status is required'],
     default: false,
+  },
+  dayOffReason: {
+    type: String,
+    default: '',
+    maxlength: [200, 'Day off reason cannot exceed 200 characters'],
   },
 }, {
   timestamps: true,

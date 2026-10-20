@@ -2,6 +2,7 @@
 
 import { CalendarDays, Award, MapPin, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
+import { appointmentStatusLabel } from '@/lib/appointmentStatus';
 
 interface User {
   programInterests?: string[];
@@ -71,7 +72,7 @@ export default function StatsCards({ user, appointment, parseToLocalDate, appoin
         bgColor="bg-gradient-to-br from-yellow-500 to-yellow-600"
         textColor="bg-yellow-400/30 text-yellow-100"
         label="Status"
-        value={appointment?.status ? appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1) : 'No Appointment'}
+        value={appointment?.status ? appointmentStatusLabel(appointment.status) : 'No Appointment'}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { useState } from 'react';
 import { User, Mail, Phone, Calendar as CalendarIcon, MapPin, GraduationCap, Briefcase, School, BookOpen, Lock, Info, CheckCircle, AlertCircle, MapPin as MapPinIcon, Loader2, Home } from 'lucide-react';
 import Tooltip from './Tooltip';
@@ -274,7 +275,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
         setForm(prev => ({ ...prev, closestHub: hubMatch }));
       }
     } catch (error) {
-      console.error('Error finding closest hub:', error);
+      logger.error('Error finding closest hub:', error);
     } finally {
       setFindingHub(false);
     }

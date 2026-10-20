@@ -1,8 +1,11 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Edit2, Trash2, Plus, MapPin, X, AlertCircle } from 'lucide-react';
+import MarkdownContent from '@/components/MarkdownContent';
 
 interface Hub {
   _id: string;
@@ -12,6 +15,7 @@ interface Hub {
   defaultSlots: string[];
   publicTransitDirections?: string;
   isActive: boolean;
+  schoolId?: { _id: string; name: string } | string | null;
 }
 
 interface FormData {
@@ -21,15 +25,18 @@ interface FormData {
   defaultSlots: string;
   publicTransitDirections: string;
   isActive: boolean;
+  schoolId: string;
 }
 
 export default function HubsManagement() {
-  const { token } = useAuth();
+  const { token, isSuperAdmin } = useAuth();
   const [hubs, setHubs] = useState<Hub[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [directionsMode, setDirectionsMode] = useState<'write' | 'preview'>('write');
   const [editingHub, setEditingHub] = useState<Hub | null>(null);
+  const [schools, setSchools] = useState<Array<{ _id: string; name: string }>>([]);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     location: '',
@@ -37,11 +44,28 @@ export default function HubsManagement() {
     defaultSlots: '09:00,09:30,10:00,10:30,11:00,11:30',
     publicTransitDirections: '',
     isActive: true,
+    schoolId: '',
   });
 
   useEffect(() => {
     loadHubs();
+    loadSchools();
   }, [token]);
+
+  const loadSchools = async () => {
+    if (!token) return;
+    try {
+      const response = await fetch('/api/admin/schools', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSchools(data.schools || []);
+      }
+    } catch (err) {
+      logger.error(err);
+    }
+  };
 
   const loadHubs = async () => {
     try {
@@ -55,7 +79,7 @@ export default function HubsManagement() {
       }
     } catch (err) {
       setError('Failed to load hubs');
-      console.error(err);
+      logger.error(err);
     } finally {
       setLoading(false);
     }
@@ -71,6 +95,7 @@ export default function HubsManagement() {
         defaultSlots: hub.defaultSlots.join(','),
         publicTransitDirections: hub.publicTransitDirections || '',
         isActive: hub.isActive,
+        schoolId: typeof hub.schoolId === 'object' && hub.schoolId ? hub.schoolId._id : hub.schoolId || '',
       });
     } else {
       setEditingHub(null);
@@ -81,8 +106,10 @@ export default function HubsManagement() {
         defaultSlots: '09:00,09:30,10:00,10:30,11:00,11:30',
         publicTransitDirections: '',
         isActive: true,
+        schoolId: '',
       });
     }
+    setDirectionsMode('write');
     setShowModal(true);
   };
 
@@ -112,6 +139,7 @@ export default function HubsManagement() {
         defaultSlots: formData.defaultSlots.split(',').map(s => s.trim()),
         publicTransitDirections: formData.publicTransitDirections,
         isActive: formData.isActive,
+        schoolId: formData.schoolId || '',
       };
 
       if (editingHub) {
@@ -153,7 +181,7 @@ export default function HubsManagement() {
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
-      console.error(err);
+      logger.error(err);
     }
   };
 
@@ -175,7 +203,7 @@ export default function HubsManagement() {
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
-      console.error(err);
+      logger.error(err);
     }
   };
 
@@ -184,16 +212,24 @@ export default function HubsManagement() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Hubs Management</h1>
-          <p className="text-gray-600 mt-1">Create, edit, and manage learning centers</p>
+          <h1 className="text-3xl font-bold text-gray-900">
+            {isSuperAdmin ? 'Hubs Management' : 'Your Hub'}
+          </h1>
+          <p className="text-gray-600 mt-1">
+            {isSuperAdmin
+              ? 'Create, edit, and manage learning centers'
+              : 'View and update the learning center assigned to you'}
+          </p>
         </div>
-        <button
-          onClick={() => handleOpenModal()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-        >
-          <Plus className="h-5 w-5" />
-          Add Hub
-        </button>
+        {isSuperAdmin && (
+          <button
+            onClick={() => handleOpenModal()}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+          >
+            <Plus className="h-5 w-5" />
+            Add Hub
+          </button>
+        )}
       </div>
 
       {/* Error Message */}
@@ -216,14 +252,18 @@ export default function HubsManagement() {
         <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
           <MapPin className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-semibold text-gray-900 mb-1">No hubs yet</h3>
-          <p className="text-gray-600 mb-6">Create your first learning center to get started</p>
-          <button
-            onClick={() => handleOpenModal()}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
-          >
-            <Plus className="h-5 w-5" />
-            Create Hub
-          </button>
+          <p className="text-gray-600 mb-6">
+            {isSuperAdmin ? 'Create your first learning center to get started' : 'No hub is assigned to your account'}
+          </p>
+          {isSuperAdmin && (
+            <button
+              onClick={() => handleOpenModal()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
+            >
+              <Plus className="h-5 w-5" />
+              Create Hub
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-6">
@@ -236,6 +276,9 @@ export default function HubsManagement() {
                     <MapPin className="h-4 w-4" />
                     <span>{hub.location}</span>
                   </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    School: {typeof hub.schoolId === 'object' && hub.schoolId ? hub.schoolId.name : 'Unassigned'}
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -245,13 +288,15 @@ export default function HubsManagement() {
                     <Edit2 className="h-4 w-4" />
                     Edit
                   </button>
-                  <button
-                    onClick={() => handleDelete(hub._id)}
-                    className="bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </button>
+                  {isSuperAdmin && (
+                    <button
+                      onClick={() => handleDelete(hub._id)}
+                      className="bg-red-50 text-red-600 px-3 py-2 rounded-lg hover:bg-red-100 transition-colors flex items-center gap-2"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Delete
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -270,8 +315,8 @@ export default function HubsManagement() {
 
               {hub.publicTransitDirections && (
                 <div className="bg-gray-50 rounded p-3">
-                  <p className="text-xs text-gray-500 font-semibold mb-1">PUBLIC TRANSIT DIRECTIONS</p>
-                  <p className="text-sm text-gray-700">{hub.publicTransitDirections}</p>
+                  <p className="text-xs text-gray-500 font-semibold mb-2">PUBLIC TRANSIT DIRECTIONS</p>
+                  <MarkdownContent>{hub.publicTransitDirections}</MarkdownContent>
                 </div>
               )}
             </div>
@@ -282,7 +327,7 @@ export default function HubsManagement() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 flex justify-between items-center p-6 border-b border-gray-200 bg-white">
               <h2 className="text-2xl font-bold text-gray-900">
@@ -298,6 +343,21 @@ export default function HubsManagement() {
 
             {/* Modal Content */}
             <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">School</label>
+                <select
+                  name="schoolId"
+                  value={formData.schoolId}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Unassigned</option>
+                  {schools.map((school) => (
+                    <option key={school._id} value={school._id}>{school.name}</option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-2">Hub Name</label>
@@ -370,15 +430,46 @@ export default function HubsManagement() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">Public Transit Directions</label>
-                <textarea
-                  name="publicTransitDirections"
-                  value={formData.publicTransitDirections}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                  placeholder="e.g., Take the A or C subway to Nostrand Avenue Station..."
-                />
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-900">Public Transit Directions</label>
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs font-medium">
+                    <button
+                      type="button"
+                      onClick={() => setDirectionsMode('write')}
+                      className={`px-3 py-1 ${directionsMode === 'write' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Write
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDirectionsMode('preview')}
+                      className={`px-3 py-1 ${directionsMode === 'preview' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Preview
+                    </button>
+                  </div>
+                </div>
+                {directionsMode === 'write' ? (
+                  <textarea
+                    name="publicTransitDirections"
+                    value={formData.publicTransitDirections}
+                    onChange={handleInputChange}
+                    rows={14}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y font-mono text-sm"
+                    placeholder={'## Subway\n\n### Q Train\n\n- Take the Q to **Avenue H**\n- Walk west toward Coney Island Avenue\n\n## Bus\n\n- Take the **B68** to Coney Island Ave / Avenue H'}
+                  />
+                ) : (
+                  <div className="min-h-[16rem] rounded-lg border border-gray-200 bg-gray-50 p-4">
+                    {formData.publicTransitDirections.trim() ? (
+                      <MarkdownContent>{formData.publicTransitDirections}</MarkdownContent>
+                    ) : (
+                      <p className="text-sm text-gray-500">Nothing to preview yet.</p>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Markdown supported: <code>## Heading</code>, <code>**bold**</code>, <code>- list item</code>
+                </p>
               </div>
 
               <div className="flex gap-3 justify-end pt-6 border-t border-gray-200">

@@ -1,5 +1,7 @@
 "use client";
 
+import { logger } from '@/lib/logger';
+
 import { useState, useEffect } from 'react';
 import NotificationsTab from '@/components/admin/NotificationsTab';
 import { useAuth } from '@/contexts/AuthContext';
@@ -38,11 +40,11 @@ export default function NotificationsPage() {
         const data = await response.json();
         setNotifications(data.notifications || []);
       } else {
-        console.error('Failed to load notifications:', response.status);
+        logger.error('Failed to load notifications:', response.status);
         setNotifications([]);
       }
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      logger.error('Error loading notifications:', error);
       setNotifications([]);
     } finally {
       setLoading(false);

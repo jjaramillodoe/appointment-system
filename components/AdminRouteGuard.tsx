@@ -32,16 +32,6 @@ export default function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     }
   }, [loading, isAuthenticated, isAdmin, router]);
 
-  // Add debug logging
-  useEffect(() => {
-    console.log('AdminRouteGuard Debug:', {
-      loading,
-      isAuthenticated,
-      isAdmin,
-      isAuthorized
-    });
-  }, [loading, isAuthenticated, isAdmin, isAuthorized]);
-
   // Show loading spinner while checking authentication
   if (loading) {
     return (

@@ -152,7 +152,7 @@ export default function AnalyticsTab({ data, loading, dateRange, setDateRange, s
                   <div className="w-20 bg-gray-200 rounded-full h-2">
                     <div 
                       className="bg-blue-500 h-2 rounded-full" 
-                      style={{ width: `${Math.min((slot.count / Math.max(...appointmentsByTime.map((s: any) => s.count))) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((slot.count / Math.max(1, ...appointmentsByTime.map((s: any) => s.count || 0))) * 100, 100)}%` }}
                     ></div>
                   </div>
                   <span className="text-sm text-gray-600 w-8">{slot.count}</span>
