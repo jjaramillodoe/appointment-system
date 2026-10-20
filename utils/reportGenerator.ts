@@ -103,11 +103,13 @@ async function generateUserReport(parameters: any) {
   const stats = {
     total: users.length,
     byEducationLevel: users.reduce((acc: any, user) => {
-      acc[user.educationLevel] = (acc[user.educationLevel] || 0) + 1;
+      const key = user.educationLevel || 'Not specified';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {}),
     byEmploymentStatus: users.reduce((acc: any, user) => {
-      acc[user.employmentStatus] = (acc[user.employmentStatus] || 0) + 1;
+      const key = user.employmentStatus || 'Not specified';
+      acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {}),
     byProgramInterest: users.reduce((acc: any, user) => {
@@ -236,13 +238,18 @@ async function generateUserInsightsReport(parameters: any) {
     totalUsers: users.length,
     demographics: {
       byAge: users.reduce((acc: any, user) => {
+        if (!user.dateOfBirth) {
+          acc['Not specified'] = (acc['Not specified'] || 0) + 1;
+          return acc;
+        }
         const age = new Date().getFullYear() - new Date(user.dateOfBirth).getFullYear();
         const ageGroup = age < 25 ? '18-24' : age < 35 ? '25-34' : age < 45 ? '35-44' : '45+';
         acc[ageGroup] = (acc[ageGroup] || 0) + 1;
         return acc;
       }, {}),
       byGender: users.reduce((acc: any, user) => {
-        acc[user.sex] = (acc[user.sex] || 0) + 1;
+        const key = user.sex || 'Not specified';
+        acc[key] = (acc[key] || 0) + 1;
         return acc;
       }, {}),
       byLanguage: users.reduce((acc: any, user) => {
