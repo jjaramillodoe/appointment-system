@@ -3,7 +3,16 @@
 import { useState } from 'react';
 import { Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
 import LanguageAutocomplete from './ui/LanguageAutocomplete';
+import Link from 'next/link';
 import { validateEmail } from '@/utils/emailValidation';
+
+function passwordRules(password: string) {
+  return [
+    { label: 'At least 6 characters', met: password.length >= 6 },
+    { label: 'An uppercase and a lowercase letter', met: /[a-z]/.test(password) && /[A-Z]/.test(password) },
+    { label: 'At least one number', met: /\d/.test(password) },
+  ];
+}
 
 interface QuickRegistrationFormProps {
   onSuccess: (userData: any) => void;
@@ -54,6 +63,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
+  const [emailTaken, setEmailTaken] = useState(false);
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -119,6 +129,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
+    if (name === 'email') setEmailTaken(false);
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -195,6 +206,14 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
       const data = await response.json();
 
+      if (response.status === 409) {
+        setEmailTaken(true);
+        setErrors((prev) => ({ ...prev, email: 'This email already has an account.' }));
+        onError('This email already has an account. Sign in instead, or reset your password.');
+        setIsLoading(false);
+        return;
+      }
+
       if (!response.ok) {
         throw new Error(data.error || 'Registration failed');
       }
@@ -238,9 +257,19 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             />
           </div>
           {errors.email && (
-            <div className="mt-1.5 flex items-start gap-2">
+            <div className="mt-1.5 flex items-start gap-2" role="alert">
               <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-500" />
-              <span className="text-sm text-red-600">{errors.email}</span>
+              <span className="text-sm text-red-600">
+                {errors.email}
+                {emailTaken && (
+                  <>
+                    {' '}
+                    <Link href="/login" className="font-semibold underline">Sign in</Link>
+                    {' or '}
+                    <Link href="/forgot-password" className="font-semibold underline">reset your password</Link>.
+                  </>
+                )}
+              </span>
             </div>
           )}
           {emailSuggestions.length > 0 && (
@@ -391,6 +420,8 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
               type={showPassword ? 'text' : 'password'}
               id="password"
               name="password"
+              autoComplete="new-password"
+              aria-describedby="password-rules"
               value={form.password}
               onChange={handleInputChange}
               className={`w-full rounded-lg border pl-10 pr-11 py-2.5 text-sm transition-colors ${
@@ -403,6 +434,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
               className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -411,12 +443,24 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
           {errors.password && (
             <p className="mt-1 text-sm text-red-600">{errors.password}</p>
           )}
-          {form.password && !errors.password && (
-            <p className="mt-1 flex items-center gap-1.5 text-xs text-green-600">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Password is strong
-            </p>
-          )}
+          <ul id="password-rules" className="mt-2 space-y-1" aria-live="polite">
+            {passwordRules(form.password).map((rule) => (
+              <li
+                key={rule.label}
+                className={`flex items-center gap-1.5 text-xs ${rule.met ? 'text-green-700' : 'text-primary-900/60'}`}
+              >
+                {rule.met ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                ) : (
+                  <span className="inline-block h-3.5 w-3.5 rounded-full border border-current" aria-hidden />
+                )}
+                <span>
+                  {rule.label}
+                  <span className="sr-only">{rule.met ? ' (done)' : ' (not yet)'}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div>
@@ -441,6 +485,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
               className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}

@@ -1,19 +1,64 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import QuickRegistrationForm from '@/components/QuickRegistrationForm';
 import AppointmentSelectionForm from '@/components/AppointmentSelectionForm';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { GraduationCap, ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { GraduationCap, ArrowLeft, CheckCircle2, Clock, CalendarPlus, MapPin } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { calendarDateFromValue } from '@/lib/appointmentTime';
+import { downloadAppointmentIcs } from '@/lib/appointmentIcs';
+
+interface BookedAppointment {
+  appointmentDate: string;
+  appointmentTime: string;
+  hubName?: string;
+  status: string;
+}
+
+function formatBookedDate(value: string) {
+  const day = calendarDateFromValue(value);
+  // Stored as UTC midnight of the calendar day; noon UTC keeps the weekday stable
+  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
 
 export default function RegisterPage() {
-  const router = useRouter();
+  const { user: authUser, token, loading: authLoading, isAuthenticated } = useAuth();
   const [step, setStep] = useState<'quick-form' | 'appointments' | 'success'>('quick-form');
   const [userId, setUserId] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string>('');
+  const [booked, setBooked] = useState<BookedAppointment | null>(null);
+  const resumeChecked = useRef(false);
+
+  // Already signed up (e.g. the page reloaded before picking a time): resume instead of
+  // showing the sign-up form again, which would fail with "email already registered".
+  useEffect(() => {
+    if (authLoading || resumeChecked.current) return;
+    resumeChecked.current = true;
+    if (!isAuthenticated || !authUser || !token || authUser.isAdmin) return;
+
+    fetch('/api/appointments', { headers: { Authorization: `Bearer ${token}` } })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.appointment) {
+          window.location.href = '/dashboard';
+          return;
+        }
+        setUserId(authUser._id);
+        setStep('appointments');
+      })
+      .catch(() => {
+        setUserId(authUser._id);
+        setStep('appointments');
+      });
+  }, [authLoading, isAuthenticated, authUser, token]);
 
   const handleQuickRegistrationSuccess = (userData: any) => {
     setUserId(userData._id);
@@ -25,14 +70,13 @@ export default function RegisterPage() {
     setErrorMessage(error);
   };
 
-  const handleAppointmentSuccess = (appointment: any) => {
+  const handleAppointmentSuccess = (appointment: BookedAppointment) => {
+    setErrorMessage('');
+    setBooked(appointment);
     setStep('success');
-    // Reload the page to refresh AuthContext, then redirect to dashboard
-    setTimeout(() => {
-      // Force window reload to refresh AuthContext with new user data
-      window.location.href = '/dashboard';
-    }, 1500);
   };
+
+  const needsProfile = booked?.status === 'pending_profile';
 
   const handleAppointmentError = (error: string) => {
     setErrorMessage(error);
@@ -71,14 +115,16 @@ export default function RegisterPage() {
                 </div>
                 <h1 className="text-3xl font-bold text-primary-900 sm:text-4xl">
                   <span className="bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
-                    {step === 'success' ? 'All Set!' : 'Quick Registration'}
+                    {step !== 'success' ? 'Quick Registration' : needsProfile ? 'Your Seat Is Reserved' : 'All Set!'}
                   </span>
                 </h1>
               </div>
               <p className="text-lg text-primary-900/80">
                 {step === 'quick-form' && 'Create your account in just 2 minutes'}
                 {step === 'appointments' && 'Select your appointment time'}
-                {step === 'success' && 'Your appointment is confirmed!'}
+                {step === 'success' && (needsProfile
+                  ? 'One more step to confirm your appointment'
+                  : 'Your appointment is confirmed!')}
               </p>
 
               {/* Age Requirement Alert */}
@@ -123,32 +169,86 @@ export default function RegisterPage() {
                   />
                 )}
 
-                {step === 'success' && (
-                  <div className="space-y-6 py-12">
+                {step === 'success' && booked && (
+                  <div className="space-y-6 py-4 text-left">
                     <div className="flex justify-center">
-                      <div className="rounded-full bg-green-100 p-6">
-                        <CheckCircle2 className="h-16 w-16 text-green-600" />
+                      <div className={`rounded-full p-5 ${needsProfile ? 'bg-amber-100' : 'bg-green-100'}`}>
+                        {needsProfile ? (
+                          <Clock className="h-12 w-12 text-amber-600" aria-hidden />
+                        ) : (
+                          <CheckCircle2 className="h-12 w-12 text-green-600" aria-hidden />
+                        )}
                       </div>
                     </div>
-                    <div className="text-center space-y-3">
-                      <h2 className="text-2xl font-bold text-green-700">Appointment Confirmed!</h2>
-                      <p className="text-primary-600">
-                        Check your email for confirmation details and next steps.
+
+                    <dl className="space-y-3 rounded-xl border border-primary-200/80 bg-white p-5">
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-primary-700">Date</dt>
+                        <dd className="text-lg font-semibold text-primary-900">{formatBookedDate(booked.appointmentDate)}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wide text-primary-700">Time</dt>
+                        <dd className="text-lg font-semibold text-primary-900">{booked.appointmentTime}</dd>
+                      </div>
+                      {booked.hubName && (
+                        <div>
+                          <dt className="text-xs font-semibold uppercase tracking-wide text-primary-700">Location</dt>
+                          <dd className="flex items-center gap-1.5 text-lg font-semibold text-primary-900">
+                            <MapPin className="h-4 w-4 text-primary-600" aria-hidden />
+                            {booked.hubName}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+
+                    {needsProfile ? (
+                      <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+                        <p className="font-semibold">Your seat is held, but not confirmed yet.</p>
+                        <p className="mt-1">
+                          Finish your profile (address, emergency contact, and education) to confirm it. It takes about 5 minutes.
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-center text-sm text-primary-900/80">
+                        Please arrive 5–10 minutes early. You can reschedule or cancel from your dashboard.
                       </p>
-                      <p className="text-sm text-primary-500">
-                        Redirecting to your dashboard...
+                    )}
+
+                    <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
+                      {/* Full page loads so AuthContext picks up the new account */}
+                      <a
+                        href={needsProfile ? '/dashboard?tab=profile' : '/dashboard'}
+                        className="inline-flex items-center justify-center rounded-lg bg-primary-700 px-5 py-3 text-sm font-semibold text-white hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+                      >
+                        {needsProfile ? 'Complete my profile' : 'Go to my dashboard'}
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => downloadAppointmentIcs({
+                          date: booked.appointmentDate,
+                          time: booked.appointmentTime,
+                          hubName: booked.hubName,
+                        })}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg border border-primary-300 bg-white px-5 py-3 text-sm font-semibold text-primary-800 hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-400 focus:ring-offset-2"
+                      >
+                        <CalendarPlus className="h-4 w-4" aria-hidden />
+                        Add to calendar
+                      </button>
+                    </div>
+                    {needsProfile && (
+                      <p className="text-center">
+                        <a href="/dashboard" className="text-sm font-semibold text-primary-700 underline underline-offset-2">
+                          I&apos;ll do it later
+                        </a>
                       </p>
-                    </div>
-                    <div className="flex justify-center">
-                      <Loader2 className="h-6 w-6 animate-spin text-primary-600" />
-                    </div>
+                    )}
                   </div>
                 )}
               </div>
 
               {/* Error Message */}
               {errorMessage && (
-                <div className="mt-6 rounded-lg border border-red-300 bg-red-50 p-4">
+                <div className="mt-6 rounded-lg border border-red-300 bg-red-50 p-4" role="alert">
                   <p className="text-sm text-red-700">{errorMessage}</p>
                 </div>
               )}
