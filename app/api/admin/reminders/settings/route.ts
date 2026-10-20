@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import { verifyAdminToken, isAdmin } from '@/lib/adminPermissions';
+import { verifyAdminToken, isAdmin, isSuperAdmin } from '@/lib/adminPermissions';
 import ReminderSettings from '@/models/ReminderSettings';
 
 export async function GET(request: NextRequest) {
@@ -74,9 +74,10 @@ export async function PUT(request: NextRequest) {
     const token = authHeader.substring(7);
     const adminUser = await verifyAdminToken(token);
 
-    if (!isAdmin(adminUser)) {
+    // Reminder rules apply to every hub, so only super admins may change them
+    if (!isSuperAdmin(adminUser)) {
       return NextResponse.json(
-        { error: 'Admin access required' },
+        { error: 'Super admin access required' },
         { status: 403 }
       );
     }

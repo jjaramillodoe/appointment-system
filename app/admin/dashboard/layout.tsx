@@ -2,12 +2,14 @@
 
 import { logger } from '@/lib/logger';
 
-import { useRouter, usePathname } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
   BarChart3, Users, Calendar, CalendarDays, Activity,
-  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History, Database, School, BookOpen, ClipboardCheck
+  Bell, FileText, Settings, LogOut, MapPin, Zap, Clock, Mail, History, Database, School, BookOpen, ClipboardCheck,
+  Inbox, Menu, X, type LucideIcon
 } from 'lucide-react';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { HubFilterProvider } from '@/contexts/HubFilterContext';
 import HubFilterBar from '@/components/admin/HubFilterBar';
@@ -18,10 +20,10 @@ export default function AdminDashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const { user, logout, isAdmin, isSuperAdmin, assignedHub, loading, token } = useAuth();
   const [hubName, setHubName] = useState<string | null>(null);
+  const [navOpen, setNavOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -63,30 +65,61 @@ export default function AdminDashboardLayout({
 
 
 
-  const navigation = [
-    { name: 'Today', href: '/admin/dashboard/today', icon: ClipboardCheck, current: pathname === '/admin/dashboard/today' },
-    { name: 'Analytics', href: '/admin/dashboard', icon: BarChart3, current: pathname === '/admin/dashboard' },
-    { name: 'Users', href: '/admin/dashboard/users', icon: Users, current: pathname === '/admin/dashboard/users' },
-    { name: 'Appointments', href: '/admin/dashboard/appointments', icon: Calendar, current: pathname === '/admin/dashboard/appointments' },
-    { name: 'Schools', href: '/admin/dashboard/schools', icon: School, current: pathname === '/admin/dashboard/schools' },
-    { name: 'Hubs', href: '/admin/dashboard/hubs', icon: MapPin, current: pathname === '/admin/dashboard/hubs' },
-    { name: 'Classes', href: '/admin/dashboard/classes', icon: BookOpen, current: pathname === '/admin/dashboard/classes' },
-    { name: 'Schedule', href: '/admin/dashboard/schedule', icon: CalendarDays, current: pathname === '/admin/dashboard/schedule' },
-    { name: 'Capacity', href: '/admin/dashboard/capacity', icon: Activity, current: pathname === '/admin/dashboard/capacity' },
-    { name: 'Messages', href: '/admin/dashboard/communications', icon: Mail, current: pathname === '/admin/dashboard/communications' },
-    ...(isSuperAdmin ? [
-      { name: 'Generator', href: '/admin/dashboard/schedule-generator', icon: Zap, current: pathname === '/admin/dashboard/schedule-generator' },
-      { name: 'Reminders', href: '/admin/dashboard/reminders', icon: Bell, current: pathname === '/admin/dashboard/reminders' },
-      { name: 'Blackout', href: '/admin/dashboard/blackout-dates', icon: Clock, current: pathname === '/admin/dashboard/blackout-dates' },
-    ] : []),
-    { name: 'Notifications', href: '/admin/dashboard/notifications', icon: Clock, current: pathname === '/admin/dashboard/notifications' },
-    { name: 'Reports', href: '/admin/dashboard/reports', icon: FileText, current: pathname === '/admin/dashboard/reports' },
-    // Only show Audit Logs & Settings for super admins
-    ...(isSuperAdmin ? [
-      { name: 'Audit Logs', href: '/admin/dashboard/audit-logs', icon: History, current: pathname === '/admin/dashboard/audit-logs' },
-      { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings, current: pathname === '/admin/dashboard/settings' },
-      { name: 'Maintenance', href: '/admin/dashboard/maintenance', icon: Database, current: pathname === '/admin/dashboard/maintenance' },
-    ] : []),
+  const isCurrent = (href: string) =>
+    href === '/admin/dashboard' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+
+  // Grouped by task; super-admin-only pages stay hidden for other admins as before
+  const navGroups: { label: string; items: { name: string; href: string; icon: LucideIcon }[] }[] = [
+    {
+      label: 'Front desk',
+      items: [
+        { name: 'Today', href: '/admin/dashboard/today', icon: ClipboardCheck },
+        { name: 'Appointments', href: '/admin/dashboard/appointments', icon: Calendar },
+        { name: 'Users', href: '/admin/dashboard/users', icon: Users },
+      ],
+    },
+    {
+      label: 'Scheduling',
+      items: [
+        { name: 'Schedule', href: '/admin/dashboard/schedule', icon: CalendarDays },
+        { name: 'Capacity', href: '/admin/dashboard/capacity', icon: Activity },
+        ...(isSuperAdmin ? [
+          { name: 'Blackout', href: '/admin/dashboard/blackout-dates', icon: Clock },
+          { name: 'Generator', href: '/admin/dashboard/schedule-generator', icon: Zap },
+        ] : []),
+      ],
+    },
+    {
+      label: 'Sites & programs',
+      items: [
+        { name: 'Hubs', href: '/admin/dashboard/hubs', icon: MapPin },
+        { name: 'Schools', href: '/admin/dashboard/schools', icon: School },
+        { name: 'Classes', href: '/admin/dashboard/classes', icon: BookOpen },
+      ],
+    },
+    {
+      label: 'Communication',
+      items: [
+        { name: 'Messages', href: '/admin/dashboard/communications', icon: Mail },
+        ...(isSuperAdmin ? [{ name: 'Reminders', href: '/admin/dashboard/reminders', icon: Bell }] : []),
+        { name: 'Notifications', href: '/admin/dashboard/notifications', icon: Inbox },
+      ],
+    },
+    {
+      label: 'Insights',
+      items: [
+        { name: 'Analytics', href: '/admin/dashboard', icon: BarChart3 },
+        { name: 'Reports', href: '/admin/dashboard/reports', icon: FileText },
+      ],
+    },
+    ...(isSuperAdmin ? [{
+      label: 'System',
+      items: [
+        { name: 'Audit Logs', href: '/admin/dashboard/audit-logs', icon: History },
+        { name: 'Settings', href: '/admin/dashboard/settings', icon: Settings },
+        { name: 'Maintenance', href: '/admin/dashboard/maintenance', icon: Database },
+      ],
+    }] : []),
   ];
 
   return (
@@ -96,7 +129,17 @@ export default function AdminDashboardLayout({
           {/* Top Header */}
           <div className="bg-white shadow-sm border-b border-gray-200">
             <div className="px-6 py-4 flex justify-between items-center">
-              <div>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  className="rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
+                  onClick={() => setNavOpen((open) => !open)}
+                  aria-controls="admin-sidebar"
+                  aria-expanded={navOpen}
+                  aria-label={navOpen ? 'Close menu' : 'Open menu'}
+                >
+                  {navOpen ? <X className="h-5 w-5" aria-hidden /> : <Menu className="h-5 w-5" aria-hidden />}
+                </button>
                 <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
               </div>
               <div className="flex items-center space-x-4">
@@ -115,25 +158,44 @@ export default function AdminDashboardLayout({
           {/* Sidebar + Content Layout */}
           <div className="flex flex-1 overflow-hidden">
             {/* Sidebar Navigation */}
-            <aside className="w-64 bg-white border-r border-gray-200 overflow-y-auto">
-              <nav className="space-y-1 p-4">
-                {navigation.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.name}
-                      onClick={() => router.push(item.href)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                        item.current
-                          ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <Icon className="h-5 w-5 flex-shrink-0" />
-                      <span>{item.name}</span>
-                    </button>
-                  );
-                })}
+            {navOpen && (
+              <div className="fixed inset-0 z-30 bg-black/30 md:hidden" onClick={() => setNavOpen(false)} aria-hidden />
+            )}
+            <aside
+              id="admin-sidebar"
+              className={`fixed inset-y-0 left-0 z-40 w-64 transform bg-white border-r border-gray-200 overflow-y-auto transition-transform md:static md:translate-x-0 ${
+                navOpen ? 'translate-x-0' : '-translate-x-full'
+              }`}
+            >
+              <nav className="p-4" aria-label="Admin">
+                {navGroups.map((group) => (
+                  <div key={group.label} className="mb-4">
+                    <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">{group.label}</p>
+                    <ul className="space-y-1">
+                      {group.items.map((item) => {
+                        const Icon = item.icon;
+                        const current = isCurrent(item.href);
+                        return (
+                          <li key={item.href}>
+                            <Link
+                              href={item.href}
+                              onClick={() => setNavOpen(false)}
+                              aria-current={current ? 'page' : undefined}
+                              className={`w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                                current
+                                  ? 'bg-blue-50 text-blue-600 border-l-4 border-blue-600'
+                                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                              }`}
+                            >
+                              <Icon className="h-5 w-5 flex-shrink-0" aria-hidden />
+                              <span>{item.name}</span>
+                            </Link>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
               </nav>
 
               {/* Sidebar Footer */}
