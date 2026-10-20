@@ -53,16 +53,17 @@ export default function AppointmentPrintCard({
     setError('');
     try {
       await downloadAppointmentPdf({
-        studentName: [user.firstName, user.lastName].filter(Boolean).join(' ') || 'Student',
+        studentName: [user.firstName, user.lastName].filter(Boolean).join(' ') || t.dashboard.pdf.student,
         email: user.email,
         phone: user.phone,
         dateLabel,
         timeLabel,
-        status: appointment.status,
+        statusLabel: statusLabel(t, appointment.status),
         hubName: appointment.hubName || hub?.name || user.closestHub?.name,
         hubLocation: appointment.hubLocation || hub?.address || user.closestHub?.address,
         notes: appointment.notes,
         directions: appointment.publicTransitDirections || hub?.publicTransitDirections,
+        copy: t.dashboard.pdf,
       });
     } catch (err) {
       logger.error(err);
