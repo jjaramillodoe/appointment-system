@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface Statistic {
   value: string;
@@ -14,17 +15,18 @@ interface StatisticsSectionProps {
   className?: string;
 }
 
-const defaultStatistics: Statistic[] = [
-  { value: "500", suffix: "+", label: "Students Enrolled" },
-  { value: "95", suffix: "%", label: "Success Rate" },
-  { value: "3", label: "Programs Offered" },
-  { value: "24/7", label: "Online Support" }
-];
-
 export default function StatisticsSection({
-  statistics = defaultStatistics,
+  statistics: statisticsProp,
   className = ""
 }: StatisticsSectionProps) {
+  const { t } = useI18n();
+  const labels = t.home.stats;
+  const statistics = useMemo<Statistic[]>(() => statisticsProp ?? [
+    { value: "500", suffix: "+", label: labels.studentsEnrolled },
+    { value: "95", suffix: "%", label: labels.successRate },
+    { value: "3", label: labels.programsOffered },
+    { value: "24/7", label: labels.onlineSupport }
+  ], [statisticsProp, labels]);
   const [countedValues, setCountedValues] = useState<string[]>(statistics.map(() => '0'));
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);

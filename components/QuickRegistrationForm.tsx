@@ -5,12 +5,14 @@ import { Mail, Lock, User, Phone, Eye, EyeOff, AlertCircle, CheckCircle2, Loader
 import LanguageAutocomplete from './ui/LanguageAutocomplete';
 import Link from 'next/link';
 import { validateEmail } from '@/utils/emailValidation';
+import { useI18n } from '@/contexts/I18nContext';
+import type { Dictionary } from '@/lib/i18n/dictionaries/en';
 
-function passwordRules(password: string) {
+function passwordRules(password: string, copy: Dictionary['quickForm']) {
   return [
-    { label: 'At least 6 characters', met: password.length >= 6 },
-    { label: 'An uppercase and a lowercase letter', met: /[a-z]/.test(password) && /[A-Z]/.test(password) },
-    { label: 'At least one number', met: /\d/.test(password) },
+    { label: copy.ruleLength, met: password.length >= 6 },
+    { label: copy.ruleCase, met: /[a-z]/.test(password) && /[A-Z]/.test(password) },
+    { label: copy.ruleNumber, met: /\d/.test(password) },
   ];
 }
 
@@ -57,7 +59,18 @@ const initialForm: QuickRegistrationForm = {
 };
 
 export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegistrationFormProps) {
-  const [form, setForm] = useState<QuickRegistrationForm>(initialForm);
+  const { t, locale } = useI18n();
+  const copy = t.quickForm;
+  const errorText = copy.errors;
+  // Someone using the Spanish site most likely prefers Spanish; they can still change it
+  const [form, setForm] = useState<QuickRegistrationForm>({
+    ...initialForm,
+    preferredLanguage: locale === 'es' ? 'Spanish' : '',
+  });
+  const languageOptions = LANGUAGE_OPTIONS.map((option) => ({
+    code: option.code,
+    name: copy.languages[option.code as keyof typeof copy.languages] ?? option.name,
+  }));
   const [errors, setErrors] = useState<FormErrors>({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -70,57 +83,58 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
     // Email validation
     if (!form.email.trim()) {
-      newErrors.email = 'Email is required';
+      newErrors.email = errorText.emailRequired;
     } else {
       const validation = validateEmail(form.email);
       if (!validation.isValid) {
-        newErrors.email = validation.error || 'Invalid email format';
+        // The validator's own messages are English-only
+        newErrors.email = locale === 'en' && validation.error ? validation.error : errorText.emailInvalid;
         setEmailSuggestions(validation.suggestions || []);
       }
     }
 
     // Confirm email
     if (form.email !== form.confirmEmail) {
-      newErrors.confirmEmail = 'Emails do not match';
+      newErrors.confirmEmail = errorText.emailMismatch;
     }
 
     // Password validation
     if (!form.password) {
-      newErrors.password = 'Password is required';
+      newErrors.password = errorText.passwordRequired;
     } else if (form.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+      newErrors.password = errorText.passwordLength;
     } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(form.password)) {
-      newErrors.password = 'Password must contain uppercase, lowercase, and number';
+      newErrors.password = errorText.passwordComplexity;
     }
 
     // Confirm password
     if (form.password !== form.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
+      newErrors.confirmPassword = errorText.passwordMismatch;
     }
 
     // Name validation
     if (!form.firstName.trim()) {
-      newErrors.firstName = 'First name is required';
+      newErrors.firstName = errorText.firstNameRequired;
     } else if (form.firstName.trim().length < 2) {
-      newErrors.firstName = 'First name must be at least 2 characters';
+      newErrors.firstName = errorText.firstNameShort;
     }
 
     if (!form.lastName.trim()) {
-      newErrors.lastName = 'Last name is required';
+      newErrors.lastName = errorText.lastNameRequired;
     } else if (form.lastName.trim().length < 2) {
-      newErrors.lastName = 'Last name must be at least 2 characters';
+      newErrors.lastName = errorText.lastNameShort;
     }
 
     // Phone validation
     if (!form.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
+      newErrors.phone = errorText.phoneRequired;
     } else if (!/^\d{10}$/.test(form.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Phone must be 10 digits (e.g., 2125551234)';
+      newErrors.phone = errorText.phoneInvalid;
     }
 
     // Language validation
     if (!form.preferredLanguage) {
-      newErrors.preferredLanguage = 'Please select your preferred language';
+      newErrors.preferredLanguage = errorText.languageRequired;
     }
 
     setErrors(newErrors);
@@ -181,7 +195,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
     e.preventDefault();
 
     if (!validateForm()) {
-      onError('Please fix the errors above');
+      onError(errorText.fixAbove);
       return;
     }
 
@@ -208,14 +222,14 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
       if (response.status === 409) {
         setEmailTaken(true);
-        setErrors((prev) => ({ ...prev, email: 'This email already has an account.' }));
-        onError('This email already has an account. Sign in instead, or reset your password.');
+        setErrors((prev) => ({ ...prev, email: copy.emailTaken }));
+        onError(copy.emailTakenSummary);
         setIsLoading(false);
         return;
       }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || errorText.failed);
       }
 
       // Store token in localStorage
@@ -224,7 +238,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
       onSuccess(data.user);
     } catch (err: any) {
-      onError(err.message || 'Registration failed. Please try again.');
+      onError(err.message || errorText.failed);
       setIsLoading(false);
     }
   };
@@ -238,7 +252,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
       <div className="space-y-3">
         <div>
           <label htmlFor="email" className="block text-sm font-semibold text-primary-900">
-            Email Address <span className="text-red-500">*</span>
+            {copy.email} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <Mail className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -253,7 +267,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                   ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
                   : 'border-primary-200 bg-white focus:border-primary-400 focus:ring-primary-100'
               } focus:outline-none focus:ring-2`}
-              placeholder="your@email.com"
+              placeholder={copy.emailPlaceholder}
             />
           </div>
           {errors.email && (
@@ -264,9 +278,9 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                 {emailTaken && (
                   <>
                     {' '}
-                    <Link href="/login" className="font-semibold underline">Sign in</Link>
-                    {' or '}
-                    <Link href="/forgot-password" className="font-semibold underline">reset your password</Link>.
+                    <Link href="/login" className="font-semibold underline">{copy.signIn}</Link>
+                    {` ${copy.or} `}
+                    <Link href="/forgot-password" className="font-semibold underline">{copy.resetPassword}</Link>.
                   </>
                 )}
               </span>
@@ -274,7 +288,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
           )}
           {emailSuggestions.length > 0 && (
             <div className="mt-2 rounded-lg border border-yellow-200 bg-yellow-50/50 p-2.5">
-              <p className="text-xs font-semibold text-yellow-800 mb-1">Suggestions:</p>
+              <p className="text-xs font-semibold text-yellow-800 mb-1">{copy.suggestions}</p>
               {emailSuggestions.map((suggestion) => (
                 <p key={suggestion} className="text-xs text-yellow-700">{suggestion}</p>
               ))}
@@ -284,7 +298,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
         <div>
           <label htmlFor="confirmEmail" className="block text-sm font-semibold text-primary-900">
-            Confirm Email <span className="text-red-500">*</span>
+            {copy.confirmEmail} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <Mail className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -299,7 +313,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                   ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
                   : 'border-primary-200 bg-white focus:border-primary-400 focus:ring-primary-100'
               } focus:outline-none focus:ring-2`}
-              placeholder="your@email.com"
+              placeholder={copy.emailPlaceholder}
             />
           </div>
           {errors.confirmEmail && (
@@ -315,7 +329,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="firstName" className="block text-sm font-semibold text-primary-900">
-            First Name <span className="text-red-500">*</span>
+            {copy.firstName} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <User className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -330,7 +344,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                   ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
                   : 'border-primary-200 bg-white focus:border-primary-400 focus:ring-primary-100'
               } focus:outline-none focus:ring-2`}
-              placeholder="John"
+              placeholder={copy.firstNamePlaceholder}
             />
           </div>
           {errors.firstName && (
@@ -340,7 +354,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
         <div>
           <label htmlFor="lastName" className="block text-sm font-semibold text-primary-900">
-            Last Name <span className="text-red-500">*</span>
+            {copy.lastName} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <User className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -355,7 +369,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                   ? 'border-red-300 bg-red-50/50 focus:border-red-400 focus:ring-red-100'
                   : 'border-primary-200 bg-white focus:border-primary-400 focus:ring-primary-100'
               } focus:outline-none focus:ring-2`}
-              placeholder="Doe"
+              placeholder={copy.lastNamePlaceholder}
             />
           </div>
           {errors.lastName && (
@@ -367,7 +381,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
       {/* Phone Section */}
       <div>
         <label htmlFor="phone" className="block text-sm font-semibold text-primary-900">
-          Phone Number <span className="text-red-500">*</span>
+          {copy.phone} <span className="text-red-500" aria-hidden>*</span>
         </label>
         <div className="relative mt-1.5">
           <Phone className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -393,14 +407,14 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
       {/* Language Section */}
       <div>
         <label className="block text-sm font-semibold text-primary-900">
-          Preferred Language <span className="text-red-500">*</span>
+          {copy.preferredLanguage} <span className="text-red-500" aria-hidden>*</span>
         </label>
         <div className="mt-1.5">
           <LanguageAutocomplete
-            options={LANGUAGE_OPTIONS}
+            options={languageOptions}
             value={form.preferredLanguage}
             onChange={handleLanguageChange}
-            placeholder="Select your preferred language"
+            placeholder={copy.languagePlaceholder}
           />
         </div>
         {errors.preferredLanguage && (
@@ -412,7 +426,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
       <div className="space-y-3 border-t border-primary-100 pt-5">
         <div>
           <label htmlFor="password" className="block text-sm font-semibold text-primary-900">
-            Password <span className="text-red-500">*</span>
+            {copy.password} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <Lock className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -434,7 +448,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
               className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -444,7 +458,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             <p className="mt-1 text-sm text-red-600">{errors.password}</p>
           )}
           <ul id="password-rules" className="mt-2 space-y-1" aria-live="polite">
-            {passwordRules(form.password).map((rule) => (
+            {passwordRules(form.password, copy).map((rule) => (
               <li
                 key={rule.label}
                 className={`flex items-center gap-1.5 text-xs ${rule.met ? 'text-green-700' : 'text-primary-900/60'}`}
@@ -456,7 +470,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
                 )}
                 <span>
                   {rule.label}
-                  <span className="sr-only">{rule.met ? ' (done)' : ' (not yet)'}</span>
+                  <span className="sr-only"> {rule.met ? copy.ruleDone : copy.ruleNotYet}</span>
                 </span>
               </li>
             ))}
@@ -465,7 +479,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
         <div>
           <label htmlFor="confirmPassword" className="block text-sm font-semibold text-primary-900">
-            Confirm Password <span className="text-red-500">*</span>
+            {copy.confirmPassword} <span className="text-red-500" aria-hidden>*</span>
           </label>
           <div className="relative mt-1.5">
             <Lock className="absolute left-3 top-3 h-5 w-5 text-primary-400" />
@@ -485,7 +499,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+              aria-label={showConfirmPassword ? t.common.hidePassword : t.common.showPassword}
               className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
@@ -506,15 +520,15 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
         {isLoading ? (
           <>
             <Loader2 className="h-5 w-5 animate-spin" />
-            Creating Account...
+            {copy.submitting}
           </>
         ) : (
-          'Create Account & Continue to Appointments'
+          copy.submit
         )}
       </button>
 
       <p className="text-center text-xs text-primary-600">
-        After creating your account, you'll select your preferred appointment time.
+        {copy.afterSubmit}
       </p>
     </form>
   );

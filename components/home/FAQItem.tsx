@@ -2,6 +2,8 @@
 
 import { ChevronDown, ChevronUp, HelpCircle } from 'lucide-react';
 import { useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
 
 interface FAQItemProps {
   question: string;
@@ -18,6 +20,7 @@ export default function FAQItem({
   onToggle,
   className = ""
 }: FAQItemProps) {
+  const { t } = useI18n();
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   
   // Use controlled state if provided, otherwise use internal state
@@ -36,7 +39,7 @@ export default function FAQItem({
         onClick={handleToggle}
         className="w-full flex items-center justify-between text-left focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-lg p-2 -m-2"
         aria-expanded={isOpen}
-        aria-label={`${isOpen ? 'Hide' : 'Show'} answer to: ${question}`}
+        aria-label={fmt(isOpen ? t.home.faq.hideAnswer : t.home.faq.showAnswer, { question })}
       >
         <div className="flex items-start flex-1 pr-4">
           <HelpCircle className={`h-5 w-5 text-primary-600 mr-3 mt-0.5 flex-shrink-0 transform transition-transform duration-300 ${

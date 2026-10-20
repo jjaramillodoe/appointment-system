@@ -1,3 +1,5 @@
+'use client';
+
 declare global {
   interface Window {
     googleTranslateElementInit?: () => void;
@@ -9,8 +11,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { LogIn, UserPlus } from 'lucide-react';
 import LanguageSelector from './LanguageSelector';
+import { useI18n } from '@/contexts/I18nContext';
 
 export default function Header() {
+  const { t } = useI18n();
   return (
     <header className="bg-gradient-to-r from-primary-900 via-primary-800 to-primary-900 text-white shadow-d79-card border-b-4 border-yellow-500">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -18,7 +22,7 @@ export default function Header() {
           <div className="flex items-center space-x-3">
             <Image
               src="/logo.png"
-              alt="Adult Education Logo"
+              alt={t.header.logoAlt}
               width={48}
               height={48}
               className="h-12 w-12 rounded-full shadow-lg border-2 border-yellow-400/90 bg-white ring-2 ring-black/20"
@@ -26,10 +30,10 @@ export default function Header() {
             />
             <div className="ml-1 min-w-0">
               <p className="text-[10px] sm:text-xs font-semibold uppercase tracking-widest text-yellow-400/95">
-                NYC Public Schools · District 79
+                {t.header.tagline}
               </p>
               <span className="block text-xl sm:text-2xl font-bold tracking-tight text-white truncate">
-                Adult Education Intake
+                {t.header.title}
               </span>
             </div>
           </div>
@@ -39,15 +43,15 @@ export default function Header() {
               href="/login"
               className="inline-flex items-center rounded-lg bg-white/10 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/25 backdrop-blur-sm transition hover:bg-white/20"
             >
-              <LogIn className="h-4 w-4 mr-2" />
-              Login
+              <LogIn className="h-4 w-4 mr-2" aria-hidden />
+              {t.common.login}
             </Link>
             <Link
               href="/register"
               className="inline-flex items-center rounded-lg bg-yellow-500 px-4 py-2 text-sm font-semibold text-primary-900 shadow-md transition hover:bg-yellow-400"
             >
-              <UserPlus className="h-4 w-4 mr-2" />
-              Register
+              <UserPlus className="h-4 w-4 mr-2" aria-hidden />
+              {t.common.register}
             </Link>
           </div>
         </div>

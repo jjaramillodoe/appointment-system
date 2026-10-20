@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { AuthProvider } from '@/contexts/AuthContext'
+import { I18nProvider } from '@/contexts/I18nContext'
+import { cookies, headers } from 'next/headers'
+import { LOCALE_COOKIE, isLocale, localeFromAcceptLanguage } from '@/lib/i18n/config'
 import { Analytics } from '@vercel/analytics/react'
 
 const inter = Inter({ subsets: ['latin'] })
@@ -27,20 +30,26 @@ export const metadata: Metadata = {
   },
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  // Saved choice wins; otherwise follow the browser's language on first visit
+  const saved = (await cookies()).get(LOCALE_COOKIE)?.value
+  const locale = isLocale(saved) ? saved : localeFromAcceptLanguage((await headers()).get('accept-language'))
+
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body className={inter.className} suppressHydrationWarning>
-        <AuthProvider>
-          <Analytics />
-          <div className="min-h-screen bg-gray-50">
-            {children}
-          </div>
-        </AuthProvider>
+        <I18nProvider initialLocale={locale}>
+          <AuthProvider>
+            <Analytics />
+            <div className="min-h-screen bg-gray-50">
+              {children}
+            </div>
+          </AuthProvider>
+        </I18nProvider>
       </body>
     </html>
   )

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ArrowRight, Phone, Mail, Sparkles } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface CTASectionProps {
   title?: string;
@@ -19,18 +20,19 @@ interface CTASectionProps {
 }
 
 export default function CTASection({
-  title = "Ready to Get Started?",
-  description = "Take the first step towards your educational goals. Our team is here to help you succeed.",
-  primaryCTA = {
-    text: "Register Now",
-    href: "/register"
-  },
+  title,
+  description,
+  primaryCTA,
   contact = {
     phone: "(555) 123-4567",
     email: "info@adulteducation.org"
   },
   className = ""
 }: CTASectionProps) {
+  const { t } = useI18n();
+  title ??= t.home.cta.title;
+  description ??= t.home.cta.description;
+  primaryCTA ??= { text: t.home.cta.button, href: "/register" };
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
