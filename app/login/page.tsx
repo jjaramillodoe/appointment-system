@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { GraduationCap, LogIn, ArrowLeft, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/I18nContext';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 
@@ -16,12 +17,14 @@ interface LoginForm {
 
 interface ValidationState {
   email: { isValid: boolean; message: string };
-  password: { isValid: boolean; strength: 'weak' | 'medium' | 'strong'; message: string };
+  password: { isValid: boolean };
 }
 
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isAdmin } = useAuth();
+  const { t } = useI18n();
+  const copy = t.login;
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -32,7 +35,7 @@ export default function LoginPage() {
   });
   const [validation, setValidation] = useState<ValidationState>({
     email: { isValid: false, message: '' },
-    password: { isValid: false, strength: 'weak', message: '' },
+    password: { isValid: false },
   });
 
   // Redirect if already logged in
@@ -53,32 +56,13 @@ export default function LoginPage() {
       return { isValid: false, message: '' };
     }
     if (!emailRegex.test(email)) {
-      return { isValid: false, message: 'Please enter a valid email address' };
+      return { isValid: false, message: copy.emailInvalid };
     }
-    return { isValid: true, message: 'Email looks good' };
+    return { isValid: true, message: copy.emailOk };
   };
 
-  // Validate password strength
-  const validatePassword = (
-    password: string
-  ): { isValid: boolean; strength: 'weak' | 'medium' | 'strong'; message: string } => {
-    if (!password) {
-      return { isValid: false, strength: 'weak', message: '' };
-    }
-    if (password.length < 6) {
-      return { isValid: false, strength: 'weak', message: 'Password must be at least 6 characters' };
-    }
-    if (password.length < 8) {
-      return { isValid: true, strength: 'medium', message: 'Medium strength' };
-    }
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasNumbers = /[0-9]/.test(password);
-    const hasSpecialChar = /[!@#$%^&*]/.test(password);
-    if (hasUpperCase && hasNumbers && hasSpecialChar) {
-      return { isValid: true, strength: 'strong', message: 'Strong password' };
-    }
-    return { isValid: true, strength: 'medium', message: 'Medium strength' };
-  };
+  // Signing in only needs a password; strength rules belong to sign-up
+  const validatePassword = (password: string): { isValid: boolean } => ({ isValid: password.length > 0 });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -109,7 +93,7 @@ export default function LoginPage() {
 
     // Validate before submit
     if (!validation.email.isValid || !validation.password.isValid) {
-      setError('Please fix the errors above before signing in');
+      setError(copy.fixErrors);
       return;
     }
 
@@ -133,10 +117,10 @@ export default function LoginPage() {
           router.push('/dashboard');
         }
       } else {
-        setError('Invalid email or password. Please try again.');
+        setError(copy.invalidCredentials);
       }
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.message || copy.failed);
     } finally {
       setIsLoading(false);
     }
@@ -173,16 +157,16 @@ export default function LoginPage() {
               className="group mb-6 inline-flex items-center text-sm font-semibold text-primary-800 transition-colors hover:text-primary-600"
             >
               <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-              Back to Home
+              {t.common.backToHome}
             </Link>
 
             <div className="mx-auto rounded-3xl border border-primary-200/70 bg-white/80 px-6 py-8 shadow-d79-hero backdrop-blur-md sm:px-10">
               <p className="mb-4 inline-flex flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-primary-200/80 bg-primary-50/90 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary-800">
-                <span className="text-yellow-700">District 79</span>
+                <span className="text-yellow-700">{t.common.district79}</span>
                 <span className="text-primary-400" aria-hidden>
                   ·
                 </span>
-                <span>Adult Education</span>
+                <span>{t.common.adultEducation}</span>
               </p>
               <div className="mb-4 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
                 <div className="relative">
@@ -191,11 +175,11 @@ export default function LoginPage() {
                 </div>
                 <h1 className="text-3xl font-bold text-primary-900 sm:text-4xl">
                   <span className="bg-gradient-to-r from-primary-800 via-primary-600 to-yellow-600 bg-clip-text text-transparent">
-                    Sign in
+                    {copy.title}
                   </span>
                 </h1>
               </div>
-              <p className="text-lg text-primary-900/80">Welcome back — access your account and appointments.</p>
+              <p className="text-lg text-primary-900/80">{copy.subtitle}</p>
             </div>
           </div>
 
@@ -213,7 +197,7 @@ export default function LoginPage() {
               {/* Email Field */}
               <div>
                 <label htmlFor="email" className="mb-2 block text-sm font-medium text-primary-900/90">
-                  Email address
+                  {copy.email}
                 </label>
                 <div className="relative">
                   <input
@@ -226,7 +210,7 @@ export default function LoginPage() {
                     className={`input-field pr-10 ${
                       formData.email && (validation.email.isValid ? 'border-green-500' : 'border-red-500')
                     }`}
-                    placeholder="Enter your email"
+                    placeholder={copy.emailPlaceholder}
                     autoComplete="email"
                   />
                   {formData.email && (
@@ -254,23 +238,8 @@ export default function LoginPage() {
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <label htmlFor="password" className="block text-sm font-medium text-primary-900/90">
-                    Password
+                    {copy.password}
                   </label>
-                  {formData.password && (
-                    <span
-                      className={`text-xs font-semibold ${
-                        validation.password.strength === 'strong'
-                          ? 'text-green-600'
-                          : validation.password.strength === 'medium'
-                            ? 'text-yellow-600'
-                            : 'text-red-600'
-                      }`}
-                    >
-                      {validation.password.strength.charAt(0).toUpperCase() +
-                        validation.password.strength.slice(1)}{' '}
-                      strength
-                    </span>
-                  )}
                 </div>
                 <div className="relative">
                   <input
@@ -280,49 +249,23 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleInputChange}
                     required
-                    className={`input-field pr-10 ${
-                      formData.password && (validation.password.isValid ? 'border-green-500' : 'border-red-500')
-                    }`}
-                    placeholder="Enter your password"
+                    className="input-field pr-10"
+                    placeholder={copy.passwordPlaceholder}
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-primary-600 hover:text-primary-700"
-                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
                   >
                     {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                   </button>
                 </div>
 
-                {/* Password Strength Bar */}
-                {formData.password && (
-                  <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div
-                      className={`h-full transition-all ${
-                        validation.password.strength === 'strong'
-                          ? 'w-full bg-green-500'
-                          : validation.password.strength === 'medium'
-                            ? 'w-2/3 bg-yellow-500'
-                            : 'w-1/3 bg-red-500'
-                      }`}
-                    />
-                  </div>
-                )}
-
-                {formData.password && validation.password.message && (
-                  <p
-                    className={`mt-1 text-xs font-medium ${
-                      validation.password.isValid ? 'text-green-600' : 'text-red-600'
-                    }`}
-                  >
-                    {validation.password.message}
-                  </p>
-                )}
                 <div className="mt-2 text-right">
                   <Link href="/forgot-password" className="text-sm font-semibold text-primary-700">
-                    Forgot password?
+                    {copy.forgotPassword}
                   </Link>
                 </div>
               </div>
@@ -338,7 +281,7 @@ export default function LoginPage() {
                   className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
                 />
                 <label htmlFor="rememberMe" className="ml-2 text-sm text-primary-700">
-                  Remember this email for next time
+                  {copy.rememberMe}
                 </label>
               </div>
 
@@ -347,7 +290,7 @@ export default function LoginPage() {
                   href="/register"
                   className="text-center text-sm font-semibold text-primary-700 underline decoration-yellow-500/80 underline-offset-2 transition hover:text-primary-600 sm:text-left"
                 >
-                  Don&apos;t have an account? Register
+                  {copy.noAccount}
                 </Link>
                 <button
                   type="submit"
@@ -357,12 +300,12 @@ export default function LoginPage() {
                   {isLoading ? (
                     <>
                       <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                      Signing in…
+                      {copy.submitting}
                     </>
                   ) : (
                     <>
-                      <LogIn className="mr-2 h-4 w-4" />
-                      Sign in
+                      <LogIn className="mr-2 h-4 w-4" aria-hidden />
+                      {copy.submit}
                     </>
                   )}
                 </button>

@@ -45,11 +45,11 @@ export function splitDayOffReason(reason?: string): { category: string; details:
   };
 }
 
-export function formatClosedDateLabel(dateStr: string): string {
+export function formatClosedDateLabel(dateStr: string, intlLocale = 'en-US'): string {
   const [year, month, day] = dateStr.split('-').map(Number);
   if (!year || !month || !day) return dateStr;
 
-  return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+  return new Date(year, month - 1, day).toLocaleDateString(intlLocale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',

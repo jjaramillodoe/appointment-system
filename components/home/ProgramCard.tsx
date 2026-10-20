@@ -2,6 +2,7 @@
 
 import { LucideIcon, CheckCircle, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface ProgramCardProps {
   icon: LucideIcon;
@@ -18,6 +19,7 @@ export default function ProgramCard({
   features,
   className = ""
 }: ProgramCardProps) {
+  const { t } = useI18n();
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -66,7 +68,7 @@ export default function ProgramCard({
 
         {/* Learn more indicator */}
         <div className="flex items-center justify-center text-primary-600 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
-          <span className="text-sm font-medium mr-2">Learn more</span>
+          <span className="text-sm font-medium mr-2">{t.home.programs.learnMore}</span>
           <ArrowRight className="h-4 w-4 transform group-hover:translate-x-1 transition-transform duration-300" />
         </div>
       </div>

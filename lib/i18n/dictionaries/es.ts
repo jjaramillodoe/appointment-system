@@ -1,0 +1,337 @@
+import type { Dictionary } from './en';
+
+// DRAFT: written by Claude (AI). Must be reviewed by DOE translation staff or a
+// bilingual staff member before it is relied on. Uses the formal "usted" to match
+// the existing bilingual emails.
+const es: Dictionary = {
+  common: {
+    nycPublicSchools: 'Escuelas Públicas de NYC',
+    district79: 'Distrito 79',
+    adultEducation: 'Educación para Adultos',
+    login: 'Iniciar sesión',
+    register: 'Registrarse',
+    signIn: 'Iniciar sesión',
+    backToHome: 'Volver al inicio',
+    showPassword: 'Mostrar contraseña',
+    hidePassword: 'Ocultar contraseña',
+    required: 'obligatorio',
+  },
+  language: {
+    selectLabel: 'Seleccionar idioma',
+    supported: 'Traducido',
+    moreLanguages: 'Más idiomas (Google Translate)',
+    machineNotice: 'Los demás idiomas usan traducción automática y pueden contener errores.',
+  },
+  header: {
+    tagline: 'Escuelas Públicas de NYC · Distrito 79',
+    title: 'Admisión de Educación para Adultos',
+    logoAlt: 'Logotipo de Educación para Adultos',
+  },
+  footer: {
+    aboutTitle: 'Acerca de',
+    aboutText:
+      'El Distrito 79 de Educación para Adultos de las Escuelas Públicas de NYC ofrece servicios completos de educación para adultos que le ayudan a alcanzar sus metas educativas y profesionales.',
+    quickLinks: 'Enlaces rápidos',
+    privacyPolicy: 'Política de privacidad',
+    termsOfUse: 'Términos de uso',
+    contactUs: 'Contáctenos',
+    copyright: '© {year} Escuelas Públicas de NYC - Distrito 79 de Educación para Adultos. Todos los derechos reservados.',
+    privacy: 'Privacidad',
+    terms: 'Términos',
+    developedBy: 'Desarrollado por Javier Jaramillo',
+  },
+  home: {
+    hero: {
+      title: 'Transforme su futuro con la',
+      subtitle: 'Educación para Adultos',
+      description:
+        'Dé el primer paso hacia sus metas educativas y profesionales. Nuestros programas de educación para adultos le ayudan a desarrollar habilidades esenciales, aprender inglés y prepararse para nuevas oportunidades. ¡Comience hoy mismo!',
+      primaryCta: 'Comenzar ahora',
+      secondaryCta: 'Iniciar sesión',
+      logoAlt: 'Logotipo grande de Educación para Adultos',
+      imageAlt: 'Graduados celebrando en la ceremonia de graduación',
+    },
+    stats: {
+      studentsEnrolled: 'Estudiantes inscritos',
+      successRate: 'Tasa de éxito',
+      programsOffered: 'Programas ofrecidos',
+      onlineSupport: 'Apoyo en línea',
+    },
+    programs: {
+      eyebrow: 'Distrito 79 · Caminos para estudiantes adultos',
+      title: 'Nuestros programas',
+      description:
+        'Elija entre nuestra amplia variedad de programas de educación para adultos, diseñados para sus necesidades y metas.',
+      learnMore: 'Más información',
+      items: [
+        {
+          title: 'Educación Básica para Adultos (ABE)',
+          description:
+            'Desarrolle habilidades esenciales de lectura, escritura y matemáticas. Ideal para adultos que desean mejorar su lectoescritura y aritmética básica.',
+          features: ['Mejora de lectura y escritura', 'Desarrollo de habilidades matemáticas', 'Preparación para el GED'],
+        },
+        {
+          title: 'Inglés como Segundo Idioma (ESL)',
+          description:
+            'Aprenda inglés en un ambiente de apoyo. Desarrolle la expresión oral, la comprensión auditiva, la lectura y la escritura para la vida diaria y el trabajo.',
+          features: ['Inglés conversacional', 'Inglés para el trabajo', 'Integración cultural'],
+        },
+        {
+          title: 'Educación Técnica y Profesional (CTE)',
+          description:
+            'Adquiera habilidades prácticas para el mercado laboral actual. Aprenda destrezas de cada industria y prepárese para programas de certificación.',
+          features: ['Certificaciones de la industria', 'Preparación para el empleo', 'Orientación profesional'],
+        },
+      ],
+    },
+    features: {
+      eyebrow: 'Por qué registrarse con nosotros',
+      title: 'Pensado para los neoyorquinos',
+      items: [
+        {
+          title: 'Registro fácil',
+          description:
+            'Complete su registro en unos pocos pasos sencillos. Nuestro proceso simplificado hace que empezar sea rápido y sin complicaciones.',
+        },
+        {
+          title: 'Horarios flexibles',
+          description:
+            'Elija entre los horarios disponibles que se ajusten a su agenda. Ofrecemos citas durante toda la semana para adaptarnos a sus necesidades.',
+        },
+        {
+          title: 'Apoyo de expertos',
+          description:
+            'Reciba orientación personalizada de educadores con experiencia, comprometidos a ayudarle a alcanzar sus metas educativas y profesionales.',
+        },
+      ],
+    },
+    howItWorks: {
+      eyebrow: 'Su proceso de admisión',
+      title: 'Cómo funciona',
+      steps: [
+        { title: 'Regístrese', description: 'Cree su cuenta con información básica y cuéntenos sus metas educativas' },
+        { title: 'Programe', description: 'Elija el horario de cita de 30 minutos que prefiera entre los disponibles' },
+        { title: 'Asista', description: 'Reúnase con nuestro equipo para su sesión de admisión y hablen de su camino educativo' },
+        { title: 'Comience', description: 'Inicie su camino educativo en el programa que mejor se adapte a sus necesidades' },
+      ],
+    },
+    testimonials: {
+      eyebrow: 'Voces de nuestra comunidad',
+      title: 'Lo que dicen nuestros estudiantes',
+      items: [
+        {
+          text: 'El programa de ESL me ayudó muchísimo a mejorar mi inglés. Ahora me comunico mejor en el trabajo y me siento más seguro en mi vida diaria.',
+          role: 'Estudiante de ESL',
+        },
+        {
+          text: 'El programa ABE me dio las habilidades que necesitaba para obtener mi GED. Los instructores fueron pacientes y me apoyaron en todo momento.',
+          role: 'Graduado de ABE',
+        },
+        {
+          text: 'El programa CTE me ayudó a certificarme y a conseguir un mejor empleo. La orientación profesional fue muy valiosa para planificar mi futuro.',
+          role: 'Graduada de CTE',
+        },
+      ],
+    },
+    faq: {
+      eyebrow: 'Obtenga respuestas',
+      title: 'Preguntas frecuentes',
+      showAnswer: 'Mostrar la respuesta a: {question}',
+      hideAnswer: 'Ocultar la respuesta a: {question}',
+      items: [
+        {
+          question: '¿Cuál es la edad mínima para los servicios de educación para adultos?',
+          answer:
+            'Debe tener al menos 21 años para registrarse en nuestros servicios de educación para adultos. Así podemos ofrecer programas adecuados para estudiantes adultos.',
+        },
+        {
+          question: '¿Cuánto dura la cita de admisión?',
+          answer:
+            'La cita de admisión suele durar 30 minutos. Durante ese tiempo hablaremos de sus metas educativas, evaluaremos sus habilidades actuales y le ayudaremos a elegir el programa adecuado.',
+        },
+        {
+          question: '¿Qué programas ofrecen?',
+          answer:
+            'Ofrecemos Educación Básica para Adultos (ABE), Inglés como Segundo Idioma (ESL) y Educación Técnica y Profesional (CTE). Cada programa está diseñado para ayudarle a alcanzar sus metas educativas y profesionales.',
+        },
+        {
+          question: '¿Los servicios tienen algún costo?',
+          answer:
+            'Nuestros servicios de educación para adultos son gratuitos para los participantes que cumplen los requisitos. Creemos que la educación debe estar al alcance de todas las personas que desean aprender y crecer.',
+        },
+        {
+          question: '¿Qué debo llevar a mi cita de admisión?',
+          answer:
+            'Traiga una identificación con foto vigente y, si los tiene, sus documentos de estudios anteriores. También necesitaremos sus datos de contacto y su dirección, que puede proporcionar durante el registro.',
+        },
+      ],
+    },
+    cta: {
+      title: '¿Listo para comenzar?',
+      description: 'Dé el primer paso hacia sus metas educativas. Nuestro equipo está aquí para ayudarle a tener éxito.',
+      button: 'Regístrese ahora',
+    },
+  },
+  quickForm: {
+    email: 'Correo electrónico',
+    confirmEmail: 'Confirme su correo electrónico',
+    firstName: 'Nombre',
+    lastName: 'Apellido',
+    phone: 'Número de teléfono',
+    preferredLanguage: 'Idioma preferido',
+    password: 'Contraseña',
+    confirmPassword: 'Confirme su contraseña',
+    emailPlaceholder: 'su@correo.com',
+    firstNamePlaceholder: 'María',
+    lastNamePlaceholder: 'García',
+    languagePlaceholder: 'Seleccione su idioma preferido',
+    suggestions: 'Sugerencias:',
+    submit: 'Crear cuenta y elegir mi cita',
+    submitting: 'Creando cuenta...',
+    afterSubmit: 'Después de crear su cuenta, elegirá el horario de su cita.',
+    ruleLength: 'Al menos 6 caracteres',
+    ruleCase: 'Una letra mayúscula y una minúscula',
+    ruleNumber: 'Al menos un número',
+    ruleDone: '(cumplido)',
+    ruleNotYet: '(pendiente)',
+    emailTaken: 'Este correo electrónico ya tiene una cuenta.',
+    emailTakenSummary: 'Este correo electrónico ya tiene una cuenta. Inicie sesión o restablezca su contraseña.',
+    signIn: 'Inicie sesión',
+    or: 'o',
+    resetPassword: 'restablezca su contraseña',
+    errors: {
+      emailRequired: 'El correo electrónico es obligatorio',
+      emailInvalid: 'Escriba un correo electrónico válido',
+      emailMismatch: 'Los correos electrónicos no coinciden',
+      passwordRequired: 'La contraseña es obligatoria',
+      passwordLength: 'La contraseña debe tener al menos 6 caracteres',
+      passwordComplexity: 'La contraseña debe tener mayúsculas, minúsculas y un número',
+      passwordMismatch: 'Las contraseñas no coinciden',
+      firstNameRequired: 'El nombre es obligatorio',
+      firstNameShort: 'El nombre debe tener al menos 2 caracteres',
+      lastNameRequired: 'El apellido es obligatorio',
+      lastNameShort: 'El apellido debe tener al menos 2 caracteres',
+      phoneRequired: 'El número de teléfono es obligatorio',
+      phoneInvalid: 'El teléfono debe tener 10 dígitos (por ejemplo, 2125551234)',
+      languageRequired: 'Seleccione su idioma preferido',
+      fixAbove: 'Corrija los errores indicados arriba',
+      failed: 'No se pudo completar el registro. Inténtelo de nuevo.',
+    },
+    languages: {
+      English: 'Inglés',
+      Spanish: 'Español',
+      Chinese: 'Chino',
+      Arabic: 'Árabe',
+      Bengali: 'Bengalí',
+      French: 'Francés',
+      Russian: 'Ruso',
+      Other: 'Otro',
+    },
+  },
+  slots: {
+    classQuestion: '¿Qué clase le interesa?',
+    timeQuestion: '¿Qué horario prefiere?',
+    classes: {
+      ESL: 'Inglés como Segundo Idioma (E.S.L.)',
+      'BE/HSE': 'Educación Básica/Equivalencia de Escuela Secundaria (G.E.D.)',
+    },
+    timePreferences: {
+      Morning: 'Mañana (8:00 AM - 12:00 PM)',
+      Evening: 'Noche (5:00 PM - 9:00 PM)',
+      Saturday: 'Sábado (9:00 AM - 2:00 PM)',
+    },
+    continueToSites: 'Continuar a los centros',
+    selectSite: 'Seleccione su centro de registro',
+    showingSites: 'Centros con citas en el horario: {window}.',
+    noSites: 'Ningún centro tiene citas disponibles en el horario {window} en los próximos 7 días. Regrese y pruebe otro horario.',
+    timesAvailableOne: '1 horario disponible',
+    timesAvailableMany: '{count} horarios disponibles',
+    back: 'Atrás',
+    selectTime: 'Seleccione el horario de su cita',
+    closedSomeDays: 'Este centro estará cerrado algunos días esta semana',
+    noSlots: 'No hay citas en el horario {window} en los próximos 7 días',
+    noSlotsClosed: 'Algunos de los días disponibles están cerrados. Elija otro centro u otro horario, o únase a la lista de espera.',
+    noSlotsTryOther: 'Pruebe otro centro, elija otro horario o únase a la lista de espera.',
+    joinWaitlist: 'Unirse a la lista de espera',
+    full: 'Lleno',
+    spots: '{count} cupos',
+    booking: 'Reservando...',
+    book: 'Reservar cita',
+    waitlistJoined: 'Está en la lista de espera. Le enviaremos un correo electrónico si se abre un cupo.',
+    errors: {
+      loadSites: 'No se pudieron cargar los centros',
+      loadSlots: 'No se pudieron cargar los horarios',
+      selectTime: 'Seleccione un horario para su cita',
+      windowFull: 'Ese horario está lleno.',
+      bookFailed: 'No se pudo reservar la cita',
+      waitlistFailed: 'No se pudo unir a la lista de espera',
+    },
+  },
+  login: {
+    title: 'Iniciar sesión',
+    subtitle: 'Bienvenido de nuevo: acceda a su cuenta y a sus citas.',
+    email: 'Correo electrónico',
+    emailPlaceholder: 'Escriba su correo electrónico',
+    emailInvalid: 'Escriba un correo electrónico válido',
+    emailOk: 'Correo electrónico válido',
+    password: 'Contraseña',
+    passwordPlaceholder: 'Escriba su contraseña',
+    forgotPassword: '¿Olvidó su contraseña?',
+    rememberMe: 'Recordar este correo electrónico la próxima vez',
+    noAccount: '¿No tiene una cuenta? Regístrese',
+    submit: 'Iniciar sesión',
+    submitting: 'Iniciando sesión…',
+    fixErrors: 'Corrija los errores indicados arriba antes de iniciar sesión',
+    invalidCredentials: 'Correo electrónico o contraseña incorrectos. Inténtelo de nuevo.',
+    failed: 'No se pudo iniciar sesión. Inténtelo de nuevo.',
+  },
+  forgotPassword: {
+    title: 'Olvidé mi contraseña',
+    intro: 'Escriba el correo electrónico de su cuenta. Si lo encontramos, le enviaremos un enlace para restablecer su contraseña.',
+    emailPlaceholder: 'usted@ejemplo.com',
+    submit: 'Enviar enlace',
+    submitting: 'Enviando…',
+    sent: 'Si existe una cuenta con ese correo electrónico, le enviaremos un enlace para restablecer su contraseña.',
+    emailSkipped: 'El correo electrónico no está configurado en este equipo, así que no se envió ningún mensaje.',
+    continueLink: 'Continuar para elegir una nueva contraseña',
+    backToSignIn: 'Volver a iniciar sesión',
+    failed: 'No se pudo enviar el correo para restablecer la contraseña',
+  },
+  resetPassword: {
+    title: 'Elija una nueva contraseña',
+    loading: 'Cargando…',
+    placeholder: 'Nueva contraseña (8 caracteres o más)',
+    submit: 'Actualizar contraseña',
+    submitting: 'Guardando…',
+    done: 'Su contraseña fue actualizada.',
+    signIn: 'Iniciar sesión',
+    missingToken: 'Este enlace para restablecer la contraseña está incompleto. Solicite uno nuevo desde la página de inicio de sesión.',
+    forgotPassword: 'Olvidé mi contraseña',
+    failed: 'No se pudo restablecer la contraseña',
+  },
+  registerPage: {
+    title: 'Registro rápido',
+    titleReserved: 'Su cupo está reservado',
+    titleConfirmed: '¡Todo listo!',
+    subtitleForm: 'Cree su cuenta en solo 2 minutos',
+    subtitleSlots: 'Seleccione el horario de su cita',
+    subtitleReserved: 'Falta un paso para confirmar su cita',
+    subtitleConfirmed: '¡Su cita está confirmada!',
+    ageLabel: 'Requisito de edad:',
+    ageText: 'Debe tener al menos 21 años para registrarse.',
+    haveAccount: '¿Ya tiene una cuenta?',
+    signInHere: 'Inicie sesión aquí',
+    date: 'Fecha',
+    time: 'Hora',
+    location: 'Lugar',
+    heldTitle: 'Su cupo está apartado, pero todavía no está confirmado.',
+    heldText: 'Complete su perfil (dirección, contacto de emergencia y estudios) para confirmarlo. Toma unos 5 minutos.',
+    confirmedText: 'Llegue entre 5 y 10 minutos antes. Puede cambiar o cancelar su cita desde su panel.',
+    completeProfile: 'Completar mi perfil',
+    goToDashboard: 'Ir a mi panel',
+    addToCalendar: 'Agregar al calendario',
+    later: 'Lo haré más tarde',
+  },
+};
+
+export default es;

@@ -5,7 +5,9 @@ import { logger } from '@/lib/logger';
 import { useState, useEffect } from 'react';
 import { BookOpen, Clock, MapPin, Calendar, ArrowRight, AlertCircle, Loader2, CheckCircle2 } from 'lucide-react';
 import { formatClosedDateLabel } from '@/lib/dayOffReason';
-import { isTimePreference, timePreferenceLabel } from '@/lib/timePreference';
+import { isTimePreference } from '@/lib/timePreference';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
 
 interface Hub {
   _id: string;
@@ -41,16 +43,8 @@ interface AppointmentSelectionFormProps {
   onError: (error: string) => void;
 }
 
-const CLASS_OPTIONS = [
-  { value: 'ESL', label: 'English As A Second Language (E.S.L.)' },
-  { value: 'BE/HSE', label: 'Basic Education/High School Equivalency (G.E.D.)' },
-];
-
-const TIME_PREFERENCES = [
-  { value: 'Morning', label: 'Morning (8:00 AM - 12:00 PM)' },
-  { value: 'Evening', label: 'Evening (5:00 PM - 9:00 PM)' },
-  { value: 'Saturday', label: 'Saturday (9:00 AM - 2:00 PM)' },
-];
+const CLASS_VALUES = ['ESL', 'BE/HSE'] as const;
+const TIME_PREFERENCE_VALUES = ['Morning', 'Evening', 'Saturday'] as const;
 
 const DISPLAY_TIMEZONE = 'America/New_York';
 
@@ -58,16 +52,16 @@ function getSlotTimeZone(timezone?: string) {
   return timezone || DISPLAY_TIMEZONE;
 }
 
-function formatSlotTime(startTime: string, timezone?: string) {
-  return new Date(startTime).toLocaleTimeString('en-US', {
+function formatSlotTime(startTime: string, intlLocale: string, timezone?: string) {
+  return new Date(startTime).toLocaleTimeString(intlLocale, {
     hour: 'numeric',
     minute: '2-digit',
     timeZone: getSlotTimeZone(timezone),
   });
 }
 
-function formatSlotDay(startTime: string, timezone?: string) {
-  return new Date(startTime).toLocaleDateString('en-US', {
+function formatSlotDay(startTime: string, intlLocale: string, timezone?: string) {
+  return new Date(startTime).toLocaleDateString(intlLocale, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
@@ -75,11 +69,11 @@ function formatSlotDay(startTime: string, timezone?: string) {
   });
 }
 
-function groupSlotsByDay(slots: AppointmentSlot[], timezone?: string) {
+function groupSlotsByDay(slots: AppointmentSlot[], intlLocale: string, timezone?: string) {
   const groups: { label: string; slots: AppointmentSlot[] }[] = [];
 
   for (const slot of slots) {
-    const label = formatSlotDay(slot.startTime, timezone);
+    const label = formatSlotDay(slot.startTime, intlLocale, timezone);
     const existing = groups.find((group) => group.label === label);
     if (existing) {
       existing.slots.push(slot);
@@ -96,6 +90,9 @@ export default function AppointmentSelectionForm({
   onSuccess,
   onError,
 }: AppointmentSelectionFormProps) {
+  const { t, locale } = useI18n();
+  const copy = t.slots;
+  const intlLocale = locale === 'es' ? 'es-US' : 'en-US';
   const [step, setStep] = useState(1);
   const [classInterest, setClassInterest] = useState('');
   const [timePreference, setTimePreference] = useState('');
@@ -141,7 +138,7 @@ export default function AppointmentSelectionForm({
       setError('');
     } catch (err: any) {
       logger.error('❌ Error fetching hubs:', err);
-      setError(err.message || 'Failed to load hubs');
+      setError(err.message || copy.errors.loadSites);
       onError(err.message);
     } finally {
       setIsLoading(false);
@@ -171,7 +168,7 @@ export default function AppointmentSelectionForm({
     } catch (err: any) {
       logger.error('❌ Error fetching slots:', err);
       setClosedDays([]);
-      setError(err.message || 'Failed to load appointment slots');
+      setError(err.message || copy.errors.loadSlots);
       onError(err.message);
     } finally {
       setIsLoading(false);
@@ -180,7 +177,7 @@ export default function AppointmentSelectionForm({
 
   const handleBookAppointment = async () => {
     if (!selectedSlot || !selectedHub) {
-      setError('Please select an appointment time');
+      setError(copy.errors.selectTime);
       return;
     }
 
@@ -205,7 +202,7 @@ export default function AppointmentSelectionForm({
       const data = await response.json();
       if (!response.ok) {
         if (data.waitlist) {
-          setError(data.error || 'That window is full.');
+          setError(data.error || copy.errors.windowFull);
           setIsLoading(false);
           return;
         }
@@ -214,7 +211,7 @@ export default function AppointmentSelectionForm({
 
       onSuccess(data.appointment);
     } catch (err: any) {
-      setError(err.message || 'Failed to book appointment');
+      setError(err.message || copy.errors.bookFailed);
       onError(err.message);
       setIsLoading(false);
     }
@@ -240,17 +237,17 @@ export default function AppointmentSelectionForm({
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
-      setWaitlistMessage(data.message || 'You are on the waitlist. We will email you if a seat opens.');
+      setWaitlistMessage(locale === 'en' && data.message ? data.message : copy.waitlistJoined);
       setError('');
     } catch (err: any) {
-      setError(err.message || 'Unable to join the waitlist');
+      setError(err.message || copy.errors.waitlistFailed);
     } finally {
       setIsLoading(false);
     }
   };
 
   const selectedWindow = isTimePreference(timePreference)
-    ? timePreferenceLabel(timePreference)
+    ? copy.timePreferences[timePreference]
     : timePreference;
 
   return (
@@ -291,10 +288,10 @@ export default function AppointmentSelectionForm({
           <div>
             <h3 className="text-lg font-semibold text-primary-900 mb-3 flex items-center gap-2">
               <BookOpen className="h-5 w-5" />
-              What class are you interested in?
+              {copy.classQuestion}
             </h3>
             <div className="space-y-2">
-              {CLASS_OPTIONS.map((option) => (
+              {CLASS_VALUES.map((value) => ({ value, label: copy.classes[value] })).map((option) => (
                 <label
                   key={option.value}
                   className={`flex items-center rounded-lg border-2 p-3 cursor-pointer transition-all ${
@@ -320,10 +317,10 @@ export default function AppointmentSelectionForm({
           <div className="border-t border-primary-100 pt-4">
             <h3 className="text-lg font-semibold text-primary-900 mb-3 flex items-center gap-2">
               <Clock className="h-5 w-5" />
-              What time preference do you have?
+              {copy.timeQuestion}
             </h3>
             <div className="space-y-2">
-              {TIME_PREFERENCES.map((option) => (
+              {TIME_PREFERENCE_VALUES.map((value) => ({ value, label: copy.timePreferences[value] })).map((option) => (
                 <label
                   key={option.value}
                   className={`flex items-center rounded-lg border-2 p-3 cursor-pointer transition-all ${
@@ -351,7 +348,7 @@ export default function AppointmentSelectionForm({
             disabled={!classInterest || !timePreference}
             className="w-full mt-6 rounded-lg bg-primary-700 px-4 py-3 font-semibold text-white transition-all hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Continue to Sites
+            {copy.continueToSites}
             <ArrowRight className="h-5 w-5" />
           </button>
         </div>
@@ -362,10 +359,10 @@ export default function AppointmentSelectionForm({
         <div className="space-y-4">
           <h3 className="text-lg font-semibold text-primary-900 flex items-center gap-2">
             <MapPin className="h-5 w-5" />
-            Select your registration site
+            {copy.selectSite}
           </h3>
           <p className="text-sm text-primary-700">
-            Showing sites with {selectedWindow} appointments.
+            {fmt(copy.showingSites, { window: selectedWindow })}
           </p>
 
           {isLoading ? (
@@ -375,7 +372,7 @@ export default function AppointmentSelectionForm({
           ) : hubs.length === 0 ? (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 p-4">
               <p className="text-sm text-yellow-800">
-                No sites have {selectedWindow} openings in the next 7 days. Go back and try a different time.
+                {fmt(copy.noSites, { window: selectedWindow })}
               </p>
             </div>
           ) : (
@@ -400,7 +397,9 @@ export default function AppointmentSelectionForm({
                   {hub.phone && <p className="text-sm text-primary-600 mt-1">📞 {hub.phone}</p>}
                   {typeof hub.availableSlotCount === 'number' && (
                     <p className="text-sm text-primary-700 mt-2 font-medium">
-                      {hub.availableSlotCount} {timePreference.toLowerCase()} time{hub.availableSlotCount === 1 ? '' : 's'} available
+                      {hub.availableSlotCount === 1
+                        ? copy.timesAvailableOne
+                        : fmt(copy.timesAvailableMany, { count: hub.availableSlotCount })}
                     </p>
                   )}
                 </button>
@@ -413,7 +412,7 @@ export default function AppointmentSelectionForm({
               onClick={() => setStep(1)}
               className="flex-1 rounded-lg border-2 border-primary-300 px-4 py-3 font-semibold text-primary-700 transition-all hover:bg-primary-50"
             >
-              Back
+              {copy.back}
             </button>
           </div>
         </div>
@@ -431,7 +430,7 @@ export default function AppointmentSelectionForm({
           <div>
             <h3 className="text-lg font-semibold text-primary-900 flex items-center gap-2 mb-3">
               <Calendar className="h-5 w-5" />
-              Select your appointment time
+              {copy.selectTime}
             </h3>
 
             {isLoading ? (
@@ -443,12 +442,12 @@ export default function AppointmentSelectionForm({
                 {closedDays.length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50/70 p-4 mb-4">
                     <p className="text-sm font-medium text-amber-900">
-                      This site is closed on some days this week
+                      {copy.closedSomeDays}
                     </p>
                     <ul className="mt-2 space-y-1">
                       {closedDays.map((day) => (
                         <li key={day.date} className="text-sm text-amber-800">
-                          <span className="font-medium">{formatClosedDateLabel(day.date)}</span>
+                          <span className="font-medium">{formatClosedDateLabel(day.date, intlLocale)}</span>
                           {' — '}
                           {day.reason}
                         </li>
@@ -459,12 +458,12 @@ export default function AppointmentSelectionForm({
             {slots.length === 0 ? (
               <div className="rounded-lg border border-yellow-200 bg-yellow-50/50 p-4">
                 <p className="text-sm font-medium text-yellow-900">
-                  No {selectedWindow} appointments in the next 7 days
+                  {fmt(copy.noSlots, { window: selectedWindow })}
                 </p>
                 <p className="text-sm text-yellow-800 mt-1">
                   {closedDays.length > 0
-                    ? 'Some matching days are closed. Please choose a different site or time preference, or join the waitlist.'
-                    : 'Try another site, choose a different time preference, or join the waitlist.'}
+                    ? copy.noSlotsClosed
+                    : copy.noSlotsTryOther}
                 </p>
                 <button
                   type="button"
@@ -472,13 +471,13 @@ export default function AppointmentSelectionForm({
                   disabled={isLoading}
                   className="mt-3 rounded-lg bg-primary-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
                 >
-                  Join waitlist
+                  {copy.joinWaitlist}
                 </button>
                 {waitlistMessage && <p className="mt-2 text-sm text-green-700">{waitlistMessage}</p>}
               </div>
             ) : (
               <div className="space-y-4 max-h-[28rem] overflow-y-auto pr-1">
-                {groupSlotsByDay(slots, selectedHub.timezone).map((group) => (
+                {groupSlotsByDay(slots, intlLocale, selectedHub.timezone).map((group) => (
                   <div key={group.label}>
                     <p className="text-xs font-semibold uppercase tracking-wide text-primary-600 mb-2">
                       {group.label}
@@ -499,14 +498,14 @@ export default function AppointmentSelectionForm({
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-primary-900">
-                              {formatSlotTime(slot.startTime, selectedHub.timezone)}
+                              {formatSlotTime(slot.startTime, intlLocale, selectedHub.timezone)}
                             </span>
                             <span className={`text-xs font-semibold px-2 py-1 rounded ${
                               slot.isFull
                                 ? 'bg-gray-200 text-gray-700'
                                 : 'bg-green-100 text-green-700'
                             }`}>
-                              {slot.isFull ? 'Full' : `${slot.availableSpots} spots`}
+                              {slot.isFull ? copy.full : fmt(copy.spots, { count: slot.availableSpots })}
                             </span>
                           </div>
                         </button>
@@ -525,7 +524,7 @@ export default function AppointmentSelectionForm({
               onClick={() => setStep(2)}
               className="flex-1 rounded-lg border-2 border-primary-300 px-4 py-3 font-semibold text-primary-700 transition-all hover:bg-primary-50"
             >
-              Back
+              {copy.back}
             </button>
             {error && selectedHub && (
               <button
@@ -534,7 +533,7 @@ export default function AppointmentSelectionForm({
                 disabled={isLoading}
                 className="flex-1 rounded-lg border-2 border-primary-300 px-4 py-3 font-semibold text-primary-700"
               >
-                Join waitlist
+                {copy.joinWaitlist}
               </button>
             )}
             <button
@@ -545,12 +544,12 @@ export default function AppointmentSelectionForm({
               {isLoading ? (
                 <>
                   <Loader2 className="h-5 w-5 animate-spin" />
-                  Booking...
+                  {copy.booking}
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="h-5 w-5" />
-                  Confirm Appointment
+                  {copy.book}
                 </>
               )}
             </button>

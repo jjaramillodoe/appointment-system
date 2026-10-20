@@ -1,5 +1,9 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { Globe } from 'lucide-react';
+import { useI18n } from '@/contexts/I18nContext';
+import { LOCALES, LOCALE_NAMES, isLocale } from '@/lib/i18n/config';
 
 const LANGUAGES = [
   { code: 'af', name: 'Afrikaans' },
@@ -114,6 +118,9 @@ const LANGUAGES = [
 ];
 
 
+// Languages with real translations are offered separately; Google covers the rest
+const MACHINE_LANGUAGES = LANGUAGES.filter((lang) => !isLocale(lang.code));
+
 declare global {
   interface Window {
     googleTranslateElementInit?: () => void;
@@ -122,13 +129,8 @@ declare global {
 }
 
 function setCookie(name: string, value: string, days: number) {
-  let expires = '';
-  if (days) {
-    const date = new Date();
-    date.setTime(date.getTime() + days * 24 * 60 * 60 * 1000);
-    expires = '; expires=' + date.toUTCString();
-  }
-  document.cookie = name + '=' + (value || '') + expires + '; path=/';
+  const expires = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toUTCString();
+  document.cookie = `${name}=${value}; expires=${expires}; path=/`;
 }
 
 function clearTranslateCookie() {
@@ -141,79 +143,78 @@ function clearTranslateCookie() {
   }
 }
 
-function getSelectedLangFromCookie() {
+function getMachineLangFromCookie(): string | null {
   const match = document.cookie.match(/googtrans=\/en\/(\w+-?\w*)/);
-  return match && match[1] ? match[1] : 'en';
+  return match && match[1] && match[1] !== 'en' ? match[1] : null;
+}
+
+function loadGoogleTranslate() {
+  window.googleTranslateElementInit = function () {
+    if (window.google && window.google.translate) {
+      new window.google.translate.TranslateElement({ pageLanguage: 'en', autoDisplay: false });
+    }
+  };
+  if (!document.getElementById('google-translate-script')) {
+    const script = document.createElement('script');
+    script.id = 'google-translate-script';
+    script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
+    document.body.appendChild(script);
+  }
 }
 
 export default function LanguageSelector() {
-  const [selected, setSelected] = useState('en');
+  const { locale, t, setLocale } = useI18n();
+  const [machineLang, setMachineLang] = useState<string | null>(null);
 
-  // Load Google Translate script and initialize if needed
+  // Only load Google's script when a machine-translated language is active
   useEffect(() => {
-    if (!document.getElementById('google-translate-script')) {
-      const script = document.createElement('script');
-      script.id = 'google-translate-script';
-      script.src = '//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit';
-      document.body.appendChild(script);
-    }
-    window.googleTranslateElementInit = function () {
-      if (window.google && window.google.translate) {
-        new window.google.translate.TranslateElement({
-          pageLanguage: 'en',
-          autoDisplay: false,
-        });
-      }
-    };
-    // If a language is already selected, initialize translation
-    const lang = getSelectedLangFromCookie();
-    setSelected(lang);
-    if (lang === 'en' && /googtrans=\/en\/en/.test(document.cookie) && !sessionStorage.getItem('cleared-en-en')) {
-      clearTranslateCookie();
-      sessionStorage.setItem('cleared-en-en', '1');
-      window.location.reload();
-      return;
-    }
-    if (lang !== 'en') {
-      // Wait for script to load, then initialize
-      const interval = setInterval(() => {
-        if (window.google && window.google.translate) {
-          window.googleTranslateElementInit && window.googleTranslateElementInit();
-          clearInterval(interval);
-        }
-      }, 300);
-      // Clean up
-      return () => clearInterval(interval);
-    }
+    const lang = getMachineLangFromCookie();
+    setMachineLang(lang);
+    if (lang) loadGoogleTranslate();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const lang = e.target.value;
-    setSelected(lang);
-    if (lang === 'en') {
-      // /en/en makes Google Translate rewrite English and garbles the page.
-      clearTranslateCookie();
-    } else {
-      setCookie('googtrans', `/en/${lang}`, 365);
+    const value = e.target.value;
+    if (isLocale(value)) {
+      setLocale(value);
+      if (machineLang) {
+        // Google rewrites the DOM in place; a reload is the only clean way out
+        clearTranslateCookie();
+        window.location.reload();
+      }
+      return;
     }
+    // Google translates from the English source text
+    setLocale('en');
+    setCookie('googtrans', `/en/${value}`, 365);
     window.location.reload();
   };
 
   return (
     <div className="notranslate flex items-center space-x-2 bg-white rounded-lg px-3 py-1 shadow border border-primary-200" translate="no">
-      <Globe className="h-5 w-5 text-primary-600" />
+      <Globe className="h-5 w-5 text-primary-600" aria-hidden />
       <select
-        value={selected}
+        value={machineLang ?? locale}
         onChange={handleChange}
         className="bg-transparent outline-none border-none text-gray-900 text-sm font-medium cursor-pointer"
-        aria-label="Select language"
+        aria-label={t.language.selectLabel}
+        title={machineLang ? t.language.machineNotice : undefined}
       >
-        {LANGUAGES.map((lang) => (
-          <option key={lang.code} value={lang.code}>
-            {lang.name}
-          </option>
-        ))}
+        <optgroup label={t.language.supported}>
+          {LOCALES.map((code) => (
+            <option key={code} value={code}>
+              {LOCALE_NAMES[code]}
+            </option>
+          ))}
+        </optgroup>
+        <optgroup label={t.language.moreLanguages}>
+          {MACHINE_LANGUAGES.map((lang) => (
+            <option key={lang.code} value={lang.code}>
+              {lang.name}
+            </option>
+          ))}
+        </optgroup>
       </select>
     </div>
   );
-} 
+}

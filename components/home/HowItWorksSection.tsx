@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { CheckCircle } from 'lucide-react';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface Step {
   number: number;
@@ -15,34 +16,15 @@ interface HowItWorksSectionProps {
   className?: string;
 }
 
-const defaultSteps: Step[] = [
-  {
-    number: 1,
-    title: "Register",
-    description: "Create your account with basic information and tell us about your educational goals"
-  },
-  {
-    number: 2,
-    title: "Schedule",
-    description: "Choose your preferred 30-minute appointment time from our available slots"
-  },
-  {
-    number: 3,
-    title: "Attend",
-    description: "Meet with our team for your intake session and discuss your educational path"
-  },
-  {
-    number: 4,
-    title: "Begin",
-    description: "Start your educational journey with the program that best fits your needs"
-  }
-];
-
 export default function HowItWorksSection({
-  title = "How It Works",
-  steps = defaultSteps,
+  title,
+  steps,
   className = ""
 }: HowItWorksSectionProps) {
+  const { t } = useI18n();
+  const copy = t.home.howItWorks;
+  title ??= copy.title;
+  steps ??= copy.steps.map((step, index) => ({ ...step, number: index + 1 }));
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -68,7 +50,7 @@ export default function HowItWorksSection({
     <div ref={sectionRef} className={`mb-20 ${className}`}>
       <div className="mb-12 text-center">
         <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-primary-700">
-          Your intake journey
+          {copy.eyebrow}
         </p>
         <h3 className="inline-block border-b-4 border-yellow-500 pb-2 text-3xl font-bold text-primary-900">
           {title}

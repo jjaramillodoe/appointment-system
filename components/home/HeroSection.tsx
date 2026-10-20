@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { UserPlus, LogIn } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '@/contexts/I18nContext';
 
 interface HeroSectionProps {
   title?: string;
@@ -25,22 +26,25 @@ interface HeroSectionProps {
 }
 
 export default function HeroSection({
-  title = 'Transform Your Future with',
-  subtitle = 'Adult Education',
-  description = 'Take the first step towards your educational and career goals. Our comprehensive adult education programs help you build essential skills, learn English, and prepare for new opportunities. Start your journey today!',
-  primaryCTA = {
-    text: 'Start Your Journey',
-    href: '/register',
-  },
-  secondaryCTA = {
-    text: 'Sign In',
-    href: '/login',
-  },
+  title,
+  subtitle,
+  description,
+  primaryCTA,
+  secondaryCTA,
   logoPath = '/logo.png',
-  logoAlt = 'Adult Education Logo Large',
+  logoAlt,
   backgroundImageSrc = '/hero-graduation.jpg',
-  backgroundImageAlt = 'Graduates celebrating at commencement',
+  backgroundImageAlt,
 }: HeroSectionProps) {
+  const { t } = useI18n();
+  const hero = t.home.hero;
+  title ??= hero.title;
+  subtitle ??= hero.subtitle;
+  description ??= hero.description;
+  primaryCTA ??= { text: hero.primaryCta, href: '/register' };
+  secondaryCTA ??= { text: hero.secondaryCta, href: '/login' };
+  logoAlt ??= hero.logoAlt;
+  backgroundImageAlt ??= hero.imageAlt;
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
@@ -75,15 +79,15 @@ export default function HeroSection({
 
         <div className="relative z-10 mx-auto flex min-h-[420px] w-full max-w-7xl flex-col items-center justify-center px-4 py-14 text-center sm:min-h-[500px] sm:px-6 sm:py-20 lg:px-8">
           <p className="mb-6 inline-flex max-w-full flex-wrap items-center justify-center gap-x-2 gap-y-1 rounded-full border border-white/25 bg-black/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-white/95 shadow-sm backdrop-blur-sm sm:text-sm">
-            <span className="text-yellow-200">NYC Public Schools</span>
+            <span className="text-yellow-200">{t.common.nycPublicSchools}</span>
             <span className="hidden text-white/40 sm:inline" aria-hidden>
               ·
             </span>
-            <span>District 79</span>
+            <span>{t.common.district79}</span>
             <span className="hidden text-white/40 sm:inline" aria-hidden>
               ·
             </span>
-            <span className="text-white">Adult Education</span>
+            <span className="text-white">{t.common.adultEducation}</span>
           </p>
 
           <div className="relative mb-6">
