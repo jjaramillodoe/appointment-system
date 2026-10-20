@@ -61,6 +61,57 @@ export async function freeAppointmentSeat(appointment: {
   }
 }
 
+/**
+ * Undo of freeAppointmentSeat (e.g. a no-show reverted because the student did arrive).
+ * No capacity check: the person is physically at the desk, even if the seat was re-booked.
+ */
+export async function retakeAppointmentSeat(appointment: {
+  hubId?: unknown;
+  hubName?: string;
+  appointmentDate?: Date | string;
+  appointmentTime?: string;
+}) {
+  const date = appointmentDateKey(appointment.appointmentDate);
+  const displayTime = toAppointmentClock(appointment.appointmentTime || '');
+  const twentyFour = toTwentyFourHour(appointment.appointmentTime || '');
+  if (!date || !displayTime) return;
+
+  const hub = appointment.hubId
+    ? await Hub.findById(appointment.hubId).select('_id name')
+    : appointment.hubName
+      ? await Hub.findOne({ name: appointment.hubName }).select('_id name')
+      : null;
+
+  const dayStart = new Date(`${date}T00:00:00.000Z`);
+  const dayEnd = new Date(dayStart);
+  dayEnd.setUTCDate(dayEnd.getUTCDate() + 1);
+
+  await AppointmentSlot.updateOne(
+    {
+      hubName: hub?.name || appointment.hubName,
+      date: { $gte: dayStart, $lt: dayEnd },
+      time: displayTime,
+    },
+    { $inc: { bookedCount: 1 } }
+  );
+
+  if (hub) {
+    const availability = await Availability.findOne({ hubId: hub._id, date });
+    if (availability) {
+      try {
+        await availability.bookSlot(twentyFour);
+      } catch {
+        try {
+          await availability.bookSlot(displayTime);
+        } catch {
+          // Full or missing slot documents are fine here; the AppointmentSlot count is authoritative.
+        }
+      }
+    }
+    await AvailabilityCache.invalidate(String(hub._id), date);
+  }
+}
+
 export async function markAppointmentCancelled(appointmentId: string) {
   const appointment = await Appointment.findById(appointmentId);
   if (!appointment) return null;
