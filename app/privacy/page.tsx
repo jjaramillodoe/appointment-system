@@ -63,7 +63,7 @@ export default function PrivacyPage() {
                 1. Introduction
               </h2>
               <p className="mb-4 leading-relaxed text-primary-900/85">
-                The NYC Public Schools Adult Education District 79 ("we," "our," or "us") is committed to protecting your privacy. 
+                The NYC Public Schools Adult Education District 79 (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy. 
                 This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our 
                 Adult Education Intake System.
               </p>
@@ -198,7 +198,7 @@ export default function PrivacyPage() {
 
             {/* Children's Privacy */}
             <section>
-              <h2 className="mb-4 text-2xl font-bold text-primary-900">8. Children's Privacy</h2>
+              <h2 className="mb-4 text-2xl font-bold text-primary-900">8. Children&apos;s Privacy</h2>
               <p className="leading-relaxed text-primary-900/85">
                 Our services are designed for adult learners (ages 21 and older). We do not knowingly collect personal information 
                 from individuals under 21 years of age. If we become aware that we have collected information from a person under 21, 
@@ -211,7 +211,7 @@ export default function PrivacyPage() {
               <h2 className="mb-4 text-2xl font-bold text-primary-900">9. Changes to This Privacy Policy</h2>
               <p className="leading-relaxed text-primary-900/85">
                 We may update this Privacy Policy from time to time. We will notify you of any material changes by posting the 
-                new Privacy Policy on this page and updating the "Last updated" date. You are advised to review this Privacy Policy 
+                new Privacy Policy on this page and updating the &quot;Last updated&quot; date. You are advised to review this Privacy Policy 
                 periodically for any changes.
               </p>
             </section>

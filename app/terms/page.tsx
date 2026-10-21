@@ -62,7 +62,7 @@ export default function TermsPage() {
                 1. Agreement to Terms
               </h2>
               <p className="mb-4 leading-relaxed text-primary-900/85">
-                By accessing or using the NYC Public Schools Adult Education District 79 Intake System ("the System"), 
+                By accessing or using the NYC Public Schools Adult Education District 79 Intake System (&quot;the System&quot;), 
                 you agree to be bound by these Terms of Use and all applicable laws and regulations. If you do not agree 
                 with any of these terms, you are prohibited from using or accessing the System.
               </p>
@@ -111,7 +111,7 @@ export default function TermsPage() {
                 This license does not include the right to:
               </p>
               <ul className="ml-4 list-inside list-disc space-y-2 text-primary-900/85">
-                <li>Modify or copy the System's materials</li>
+                <li>Modify or copy the System&apos;s materials</li>
                 <li>Use the System for any commercial purpose or for any public display</li>
                 <li>Attempt to decompile or reverse engineer any software contained in the System</li>
                 <li>Remove any copyright or other proprietary notations from the materials</li>
@@ -152,7 +152,7 @@ export default function TermsPage() {
                 <li>Violate any applicable federal, state, local, or international law or regulation</li>
                 <li>Transmit any material that is abusive, harassing, defamatory, obscene, or otherwise objectionable</li>
                 <li>Impersonate or attempt to impersonate NYC Public Schools, an employee, another user, or any other person or entity</li>
-                <li>Engage in any conduct that restricts or inhibits anyone's use or enjoyment of the System</li>
+                <li>Engage in any conduct that restricts or inhibits anyone&apos;s use or enjoyment of the System</li>
                 <li>Introduce any viruses, trojan horses, worms, or other malicious or harmful code</li>
                 <li>Attempt to gain unauthorized access to any portion of the System or any other systems or networks</li>
                 <li>Collect or store personal data about other users without their express permission</li>
@@ -201,7 +201,7 @@ export default function TermsPage() {
             <section>
               <h2 className="mb-4 text-2xl font-bold text-primary-900">8. Disclaimer</h2>
               <p className="mb-4 leading-relaxed text-primary-900/85">
-                The materials on the System are provided on an "as is" basis. NYC Public Schools makes no warranties, 
+                The materials on the System are provided on an &quot;as is&quot; basis. NYC Public Schools makes no warranties, 
                 expressed or implied, and hereby disclaims and negates all other warranties including, without limitation, 
                 implied warranties or conditions of merchantability, fitness for a particular purpose, or non-infringement 
                 of intellectual property or other violation of rights.
@@ -240,7 +240,7 @@ export default function TermsPage() {
               <p className="leading-relaxed text-primary-900/85">
                 NYC Public Schools has not reviewed all of the sites linked to the System and is not responsible for the contents 
                 of any such linked site. The inclusion of any link does not imply endorsement by NYC Public Schools. 
-                Use of any such linked website is at the user's own risk.
+                Use of any such linked website is at the user&apos;s own risk.
               </p>
             </section>
 

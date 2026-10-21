@@ -1,346 +1,140 @@
 # NYC DOE District 79 Adult Education Appointment System
 
-A comprehensive web-based appointment management system designed specifically for NYC DOE District 79 Adult Education programs. This system streamlines the intake process for adult learners, providing an efficient way to schedule, manage, and track appointments across multiple learning centers.
+A web application for NYC Public Schools District 79 Adult Education intake: adult learners register and book an intake appointment at a learning center, and staff manage schedules, check students in, and report on intake across hubs.
 
 ## 🏛️ Project Information
 
-- **Organization**: NYC Department of Education (DOE)
-- **District**: District 79 - Adult Education
-- **Project Type**: Web Application
-- **Technology Stack**: Next.js 16.0.10, TypeScript, MongoDB, Tailwind CSS
-- **Deployment**: Vercel (Production), Local Development
+- **Organization**: NYC Department of Education (DOE), District 79 – Adult Education
+- **Stack**: Next.js 16 (App Router), React 19, TypeScript 6, MongoDB (Mongoose 9), Tailwind CSS
+- **Hosting**: Vercel (production and preview deployments)
+- **Main developer**: Javier Jaramillo, Data Systems Administrator
 
-## 👨‍💻 Development Team
+## 🎯 Features
 
-- **Main Developer**: Javier Jaramillo - Data Systems Administrator
-- **Organization**: NYC DOE District 79
-- **Contact**: [Contact information for internal use]
+**Students**
+- Quick registration (account + appointment in two steps), then complete the profile to confirm the booking
+- English and Spanish UI (other languages via a clearly labeled Google Translate fallback)
+- Dashboard: appointment details, reschedule/cancel, waitlist, notifications inbox, printable PDF, calendar (.ics) download
+- Automatic email reminders before appointments
 
-## 🎯 Project Overview
-
-The NYC DOE District 79 Adult Education Appointment System is designed to modernize and streamline the adult education intake process. The system serves multiple learning centers across New York City, providing a centralized platform for appointment scheduling, management, and reporting.
-
-### Key Features
-
-- **Student Portal**: Easy appointment scheduling and confirmation
-- **Admin Dashboard**: Comprehensive management and analytics
-- **Multi-Hub Support**: Manage appointments across multiple learning centers
-- **Real-time Notifications**: SMS and in-app notifications
-- **Reporting System**: Detailed analytics and reporting capabilities
-- **Mobile Responsive**: Works seamlessly on all devices
-- **Geolocation**: Find nearest learning centers using Mapbox integration
+**Staff**
+- **Today** front-desk view: search, check-in, done, no-show (with undo), late flags, printable roster
+- Appointment table with search, filters, bulk actions, and CSV export
+- Hubs, schools, classes, schedules, capacity, blackout dates, communications, reports, analytics
+- Hub admins see only their hub; super admins see everything and manage system settings
+- Audit log of admin actions (including exports)
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-- Node.js 18+ 
-- MongoDB 6.0+ (local) or MongoDB Atlas (production)
-- npm or yarn package manager
+- Node.js 22
+- MongoDB 7 for local development and tests (`brew install mongodb-community` on macOS, or Docker `mongo:7`)
+- Optional: Redis (availability caching and rate limiting; the app works without it)
 
-### Local Development Setup
-
-1. **Clone the repository**
-   ```bash
-   git clone [repository-url]
-   cd appointment-system
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Environment Setup**
-   Create a `.env.local` file in the root directory:
-   ```env
-   # Database
-   MONGODB_URI=mongodb://localhost:27017/appointment-system
-   
-   # JWT Secret
-   JWT_SECRET=your-secret-key-here
-   
-   # Mapbox (for geocoding)
-   NEXT_PUBLIC_MAPBOX_TOKEN=your-mapbox-token
-   
-   # SMS Service (Twilio)
-   TWILIO_ACCOUNT_SID=your-twilio-sid
-   TWILIO_AUTH_TOKEN=your-twilio-token
-   TWILIO_PHONE_NUMBER=your-twilio-phone
-   ```
-
-4. **Start Development Server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Access the Application**
-   - Student Portal: http://localhost:3000
-   - Admin Dashboard: http://localhost:3000/admin/dashboard
-
-## 🗄️ Database Migration to Production
-
-### Prerequisites
-
-1. **Production MongoDB** (MongoDB Atlas recommended)
-2. **Environment variables** configured for production
-
-### Migration Process
-
-1. **Create production environment file**
-   ```bash
-   cp env.production.template .env.production
-   # Edit with your production credentials
-   ```
-
-2. **Backup local database**
-   ```bash
-   npm run db:backup
-   ```
-
-3. **Run migration**
-   ```bash
-   # Quick migration (recommended)
-   npm run migrate:quick
-   
-   # Or manual migration
-   npm run migrate:to-production
-   ```
-
-4. **Verify migration**
-   ```bash
-   npm run migrate:verify
-   ```
-
-### Available Migration Commands
-
-- `npm run migrate:quick` - Automated migration process
-- `npm run migrate:to-production` - Manual migration
-- `npm run migrate:verify` - Verify migration success
-- `npm run db:backup` - Backup local database
-- `npm run db:restore` - Restore from backup
-
-## 🚀 Production Deployment
-
-### Deploy to Vercel
-
-1. **Install Vercel CLI**
-   ```bash
-   npm install -g vercel
-   ```
-
-2. **Login to Vercel**
-   ```bash
-   vercel login
-   ```
-
-3. **Deploy**
-   ```bash
-   # Deploy preview version
-   npm run deploy:vercel
-   
-   # Deploy to production
-   npm run deploy:vercel:prod
-   ```
-
-### Environment Variables in Vercel
-
-Set these in your Vercel dashboard:
-- `MONGODB_URI` - Production MongoDB connection string
-- `JWT_SECRET` - Secure JWT secret
-- `NEXT_PUBLIC_MAPBOX_TOKEN` - Mapbox access token
-- `TWILIO_ACCOUNT_SID` - Twilio account SID
-- `TWILIO_AUTH_TOKEN` - Twilio auth token
-- `TWILIO_PHONE_NUMBER` - Twilio phone number
-
-### Vercel Benefits
-
-- ✅ **Global CDN** - Fast loading worldwide
-- ✅ **SSL/TLS certificates** - Automatic HTTPS
-- ✅ **Auto-scaling** - Handles traffic spikes
-- ✅ **Preview deployments** - Test before production
-- ✅ **Analytics** - Performance monitoring
-- ✅ **Edge functions** - Serverless API endpoints
-
-## 📁 Project Structure
-
-```
-appointment-system/
-├── app/                    # Next.js App Router
-│   ├── api/               # API routes
-│   │   ├── admin/         # Admin API endpoints
-│   │   ├── appointments/  # Appointment management
-│   │   ├── auth/          # Authentication
-│   │   └── health/        # Health checks
-│   ├── admin/             # Admin dashboard pages
-│   ├── dashboard/         # Student dashboard
-│   ├── login/             # Authentication pages
-│   └── register/          # Registration pages
-├── components/            # Reusable React components
-│   ├── admin/             # Admin-specific components
-│   ├── dashboard/         # Dashboard components
-│   └── ui/                # Common UI components
-├── lib/                   # Utility libraries
-│   ├── mongodb.ts         # Database connection
-│   ├── redis.ts           # Redis connection
-│   └── availabilityService.ts
-├── models/                # MongoDB models
-├── scripts/               # Production scripts
-│   ├── migrateToProduction.ts
-│   ├── backup.sh
-│   ├── quick-migrate.sh
-│   └── deploy-vercel.sh
-├── utils/                 # Helper functions
-└── public/                # Static assets
-```
-
-## 🛠️ Available Scripts
-
-### Development
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run start` - Start production server
-- `npm run lint` - Run ESLint
-
-### Database Management
-- `npm run migrate:quick` - Quick migration to production
-- `npm run migrate:to-production` - Manual migration
-- `npm run migrate:verify` - Verify migration
-- `npm run db:backup` - Backup local database
-- `npm run db:restore` - Restore from backup
-
-### Deployment
-- `npm run deploy:vercel` - Deploy to Vercel (preview)
-- `npm run deploy:vercel:prod` - Deploy to Vercel (production)
-
-## 🔧 Configuration
-
-### Next.js Configuration
-- **Framework**: Next.js 16.0.10 with App Router
-- **TypeScript**: Full TypeScript support
-- **Styling**: Tailwind CSS with custom components
-- **Security**: Built-in security headers and CORS protection
-
-### Database Configuration
-- **Primary**: MongoDB with Mongoose ODM
-- **Caching**: Redis (optional)
-- **Connection**: Optimized connection pooling
-- **Models**: Structured data models with validation
-
-### Security Features
-- **Authentication**: JWT-based authentication
-- **Authorization**: Role-based access control
-- **Data Validation**: Zod schema validation
-- **Rate Limiting**: API rate limiting
-- **Security Headers**: XSS protection, CSRF protection
-
-## 📊 Data Models
-
-### Core Entities
-- **Users**: Students and administrators
-- **Hubs**: Learning centers and locations
-- **Appointments**: Scheduled sessions
-- **Availability**: Time slots and schedules
-- **Notifications**: System alerts and reminders
-- **Reports**: Analytics and reporting data
-
-### Database Collections
-- `users` - User accounts and profiles
-- `hubs` - Learning center information
-- `appointments` - Appointment records
-- `appointmentoptimizeds` - Optimized appointment data
-- `appointmentslots` - Available time slots
-- `hubconfigs` - Hub configuration settings
-- `availabilities` - Availability schedules
-- `notifications` - System notifications
-- `reports` - Generated reports
-
-## 🚨 Troubleshooting
-
-### Common Issues
-
-1. **Database Connection**
-   - Verify MongoDB is running
-   - Check connection string format
-   - Ensure network connectivity
-
-2. **Migration Issues**
-   - Backup before migration
-   - Check environment variables
-   - Verify production database access
-
-3. **Deployment Issues**
-   - Check build logs in Vercel
-   - Verify environment variables
-   - Check function logs
-
-### Support Commands
+### Local development
 
 ```bash
-# Check application health
-curl http://localhost:3000/api/health
-
-# View Vercel logs
-vercel logs
-
-# Check database connection
-npm run migrate:verify
+npm ci
+cp env.production.example .env.local   # then edit the values below
+npm run dev                            # http://localhost:3000
 ```
 
-## 📈 Performance & Monitoring
+Admin dashboard: http://localhost:3000/admin/dashboard
 
-### Built-in Monitoring
-- **Vercel Analytics**: Page views and performance
-- **Speed Insights**: Core Web Vitals
-- **Function Logs**: API performance monitoring
-- **Health Checks**: System status monitoring
+> ⚠️ Point `.env.local` at a **local** database for development. Seed routes (`/api/seed/*`) and debug routes only work in development and are disabled (404) everywhere else.
 
-### Optimization Features
-- **Image Optimization**: Automatic image compression
-- **Code Splitting**: Dynamic imports for better performance
-- **Caching**: Strategic caching strategies
-- **CDN**: Global content delivery network
+### Environment variables
 
-## 🔄 Maintenance & Updates
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `MONGODB_URI` | yes | MongoDB connection string |
+| `JWT_SECRET` | yes (production) | Signs login tokens. The app refuses to run in production without it |
+| `NEXT_PUBLIC_APP_URL` | production | Public base URL used in email links (defaults to `http://localhost:3000`) |
+| `CRON_SECRET` | production | Authorizes Vercel Cron calls to `/api/cron/*` |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_FROM` | for email | Outgoing email (confirmations, password resets, reminders, waitlist offers). Without `SMTP_HOST`, no email is sent and reminders are skipped |
+| `NEXT_PUBLIC_MAPBOX_TOKEN` | optional | Maps on the student dashboard |
+| `REDIS_URL`, `REDIS_ENABLED` | optional | Redis cache/rate limiting (`REDIS_ENABLED=false` to turn off) |
+| `BREVO_API_KEY` | optional | Brevo SMS (development-only endpoint at present) |
+| `LOG_LEVEL`, `NEXT_PUBLIC_LOG_LEVEL` | optional | Logging verbosity |
 
-### Regular Tasks
-- **Database Backups**: Automated backup scripts
-- **Performance Monitoring**: Regular performance checks
-- **Security Updates**: Keep dependencies updated
-- **Data Validation**: Regular data integrity checks
+## 🧪 Quality checks
 
-### Update Process
 ```bash
-# Pull latest changes
-git pull origin main
-
-# Install dependencies
-npm install
-
-# Test locally
-npm run dev
-
-# Deploy to production
-npm run deploy:vercel:prod
+npm run lint          # ESLint (Next.js core-web-vitals + TypeScript rules)
+npm run typecheck     # tsc --noEmit
+npm run test:unit     # no database needed
+npm run test:integration
+npm test              # unit + integration
 ```
 
-## 📞 Support & Resources
+Integration tests call the real route handlers against a **throwaway local MongoDB**. Each test process uses its own database and drops it afterwards. The suite refuses to run unless the database host is local and its name contains `test`, so it can never touch Atlas:
 
-### Documentation
-- **Next.js**: [nextjs.org/docs](https://nextjs.org/docs)
-- **Vercel**: [vercel.com/docs](https://vercel.com/docs)
-- **MongoDB**: [docs.mongodb.com](https://docs.mongodb.com)
+```bash
+mongod --dbpath /tmp/mongo-test --port 27099   # in another terminal
+TEST_MONGODB_URI=mongodb://127.0.0.1:27099/appointment-system-test npm run test:integration
+```
 
-### Community
-- **Vercel Community**: [github.com/vercel/vercel/discussions](https://github.com/vercel/vercel/discussions)
-- **Next.js Community**: [github.com/vercel/next.js/discussions](https://github.com/vercel/next.js/discussions)
+GitHub Actions (`.github/workflows/ci.yml`) runs lint, type-check, unit and integration tests (with a MongoDB service container), and a production build on every pull request.
+
+> TypeScript is pinned to 6.0 because `typescript-eslint` does not support TypeScript 7 yet. Move back to 7 once it does.
+
+> The old Mongoose-migration scripts in `tests/mongoose-*.test.ts` write to whatever `MONGODB_URI` points at and are no longer wired to npm scripts. Don't run them against a real database.
+
+## 🌐 Translations
+
+UI text lives in `lib/i18n/dictionaries/`. `en.ts` is the source; `es.ts` must have the same keys, which is enforced by TypeScript and by `tests/unit/i18n.test.ts`. Use `useI18n()` in client components:
+
+```tsx
+const { t, locale } = useI18n();
+return <h1>{t.registerPage.title}</h1>;
+```
+
+The active language comes from the `locale` cookie, falling back to the browser's `Accept-Language`. Stored values (statuses, profile options) stay in English, and only their labels are translated. **The Spanish text is a draft and should be reviewed by DOE translation staff.**
+
+## ⏰ Scheduled jobs (Vercel Cron, see `vercel.json`)
+
+| Path | Schedule | What it does |
+| --- | --- | --- |
+| `/api/cron/expire-appointments` | daily 04:15 UTC | Marks past, unattended appointments expired |
+| `/api/cron/send-reminders` | hourly | Sends due reminder emails (default: 24h before) |
+
+Both require `Authorization: Bearer $CRON_SECRET`, which Vercel adds automatically.
+
+## 🚀 Deployment
+
+Vercel deploys `main` to production and every pull request to a preview. Set the environment variables above in the Vercel project (`vercel env add …`). Manual deploys: `npm run deploy:vercel` (preview) / `npm run deploy:vercel:prod`.
+
+### Database scripts
+
+- `npm run db:backup`: `mongodump` of the **local** database into `database-backups/` (git-ignored)
+- `npm run db:restore`: ⚠️ restores `database-backups/latest` into `$MONGODB_URI` **with `--drop`**, replacing existing data
+- `npm run migrate:quick` / `migrate:to-production` / `migrate:verify`: one-time local → production migration helpers
+
+> The **Create backup** button in Admin → Settings is a placeholder and does not back anything up. Use MongoDB Atlas backups/snapshots for production.
+
+## 📁 Project structure
+
+```
+app/                Next.js routes (pages and app/api route handlers)
+  admin/dashboard/  Staff dashboard (today, appointments, users, hubs, …)
+  dashboard/        Student dashboard
+  api/              REST endpoints (admin/*, appointments/*, auth/*, cron/*, …)
+components/         React components (admin/, dashboard/, home/, ui/)
+contexts/           Auth, hub filter, and i18n providers
+lib/                Domain logic: booking lifecycle, reminders, waitlist, permissions, i18n, …
+models/             Mongoose models
+tests/              unit/ and integration/ suites (node:test via tsx)
+scripts/            Admin/migration scripts
+```
+
+## 🔒 Security notes
+
+- Admin permissions are re-checked against the database on every request; demoted or deleted admins lose access immediately.
+- Login, registration, and password-reset endpoints are rate limited.
+- Exports and admin actions are written to the audit log. CSV exports neutralize spreadsheet formulas.
+- Never commit data exports. Root-level `*.csv` and `*.xlsx` files are git-ignored because they may contain student information.
 
 ## 📄 License
 
-This project is developed for NYC DOE District 79 Adult Education programs. All rights reserved.
-
----
-
-**Last Updated**: August 2025  
-**Version**: 1.0.0  
-**Status**: Production Ready 🚀 
+Developed for NYC DOE District 79 Adult Education programs. All rights reserved.

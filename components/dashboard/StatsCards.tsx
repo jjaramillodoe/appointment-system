@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, Award, MapPin, TrendingUp } from 'lucide-react';
+import { CalendarDays, Award, MapPin, TrendingUp, type LucideIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { useI18n } from '@/contexts/I18nContext';
 import { dateFnsLocale, statusLabel } from '@/lib/i18n/labels';
@@ -24,10 +24,17 @@ interface StatsCardsProps {
   appointmentHubName?: string;
 }
 
-export default function StatsCards({ user, appointment, parseToLocalDate, appointmentHubName }: StatsCardsProps) {
-  const { t, locale } = useI18n();
-  const copy = t.dashboard.stats;
-  const StatCard = ({ icon: Icon, bgColor, textColor, label, value }: any) => (
+interface StatCardProps {
+  icon: LucideIcon;
+  bgColor: string;
+  textColor: string;
+  label: string;
+  value: string | number;
+}
+
+// Module level: a component defined inside render remounts on every render
+function StatCard({ icon: Icon, bgColor, textColor, label, value }: StatCardProps) {
+  return (
     <div className={`${bgColor} rounded-2xl shadow-lg p-6 border border-white/20 backdrop-blur-sm hover:shadow-xl transition-all`}>
       <div className="flex items-center">
         <div className={`${textColor} rounded-xl p-3 mr-4`}>
@@ -40,7 +47,11 @@ export default function StatsCards({ user, appointment, parseToLocalDate, appoin
       </div>
     </div>
   );
+}
 
+export default function StatsCards({ user, appointment, parseToLocalDate, appointmentHubName }: StatsCardsProps) {
+  const { t, locale } = useI18n();
+  const copy = t.dashboard.stats;
   return (
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
       <StatCard

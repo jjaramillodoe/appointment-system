@@ -314,7 +314,7 @@ export default function NotificationsTab({ notifications, settings, setSettings,
             <div className="text-center py-12">
               <Bell className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
               <CardTitle className="text-lg mb-2">No Notifications</CardTitle>
-              <CardDescription>You're all caught up! No new notifications at this time.</CardDescription>
+              <CardDescription>You&apos;re all caught up! No new notifications at this time.</CardDescription>
             </div>
           )}
         </CardContent>

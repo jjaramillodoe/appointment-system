@@ -67,12 +67,11 @@ function StatusDonut({
     return <p className="text-sm text-muted-foreground py-8 text-center">No appointments in this range.</p>;
   }
 
-  let offset = 0;
-  const segments = slices.map((slice) => {
+  // Each segment starts where the previous ones end (cumulative %, no mutation during render)
+  const segments = slices.map((slice, index) => {
     const portion = (slice.value / total) * 100;
-    const segment = { ...slice, portion, offset };
-    offset += portion;
-    return segment;
+    const offset = slices.slice(0, index).reduce((sum, prev) => sum + (prev.value / total) * 100, 0);
+    return { ...slice, portion, offset };
   });
 
   return (

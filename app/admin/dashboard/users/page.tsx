@@ -28,12 +28,6 @@ export default function UsersPage() {
     }));
   }, [selectedHub]);
 
-  useEffect(() => {
-    if (token) {
-      loadUsers();
-    }
-  }, [token, userPagination.page, userFilters]);
-
   const loadUsers = async () => {
     try {
       const params = new URLSearchParams({
@@ -58,6 +52,12 @@ export default function UsersPage() {
       logger.error('Error loading users:', error);
     }
   };
+
+  useEffect(() => {
+    if (token) {
+      loadUsers();
+    }
+  }, [token, userPagination.page, userFilters]);
 
   const handlePageChange = (page: number) => {
     setUserPagination((prev) => ({ ...prev, page }));

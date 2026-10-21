@@ -261,7 +261,7 @@ export default function AnalyticsTab({ data, loading, dateRange, setDateRange, s
       {/* Today's Appointments */}
       <Card>
         <CardHeader>
-          <CardTitle>Today's Appointments</CardTitle>
+          <CardTitle>Today&apos;s Appointments</CardTitle>
           <CardDescription>Scheduled appointments for today</CardDescription>
         </CardHeader>
         <CardContent>

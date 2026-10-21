@@ -768,7 +768,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="font-bold text-primary-900 mb-1">Closest Address</h3>
-                <p className="text-primary-700 text-sm">Please provide the address closest to where you'd like to attend classes. This helps us find the nearest learning center for you. If it's the same as your home address, you can copy the information from the previous step.</p>
+                <p className="text-primary-700 text-sm">Please provide the address closest to where you&apos;d like to attend classes. This helps us find the nearest learning center for you. If it&apos;s the same as your home address, you can copy the information from the previous step.</p>
               </div>
             </div>
           </div>
@@ -975,7 +975,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="font-bold text-primary-900 mb-1">School & Program Selection</h3>
-                <p className="text-primary-700 text-sm">Choose your preferred school and the programs you're interested in. This helps us match you with the right educational opportunities.</p>
+                <p className="text-primary-700 text-sm">Choose your preferred school and the programs you&apos;re interested in. This helps us match you with the right educational opportunities.</p>
               </div>
             </div>
           </div>
@@ -1050,7 +1050,7 @@ export default function RegistrationStepper({ onSubmit }: { onSubmit: (form: Reg
               </div>
               <div className="ml-3 flex-1">
                 <h3 className="font-bold text-primary-900 mb-1">Create Your Account</h3>
-                <p className="text-primary-700 text-sm">Set up your secure password to complete your registration. You'll use this to log in and access your account.</p>
+                <p className="text-primary-700 text-sm">Set up your secure password to complete your registration. You&apos;ll use this to log in and access your account.</p>
               </div>
             </div>
           </div>
