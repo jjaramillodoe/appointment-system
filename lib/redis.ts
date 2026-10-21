@@ -2,7 +2,6 @@ import { logger } from '@/lib/logger';
 import { createClient, RedisClientType } from 'redis';
 
 declare global {
-  // eslint-disable-next-line no-var
   var redis: {
     client: RedisClientType | null;
     promise: Promise<RedisClientType> | null;

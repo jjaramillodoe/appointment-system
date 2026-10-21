@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const endDate = searchParams.get('endDate');
 
     // Build filter query
-    let query: any = {};
+    const query: any = {};
 
     if (action) query.action = action;
     if (resourceType) query.resourceType = resourceType;

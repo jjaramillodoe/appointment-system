@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build query based on criteria
-    let userQuery: any = { isAdmin: false };
+    const userQuery: any = { isAdmin: false };
 
     if (criteria) {
       if (criteria.hubName) {
