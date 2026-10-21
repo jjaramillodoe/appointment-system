@@ -1,6 +1,10 @@
 'use client';
 
 import { CheckCircle2, AlertCircle, ChevronRight, Lock } from 'lucide-react';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import type { Dictionary } from '@/lib/i18n/dictionaries/en';
 
 interface User {
   firstName?: string;
@@ -29,65 +33,133 @@ interface ProfileCompletionDashboardProps {
   onEditSection: (section: string) => void;
 }
 
+type FieldKey = keyof Dictionary['dashboard']['completion']['fields'];
+type SectionKey = keyof Dictionary['dashboard']['completion']['sections'];
+
+interface Section {
+  key: SectionKey;
+  fields: { key: FieldKey; done: boolean }[];
+}
+
 export default function ProfileCompletionDashboard({ user, onEditSection }: ProfileCompletionDashboardProps) {
-  // Calculate completion percentage
-  const requiredFields = {
-    'Basic Info': [
-      { key: 'firstName', label: 'First Name', value: user.firstName },
-      { key: 'lastName', label: 'Last Name', value: user.lastName },
-      { key: 'email', label: 'Email', value: user.email },
-      { key: 'phone', label: 'Phone', value: user.phone },
-      { key: 'preferredLanguage', label: 'Preferred Language', value: user.preferredLanguage },
-    ],
+  const { t } = useI18n();
+  const copy = t.dashboard.completion;
+
+  // Same rules the server uses to confirm a pending appointment
+  const completion = calculateProfileCompletion(user);
+  const missing = new Set(completion.missingFields);
+  const isDone = (...names: string[]) => names.every((name) => !missing.has(name));
+
+  const requiredSections: Section[] = [
+    {
+      key: 'personal',
+      fields: [
+        { key: 'phone', done: isDone('phone') },
+        { key: 'dateOfBirth', done: isDone('dateOfBirth') },
+        { key: 'sex', done: isDone('sex') },
+      ],
+    },
+    {
+      key: 'address',
+      fields: [
+        { key: 'currentAddress', done: isDone('address.street', 'address.city', 'address.state', 'address.zipCode') },
+      ],
+    },
+    {
+      key: 'emergency',
+      fields: [
+        { key: 'contactName', done: isDone('emergencyContact.name') },
+        { key: 'relationship', done: isDone('emergencyContact.relationship') },
+        { key: 'contactPhone', done: isDone('emergencyContact.phone') },
+      ],
+    },
+    {
+      key: 'education',
+      fields: [
+        { key: 'educationLevel', done: isDone('educationLevel') },
+        { key: 'programInterests', done: isDone('programInterests') },
+        { key: 'schoolInterest', done: isDone('schoolInterest') },
+      ],
+    },
+  ];
+
+  const optionalSections: Section[] = [
+    {
+      key: 'about',
+      fields: [
+        { key: 'heardFrom', done: Boolean(user.heardFrom) },
+        { key: 'additionalLanguages', done: Boolean(user.additionalLanguages?.length) },
+      ],
+    },
+    {
+      key: 'employment',
+      fields: [
+        { key: 'employmentStatus', done: Boolean(user.employmentStatus) },
+        { key: 'employerName', done: Boolean(user.employerName) },
+        { key: 'jobTitle', done: Boolean(user.jobTitle) },
+      ],
+    },
+    {
+      key: 'other',
+      fields: [
+        { key: 'barriers', done: Boolean(user.barriersToLearning?.length) },
+        { key: 'homeAddress', done: Boolean(user.homeAddress?.street) },
+      ],
+    },
+  ];
+
+  const requiredItems = requiredSections.flatMap((section) => section.fields);
+  const requiredDone = requiredItems.filter((field) => field.done).length;
+  const optionalItems = optionalSections.flatMap((section) => section.fields);
+  const optionalDone = optionalItems.filter((field) => field.done).length;
+  const percentage = completion.percentage;
+
+  const status =
+    percentage === 100 ? { emoji: '✨', label: copy.statusComplete } :
+    percentage >= 75 ? { emoji: '🎯', label: copy.statusAlmost } :
+    percentage >= 50 ? { emoji: '👍', label: copy.statusHalf } :
+    { emoji: '📝', label: copy.statusStart };
+
+  const renderSection = (section: Section, required: boolean) => {
+    const title = copy.sections[section.key];
+    return (
+      <div
+        key={section.key}
+        className={`bg-white rounded-lg border p-5 hover:shadow-md transition-shadow ${required ? 'border-primary-200' : 'border-blue-200'}`}
+      >
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <h4 className="font-semibold text-primary-900 mb-3">{title}</h4>
+            <ul className="space-y-2">
+              {section.fields.map((field) => (
+                <li key={field.key} className="flex items-center gap-3">
+                  {field.done ? (
+                    <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" aria-hidden />
+                  ) : required ? (
+                    <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" aria-hidden />
+                  ) : (
+                    <span className="h-5 w-5 border-2 border-gray-300 rounded-full flex-shrink-0" aria-hidden />
+                  )}
+                  <span className={`text-sm ${field.done ? 'text-primary-700' : 'text-primary-600'}`}>
+                    {copy.fields[field.key]}
+                    <span className="sr-only"> ({field.done ? copy.itemDone : copy.itemMissing})</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <button
+            type="button"
+            onClick={() => onEditSection(section.key)}
+            className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+            aria-label={fmt(copy.editSection, { section: title })}
+          >
+            <ChevronRight className="h-5 w-5" aria-hidden />
+          </button>
+        </div>
+      </div>
+    );
   };
-
-  const optionalFields = {
-    'Personal Details': [
-      { key: 'dateOfBirth', label: 'Date of Birth', value: user.dateOfBirth },
-      { key: 'sex', label: 'Gender', value: user.sex },
-      { key: 'heardFrom', label: 'How did you hear about us?', value: user.heardFrom },
-      { key: 'additionalLanguages', label: 'Additional Languages', value: user.additionalLanguages?.length ? user.additionalLanguages : null },
-    ],
-    'Education & Employment': [
-      { key: 'educationLevel', label: 'Education Level', value: user.educationLevel },
-      { key: 'employmentStatus', label: 'Employment Status', value: user.employmentStatus },
-      { key: 'employerName', label: 'Employer Name', value: user.employerName },
-      { key: 'jobTitle', label: 'Job Title', value: user.jobTitle },
-      { key: 'schoolInterest', label: 'School Interest', value: user.schoolInterest },
-      { key: 'programInterests', label: 'Program Interests', value: user.programInterests?.length ? user.programInterests : null },
-      { key: 'barriersToLearning', label: 'Barriers to Learning', value: user.barriersToLearning?.length ? user.barriersToLearning : null },
-    ],
-    'Emergency Contact': [
-      { key: 'emergencyContactName', label: 'Emergency Contact Name', value: user.emergencyContact?.name },
-      { key: 'emergencyContactRelationship', label: 'Relationship', value: user.emergencyContact?.relationship },
-      { key: 'emergencyContactPhone', label: 'Contact Phone', value: user.emergencyContact?.phone },
-    ],
-    'Address Information': [
-      { key: 'address', label: 'Current Address', value: user.address?.street },
-      { key: 'homeAddress', label: 'Home Address', value: user.homeAddress?.street },
-    ],
-  };
-
-  // Count completed fields
-  const requiredCompleted = Object.values(requiredFields)
-    .flat()
-    .filter(field => field.value).length;
-  const requiredTotal = Object.values(requiredFields).flat().length;
-
-  const optionalCompleted = Object.values(optionalFields)
-    .flat()
-    .filter(field => field.value).length;
-  const optionalTotal = Object.values(optionalFields).flat().length;
-
-  const totalCompleted = requiredCompleted + optionalCompleted;
-  const totalFields = requiredTotal + optionalTotal;
-  const completionPercentage = Math.round((totalCompleted / totalFields) * 100);
-
-  const completionStatus =
-    completionPercentage === 100 ? '✨ Complete!' :
-    completionPercentage >= 75 ? '🎯 Almost there!' :
-    completionPercentage >= 50 ? '👍 Halfway done' :
-    '📝 Get started';
 
   return (
     <div className="space-y-6">
@@ -95,119 +167,60 @@ export default function ProfileCompletionDashboard({ user, onEditSection }: Prof
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-2xl p-8 text-white shadow-lg">
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h2 className="text-3xl font-bold">{completionPercentage}%</h2>
-            <p className="text-primary-100 mt-1">Profile Complete</p>
+            <h2 className="text-3xl font-bold">{percentage}%</h2>
+            <p className="text-primary-100 mt-1">{copy.percentLabel}</p>
           </div>
-          <div className="text-5xl">{completionStatus.split(' ')[0]}</div>
+          <div className="text-5xl" aria-hidden>{status.emoji}</div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full bg-white/20 rounded-full h-3 overflow-hidden">
+        <div
+          className="w-full bg-white/20 rounded-full h-3 overflow-hidden"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percentage}
+          aria-label={copy.percentLabel}
+        >
           <div
             className="bg-white h-full rounded-full transition-all duration-500"
-            style={{ width: `${completionPercentage}%` }}
+            style={{ width: `${percentage}%` }}
           />
         </div>
 
         <div className="mt-4 flex justify-between text-sm text-primary-100">
-          <span>{totalCompleted} of {totalFields} fields completed</span>
-          <span>{completionStatus}</span>
+          <span>{fmt(copy.progress, { done: requiredDone, total: requiredItems.length })}</span>
+          <span>{status.label}</span>
         </div>
       </div>
 
-      {/* Required Fields Section */}
+      {/* Required to confirm */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <Lock className="h-5 w-5 text-primary-600" />
-          <h3 className="text-lg font-semibold text-primary-900">Required Information</h3>
+          <Lock className="h-5 w-5 text-primary-600" aria-hidden />
+          <h3 className="text-lg font-semibold text-primary-900">{copy.requiredTitle}</h3>
           <span className="text-sm font-medium bg-primary-100 text-primary-700 px-2 py-1 rounded-full">
-            {requiredCompleted}/{requiredTotal}
+            {requiredDone}/{requiredItems.length}
           </span>
         </div>
-
-        {Object.entries(requiredFields).map(([section, fields]) => (
-          <div key={section} className="bg-white rounded-lg border border-primary-200 p-5 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-semibold text-primary-900 mb-3">{section}</h4>
-                <div className="space-y-2">
-                  {fields.map(field => (
-                    <div key={field.key} className="flex items-center gap-3">
-                      {field.value ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                          <span className="text-sm text-primary-700">{field.label}</span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />
-                          <span className="text-sm text-primary-600">{field.label}</span>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => onEditSection(section)}
-                className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        ))}
+        {requiredSections.map((section) => renderSection(section, true))}
       </div>
 
-      {/* Optional Fields Section */}
+      {/* Optional */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5 text-blue-600" />
-          <h3 className="text-lg font-semibold text-primary-900">Optional Information</h3>
+          <AlertCircle className="h-5 w-5 text-blue-600" aria-hidden />
+          <h3 className="text-lg font-semibold text-primary-900">{copy.optionalTitle}</h3>
           <span className="text-sm font-medium bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-            {optionalCompleted}/{optionalTotal}
+            {optionalDone}/{optionalItems.length}
           </span>
         </div>
-
-        {Object.entries(optionalFields).map(([section, fields]) => (
-          <div key={section} className="bg-white rounded-lg border border-blue-200 p-5 hover:shadow-md transition-shadow">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <h4 className="font-semibold text-primary-900 mb-3">{section}</h4>
-                <div className="space-y-2">
-                  {fields.map(field => (
-                    <div key={field.key} className="flex items-center gap-3">
-                      {field.value ? (
-                        <>
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                          <span className="text-sm text-primary-700">{field.label}</span>
-                        </>
-                      ) : (
-                        <>
-                          <div className="h-5 w-5 border-2 border-gray-300 rounded-full flex-shrink-0" />
-                          <span className="text-sm text-primary-500">{field.label}</span>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button
-                onClick={() => onEditSection(section)}
-                className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        ))}
+        {optionalSections.map((section) => renderSection(section, false))}
       </div>
 
-      {/* Completion Message */}
-      {completionPercentage === 100 && (
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 text-center">
-          <h3 className="text-xl font-bold text-green-700">🎉 Your profile is complete!</h3>
-          <p className="text-green-600 mt-2">You're all set for your appointment.</p>
+      {completion.isComplete && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-lg p-6 text-center" role="status">
+          <h3 className="text-xl font-bold text-green-700">🎉 {copy.doneTitle}</h3>
+          <p className="text-green-600 mt-2">{copy.doneText}</p>
         </div>
       )}
     </div>
