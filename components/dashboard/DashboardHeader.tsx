@@ -6,6 +6,8 @@ import LanguageSelector from '../LanguageSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { DASHBOARD_CONTENT_CLASS } from './shell';
 import NotificationsInbox from './NotificationsInbox';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
 
 interface User {
   firstName: string;
@@ -19,6 +21,8 @@ interface DashboardHeaderProps {
 export default function DashboardHeader({ user }: DashboardHeaderProps) {
   const router = useRouter();
   const { logout } = useAuth();
+  const { t } = useI18n();
+  const copy = t.dashboard.header;
 
   const handleLogout = () => {
     logout();
@@ -38,9 +42,9 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-white">
-                Adult Education Dashboard
+                {copy.title}
               </h1>
-              <p className="text-primary-100">Welcome back, {user.firstName}!</p>
+              <p className="text-primary-100">{fmt(copy.welcome, { name: user.firstName })}</p>
             </div>
           </div>
 
@@ -54,7 +58,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
                 onClick={handleAdminDashboard}
                 className="bg-yellow-500 hover:bg-yellow-600 text-primary-900 px-4 py-2.5 rounded-lg font-semibold transition-all hover:shadow-lg flex items-center"
               >
-                <span className="mr-2">Admin Dashboard</span>
+                <span className="mr-2">{copy.adminDashboard}</span>
                 <GraduationCap className="h-4 w-4" />
               </button>
             )}
@@ -64,7 +68,7 @@ export default function DashboardHeader({ user }: DashboardHeaderProps) {
               className="bg-white/20 hover:bg-white/30 text-white px-4 py-2.5 rounded-lg font-semibold transition-all flex items-center backdrop-blur-sm border border-white/10"
             >
               <LogOut className="h-4 w-4 mr-2" />
-              <span className="text-sm">Logout</span>
+              <span className="text-sm">{copy.logout}</span>
             </button>
           </div>
         </div>

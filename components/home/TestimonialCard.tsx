@@ -50,9 +50,9 @@ export default function TestimonialCard({
 
         {/* Testimonial text */}
         <p className="text-gray-600 mb-6 italic leading-relaxed relative z-10 group-hover:text-gray-700 transition-colors duration-300">
-          <span className="text-2xl text-primary-300 opacity-50 leading-none">"</span>
+          <span className="text-2xl text-primary-300 opacity-50 leading-none">&quot;</span>
           {text}
-          <span className="text-2xl text-primary-300 opacity-50 leading-none">"</span>
+          <span className="text-2xl text-primary-300 opacity-50 leading-none">&quot;</span>
         </p>
 
         {/* Author info */}

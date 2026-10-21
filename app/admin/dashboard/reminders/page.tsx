@@ -293,7 +293,7 @@ export default function RemindersPage() {
             <ul className="text-sm text-blue-800 space-y-1">
               <li>✓ Automated reminders check for appointments that need notifications</li>
               <li>✓ Reminders are sent via email to registered users</li>
-              <li>✓ You can manually trigger reminders using the "Send Reminders Now" button</li>
+              <li>✓ You can manually trigger reminders using the &quot;Send Reminders Now&quot; button</li>
               <li>✓ Each user receives only one reminder per time period</li>
               <li>✓ Reminders are only sent for confirmed and pending appointments</li>
             </ul>

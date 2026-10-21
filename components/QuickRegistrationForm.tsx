@@ -406,11 +406,13 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
 
       {/* Language Section */}
       <div>
-        <label className="block text-sm font-semibold text-primary-900">
+        <label htmlFor="preferredLanguage" className="block text-sm font-semibold text-primary-900">
           {copy.preferredLanguage} <span className="text-red-500" aria-hidden>*</span>
         </label>
         <div className="mt-1.5">
           <LanguageAutocomplete
+            id="preferredLanguage"
+            clearLabel={copy.clearLanguage}
             options={languageOptions}
             value={form.preferredLanguage}
             onChange={handleLanguageChange}
@@ -449,7 +451,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
               type="button"
               onClick={() => setShowPassword(!showPassword)}
               aria-label={showPassword ? t.common.hidePassword : t.common.showPassword}
-              className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
+              className="absolute right-2 top-1.5 rounded p-1 text-primary-400 hover:text-primary-600"
             >
               {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>
@@ -500,7 +502,7 @@ export default function QuickRegistrationForm({ onSuccess, onError }: QuickRegis
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
               aria-label={showConfirmPassword ? t.common.hidePassword : t.common.showPassword}
-              className="absolute right-3 top-3 text-primary-400 hover:text-primary-600"
+              className="absolute right-2 top-1.5 rounded p-1 text-primary-400 hover:text-primary-600"
             >
               {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
             </button>

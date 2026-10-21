@@ -20,6 +20,16 @@ export const ACTIVE_APPOINTMENT_STATUSES = [
   APPOINTMENT_STATUS.ARRIVED,
 ] as const;
 
+/** Statuses that occupy a seat in the slot's bookedCount. */
+export const SEAT_HOLDING_STATUSES = [
+  ...ACTIVE_APPOINTMENT_STATUSES,
+  APPOINTMENT_STATUS.COMPLETED,
+] as const;
+
+export function isAppointmentStatus(value: unknown): value is AppointmentStatus {
+  return typeof value === 'string' && (APPOINTMENT_STATUS_VALUES as string[]).includes(value);
+}
+
 export const HISTORY_APPOINTMENT_STATUSES = [
   APPOINTMENT_STATUS.CANCELLED,
   APPOINTMENT_STATUS.COMPLETED,

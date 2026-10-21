@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "migrate:to-production": "ts-node --project scripts/tsconfig.json scripts/migrateToProduction.ts",
     "migrate:verify": "ts-node --project scripts/tsconfig.json scripts/migrateToProduction.ts verify",
     "migrate:quick": "./scripts/quick-migrate.sh",
@@ -19,11 +19,11 @@
     "admin:verify": "ts-node --project scripts/tsconfig.json scripts/verifyAdminUser.ts",
     "db:test": "ts-node --project scripts/tsconfig.json scripts/testMongoConnection.ts",
     "git:check": "ts-node --project scripts/tsconfig.json scripts/checkGitIgnore.ts",
-    "test:setup": "ts-node --project scripts/tsconfig.json scripts/setupTestData.ts",
-    "test:mongoose-9": "ts-node tests/mongoose-migration.test.ts",
-    "test:baseline": "ts-node tests/mongoose-baseline.test.ts",
-    "test:models": "ts-node tests/mongoose-models.test.ts",
-    "seed:enrollment": "tsx scripts/seedEnrollment.ts"
+    "seed:enrollment": "tsx scripts/seedEnrollment.ts",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "node --import tsx --test 'tests/unit/**/*.test.ts'",
+    "test:integration": "node --import tsx --test --test-concurrency=4 'tests/integration/**/*.test.ts'",
+    "test": "npm run test:unit && npm run test:integration"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.1",
@@ -88,6 +88,6 @@
     "tailwindcss": "^3.4.17",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "~6.0.3"
   }
 }

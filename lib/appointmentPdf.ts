@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import QRCode from 'qrcode';
-import { appointmentStatusLabel } from '@/lib/appointmentStatus';
+import { fmt } from '@/lib/i18n/config';
+import type { Dictionary } from '@/lib/i18n/dictionaries/en';
 
 export type AppointmentPdfData = {
   studentName: string;
@@ -8,11 +9,13 @@ export type AppointmentPdfData = {
   phone?: string;
   dateLabel: string;
   timeLabel: string;
-  status?: string;
+  /** Already translated status label */
+  statusLabel?: string;
   hubName?: string;
   hubLocation?: string;
   notes?: string;
   directions?: string;
+  copy: Dictionary['dashboard']['pdf'];
 };
 
 function stripMarkdown(value: string) {
@@ -25,7 +28,9 @@ function stripMarkdown(value: string) {
     .trim();
 }
 
-export async function downloadAppointmentPdf(data: AppointmentPdfData) {
+/** Build the PDF without saving it (usable outside the browser, e.g. in checks). */
+export async function buildAppointmentPdf(data: AppointmentPdfData) {
+  const { copy } = data;
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const pageWidth = doc.internal.pageSize.getWidth();
   const margin = 48;
@@ -40,22 +45,22 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('NYC PUBLIC SCHOOLS  ·  DISTRICT 79', margin, 32);
+  doc.text(copy.header, margin, 32);
   doc.setFontSize(15);
-  doc.text('Adult Education Appointment', margin, 52);
+  doc.text(copy.title, margin, 52);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
-  doc.text('Bring this confirmation to your intake visit.', margin, 70);
+  doc.text(copy.bringThis, margin, 70);
 
   y = 118;
   doc.setTextColor(17, 24, 39);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Student', margin, y);
+  doc.text(copy.student, margin, y);
   y += 14;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(data.studentName || 'Student', margin, y);
+  doc.text(data.studentName || copy.student, margin, y);
   y += 13;
   if (data.email) {
     doc.text(data.email, margin, y);
@@ -73,23 +78,23 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.setTextColor(30, 64, 175);
-  doc.text('Appointment Details', margin + 16, y + 18);
+  doc.text(copy.details, margin + 16, y + 18);
   doc.setTextColor(17, 24, 39);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
-  doc.text(`Date: ${data.dateLabel}`, margin + 16, y + 35);
-  doc.text(`Time: ${data.timeLabel}`, margin + 16, y + 49);
-  doc.text(`Status: ${appointmentStatusLabel(data.status)}`, margin + 16, y + 63);
+  doc.text(fmt(copy.date, { value: data.dateLabel }), margin + 16, y + 35);
+  doc.text(fmt(copy.time, { value: data.timeLabel }), margin + 16, y + 49);
+  doc.text(fmt(copy.status, { value: data.statusLabel || '' }), margin + 16, y + 63);
   y += 94;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('Learning Center', margin, y);
+  doc.text(copy.center, margin, y);
   y += 14;
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   const hubLines = doc.splitTextToSize(
-    [data.hubName, data.hubLocation].filter(Boolean).join('\n') || 'Learning center assigned at intake',
+    [data.hubName, data.hubLocation].filter(Boolean).join('\n') || copy.centerFallback,
     contentWidth
   );
   doc.text(hubLines, margin, y);
@@ -98,7 +103,7 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
   if (data.notes) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('Notes', margin, y);
+    doc.text(copy.notes, margin, y);
     y += 14;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
@@ -114,7 +119,7 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
     }
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
-    doc.text('Public Transit Directions', margin, y);
+    doc.text(copy.transit, margin, y);
     y += 14;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
@@ -138,7 +143,7 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
     doc.addImage(qrDataUrl, 'PNG', pageWidth - margin - 72, 118, 72, 72);
     doc.setFontSize(7);
     doc.setTextColor(107, 114, 128);
-    doc.text('Scan for details', pageWidth - margin - 72, 200, { maxWidth: 72 });
+    doc.text(copy.scan, pageWidth - margin - 72, 200, { maxWidth: 72 });
   } catch {
     // QR is optional if generation fails
   }
@@ -149,9 +154,19 @@ export async function downloadAppointmentPdf(data: AppointmentPdfData) {
   }
   doc.setTextColor(55, 65, 81);
   doc.setFontSize(8);
-  const reminder = 'Please arrive 5–10 minutes early and bring a photo ID if you have one. If you need to cancel or reschedule, use your student dashboard.';
-  doc.text(doc.splitTextToSize(reminder, contentWidth), margin, Math.max(y, 730));
+  doc.text(doc.splitTextToSize(copy.reminder, contentWidth), margin, Math.max(y, 730));
 
-  const safeDate = data.dateLabel.replace(/[^a-zA-Z0-9]+/g, '-').replace(/-+/g, '-');
-  doc.save(`appointment-${safeDate || 'confirmation'}.pdf`);
+  // Strip accents so "miércoles" stays readable in the filename
+  const safeDate = data.dateLabel
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+  return { doc, fileName: `${copy.fileName}-${safeDate || 'confirmation'}.pdf` };
+}
+
+export async function downloadAppointmentPdf(data: AppointmentPdfData) {
+  const { doc, fileName } = await buildAppointmentPdf(data);
+  doc.save(fileName);
 }

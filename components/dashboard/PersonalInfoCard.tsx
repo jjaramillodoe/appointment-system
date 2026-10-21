@@ -10,6 +10,9 @@ import {
   Briefcase, 
   School 
 } from 'lucide-react';
+import { useI18n } from '@/contexts/I18nContext';
+import { fmt } from '@/lib/i18n/config';
+import { optionLabel } from '@/lib/i18n/labels';
 
 interface User {
   firstName: string;
@@ -42,6 +45,9 @@ interface PersonalInfoCardProps {
 }
 
 export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCardProps) {
+  const { t } = useI18n();
+  const copy = t.dashboard.personalInfo;
+  const options = t.dashboard.profile.options;
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4">
@@ -50,7 +56,7 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <User className="h-6 w-6 text-white" />
           </div>
           <h2 className="text-xl font-semibold text-white">
-            Personal Information
+            {copy.title}
           </h2>
         </div>
       </div>
@@ -61,7 +67,7 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <User className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Name</p>
+            <p className="text-sm text-gray-500">{copy.name}</p>
             <p className="font-medium text-gray-900">{user.firstName} {user.lastName}</p>
           </div>
         </div>
@@ -71,7 +77,7 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <Mail className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Email</p>
+            <p className="text-sm text-gray-500">{copy.email}</p>
             <p className="font-medium text-gray-900">{user.email}</p>
           </div>
         </div>
@@ -81,7 +87,7 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <Phone className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Phone</p>
+            <p className="text-sm text-gray-500">{copy.phone}</p>
             <p className="font-medium text-gray-900">{user.phone}</p>
           </div>
         </div>
@@ -91,8 +97,8 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <User className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Sex</p>
-            <p className="font-medium text-gray-900">{user.sex}</p>
+            <p className="text-sm text-gray-500">{copy.sex}</p>
+            <p className="font-medium text-gray-900">{optionLabel(options.sex, user.sex)}</p>
           </div>
         </div>
 
@@ -101,8 +107,8 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <Info className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">How did you hear about us?</p>
-            <p className="font-medium text-gray-900">{user.heardFrom}</p>
+            <p className="text-sm text-gray-500">{copy.heardFrom}</p>
+            <p className="font-medium text-gray-900">{optionLabel(options.heardFrom, user.heardFrom)}</p>
           </div>
         </div>
 
@@ -113,7 +119,7 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
           <div className="flex-1">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Address</p>
+                <p className="text-sm text-gray-500">{copy.address}</p>
                 <p className="font-medium text-gray-900">
                   {user.address?.street}, {user.address?.city}, {user.address?.state} {user.address?.zipCode}
                 </p>
@@ -121,8 +127,9 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
               <button
                 onClick={onEditAddress}
                 className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                aria-label={copy.editAddress}
               >
-                Edit
+                {copy.edit}
               </button>
             </div>
           </div>
@@ -133,8 +140,8 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <GraduationCap className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Education Level</p>
-            <p className="font-medium text-gray-900">{user.educationLevel}</p>
+            <p className="text-sm text-gray-500">{copy.educationLevel}</p>
+            <p className="font-medium text-gray-900">{optionLabel(options.education, user.educationLevel)}</p>
           </div>
         </div>
 
@@ -143,8 +150,8 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <Briefcase className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">Employment Status</p>
-            <p className="font-medium text-gray-900">{user.employmentStatus}</p>
+            <p className="text-sm text-gray-500">{copy.employmentStatus}</p>
+            <p className="font-medium text-gray-900">{optionLabel(options.employment, user.employmentStatus)}</p>
           </div>
         </div>
 
@@ -153,20 +160,20 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <School className="h-4 w-4 text-gray-600" />
           </div>
           <div>
-            <p className="text-sm text-gray-500">School Interest</p>
+            <p className="text-sm text-gray-500">{copy.schoolInterest}</p>
             <p className="font-medium text-gray-900">{user.schoolInterest}</p>
           </div>
         </div>
 
         <div className="pt-4 border-t border-gray-200">
-          <h3 className="font-medium text-gray-900 mb-2">Program Interests</h3>
+          <h3 className="font-medium text-gray-900 mb-2">{copy.programInterests}</h3>
           <div className="flex flex-wrap gap-2">
             {(user.programInterests || []).map((interest, index) => (
               <span
                 key={index}
                 className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-800"
               >
-                {interest}
+                {optionLabel(options.program, interest)}
               </span>
             ))}
           </div>
@@ -177,24 +184,24 @@ export default function PersonalInfoCard({ user, onEditAddress }: PersonalInfoCa
             <div className="flex items-start">
               <MapPin className="h-5 w-5 text-green-600 mr-3 mt-0.5" />
               <div className="flex-1">
-                <h4 className="font-semibold text-green-800 mb-1">Recommended Learning Center</h4>
+                <h4 className="font-semibold text-green-800 mb-1">{copy.recommendedCenter}</h4>
                 <p className="text-green-700 text-sm mb-1">{user.closestHub.name}</p>
                 <p className="text-green-600 text-xs mb-1">{user.closestHub.address}</p>
-                <p className="text-green-600 text-xs">{user.closestHub.distanceText} from your address</p>
+                <p className="text-green-600 text-xs">{fmt(copy.distance, { distance: user.closestHub.distanceText })}</p>
               </div>
             </div>
           </div>
         )}
 
         <div className="pt-4 border-t border-gray-200">
-          <h3 className="font-medium text-gray-900 mb-2">Barriers to Learning</h3>
+          <h3 className="font-medium text-gray-900 mb-2">{copy.barriers}</h3>
           <div className="flex flex-wrap gap-2">
             {(user.barriersToLearning || []).map((barrier, index) => (
               <span
                 key={index}
                 className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800"
               >
-                {barrier}
+                {optionLabel(options.barrier, barrier)}
               </span>
             ))}
           </div>

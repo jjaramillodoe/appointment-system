@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let updateData: any = {};
+    const updateData: any = {};
     
     if (action === 'markRead') {
       updateData.read = true;

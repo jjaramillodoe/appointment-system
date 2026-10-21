@@ -576,7 +576,7 @@ export default function ReportsTab({ reports, filters, setFilters, onRefresh, st
               </div>
               <div className="ml-4 flex-1">
                 <p className="font-bold text-gray-900 mb-1 group-hover:text-primary-700 transition-colors duration-300">Daily Summary</p>
-                <p className="text-sm text-gray-600">Today's appointments overview</p>
+                <p className="text-sm text-gray-600">Today&apos;s appointments overview</p>
               </div>
             </div>
             <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">

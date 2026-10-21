@@ -8,6 +8,10 @@ interface ToastWithId extends ToastProps {
 export const useToast = () => {
   const [toasts, setToasts] = useState<ToastWithId[]>([]);
 
+  const removeToast = useCallback((id: string) => {
+    setToasts(prev => prev.filter(toast => toast.id !== id));
+  }, []);
+
   const addToast = useCallback((config: ToastConfig) => {
     const id = Math.random().toString(36).substring(2, 9);
     const newToast: ToastWithId = {
@@ -20,11 +24,7 @@ export const useToast = () => {
 
     setToasts(prev => [...prev, newToast]);
     return id;
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
+  }, [removeToast]);
 
   const showSuccess = useCallback((message: string, duration?: number) => {
     return addToast({ message, type: 'success', duration });

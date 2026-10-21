@@ -15,6 +15,9 @@ interface LanguageAutocompleteProps {
   placeholder?: string;
   required?: boolean;
   className?: string;
+  /** id for the text input, so a <label htmlFor> can point at it */
+  id?: string;
+  clearLabel?: string;
 }
 
 export default function LanguageAutocomplete({
@@ -23,8 +26,11 @@ export default function LanguageAutocomplete({
   onChange,
   placeholder = "Select or type to search...",
   required = false,
-  className = ""
+  className = "",
+  id,
+  clearLabel = "Clear",
 }: LanguageAutocompleteProps) {
+  const listId = `${id || 'language'}-options`;
   const [query, setQuery] = useState('');
   const [filteredOptions, setFilteredOptions] = useState<LanguageOption[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -157,7 +163,12 @@ export default function LanguageAutocomplete({
       <div className="relative">
         <input
           ref={inputRef}
+          id={id}
           type="text"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={isOpen && filteredOptions.length > 0}
+          aria-controls={listId}
           value={query}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -170,13 +181,15 @@ export default function LanguageAutocomplete({
           <button
             type="button"
             onClick={handleClear}
-            className="absolute right-8 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            className="absolute right-7 top-1/2 transform -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
             tabIndex={-1}
+            aria-label={clearLabel}
           >
-            <X className="h-4 w-4" />
+            <X className="h-4 w-4" aria-hidden />
           </button>
         )}
         <ChevronDown 
+          aria-hidden
           className={`absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} 
         />
       </div>
@@ -185,12 +198,16 @@ export default function LanguageAutocomplete({
       {isOpen && filteredOptions.length > 0 && (
         <div
           ref={dropdownRef}
+          id={listId}
+          role="listbox"
           className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto"
         >
           {filteredOptions.map((option, index) => (
             <button
               key={option.code}
               type="button"
+              role="option"
+              aria-selected={option.code === value}
               onClick={() => handleSelectOption(option)}
               className={`w-full px-4 py-2 text-left hover:bg-gray-50 focus:bg-gray-50 focus:outline-none ${
                 index === selectedIndex ? 'bg-blue-50 border-l-2 border-blue-500' : ''

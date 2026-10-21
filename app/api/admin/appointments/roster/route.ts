@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Appointment from '@/models/Appointment';
+import Hub from '@/models/Hub';
 import { isAdmin, verifyAdminToken } from '@/lib/adminPermissions';
 import { resolveRequestedHub } from '@/lib/adminUserAccess';
 import { ACTIVE_APPOINTMENT_STATUSES, APPOINTMENT_STATUS } from '@/lib/appointmentStatus';
-import { hubCalendarToday, utcDayBounds } from '@/lib/slotDateTime';
+import { appointmentStartDateTime, getHubTimezone, hubCalendarToday, utcDayBounds } from '@/lib/slotDateTime';
+import { parseClockToMinutes } from '@/lib/timePreference';
 
 export async function GET(request: NextRequest) {
   await dbConnect();
@@ -32,15 +34,32 @@ export async function GET(request: NextRequest) {
 
   const appointments = await Appointment.find(filter)
     .populate('userId', 'firstName lastName email phone programInterests profileCompleted')
-    .sort({ appointmentTime: 1 })
     .lean();
+
+  // Sort by clock time; a string sort puts "10:00 AM" before "9:00 AM"
+  appointments.sort((a: any, b: any) =>
+    (parseClockToMinutes(a.appointmentTime || '') ?? 0) - (parseClockToMinutes(b.appointmentTime || '') ?? 0));
+
+  const timezones = new Map<string, string>();
+  const hubs = await Hub.find({ name: { $in: [...new Set(appointments.map((apt: any) => apt.hubName).filter(Boolean))] } })
+    .select('name timezone')
+    .lean();
+  for (const hub of hubs as any[]) timezones.set(hub.name, getHubTimezone(hub.timezone));
 
   return NextResponse.json({
     date,
     hubName: scope.hub?.name || hubName || 'All hubs',
     appointments: appointments.map((apt: any) => ({
       _id: apt._id,
+      userId: apt.userId?._id,
       time: apt.appointmentTime,
+      startsAt: appointmentStartDateTime(
+        apt.appointmentDate,
+        apt.appointmentTime,
+        timezones.get(apt.hubName) || getHubTimezone()
+      ).toISO(),
+      checkedInAt: apt.checkedInAt || null,
+      completedAt: apt.completedAt || null,
       status: apt.status,
       hubName: apt.hubName,
       classInterest: apt.classInterest,

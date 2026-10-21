@@ -14,7 +14,7 @@ import AppointmentSlot from '../models/AppointmentSlot';
 import { normalizeDayOffReason } from './dayOffReason';
 import { toAppointmentClock, toTwentyFourHour } from './appointmentTime';
 import { getSystemSettings } from './systemSettings';
-import { promoteWaitlist } from './waitlistService';
+import { markWaitlistBooked, promoteWaitlist } from './waitlistService';
 import { notifyStudent } from './studentNotifications';
 import { assertProgramQuota, classInterestFromUser } from './programQuotas';
 
@@ -247,6 +247,9 @@ export class AvailabilityService {
         });
       }
 
+      // Booked students should stop receiving waitlist offers
+      await markWaitlistBooked(userId);
+
       // Invalidate cache
       await AvailabilityCache.invalidate(hubId, date);
 
@@ -300,7 +303,7 @@ export class AvailabilityService {
 
       const hub = await Hub.findById(hubId).select('name');
       await AvailabilityCache.invalidate(hubId, date);
-      await promoteWaitlist(hubId, hub?.name || '');
+      await promoteWaitlist(hubId, hub?.name || '', { date, time: displayTime });
 
       return true;
     } catch (error) {

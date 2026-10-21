@@ -14,14 +14,6 @@ export default function InsightsTab({ data, loading, selectedHub }: InsightsTabP
   const [predictions, setPredictions] = useState<any[]>([]);
   const [recommendations, setRecommendations] = useState<any[]>([]);
 
-  useEffect(() => {
-    if (data) {
-      generateInsights();
-      generatePredictions();
-      generateRecommendations();
-    }
-  }, [data]);
-
   const generateInsights = () => {
     if (!data) return;
     const stats = data.stats || {};
@@ -200,6 +192,14 @@ export default function InsightsTab({ data, loading, selectedHub }: InsightsTabP
 
     setRecommendations(newRecommendations);
   };
+
+  useEffect(() => {
+    if (data) {
+      generateInsights();
+      generatePredictions();
+      generateRecommendations();
+    }
+  }, [data]);
 
   if (loading) {
     return (
